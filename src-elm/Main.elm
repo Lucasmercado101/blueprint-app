@@ -1,7 +1,8 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, div)
+import Html exposing (..)
+import Html.Attributes exposing (..)
 
 
 
@@ -55,4 +56,15 @@ main =
 
 view : Model -> Html msg
 view _ =
-    div [] []
+    div
+        [ style "background-color" background, style "width" "100vw", style "height" "100vh" ]
+        []
+
+
+
+-- OTHER
+
+
+background : String
+background =
+    "#023770"
