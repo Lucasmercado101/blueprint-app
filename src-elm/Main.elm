@@ -2,6 +2,7 @@ module Main exposing (..)
 
 import Browser
 import Browser.Events exposing (onMouseMove)
+import Debug exposing (toString)
 import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick)
@@ -16,7 +17,14 @@ import Svg.Attributes as SvgA exposing (cx, cy, fill, fontSize, height, r, rx, r
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    onMouseMove (JD.succeed NoOp)
+    onMouseMove (mouseMoveDecoder |> JD.map MouseMove)
+
+
+mouseMoveDecoder : Decoder ( Int, Int )
+mouseMoveDecoder =
+    JD.map2 (\x y -> ( x, y ))
+        (JD.field "layerX" JD.int)
+        (JD.field "layerY" JD.int)
 
 
 
@@ -46,11 +54,20 @@ init _ =
 type Msg
     = NoOp
     | Clicked
+    | MouseMove ( Int, Int )
 
 
-update : msg -> model -> ( model, Cmd msg )
-update _ model =
-    ( model, Cmd.none )
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
+        Clicked ->
+            ( model, Cmd.none )
+
+        MouseMove ( x, y ) ->
+            ( { model | view = ( x, y ) }, Cmd.none )
 
 
 main : Program () Model Msg
@@ -64,11 +81,15 @@ main =
 
 
 view : Model -> Html Msg
-view _ =
+view model =
+    let
+        ( xPos, yPos ) =
+            model.view
+    in
     div
         [ style "background-color" background, style "width" "100vw", style "height" "100vh" ]
-        [ svg [ version "1.1", width "300", height "300", viewBox "0 0 300 300" ]
-            [ rect [ width "50", height "50", fill "white", x "10", y "10" ] []
+        [ svg [ version "1.1", width "800", height "800", viewBox "0 0 800 800" ]
+            [ rect [ width "50", height "50", fill "white", x (xPos |> toString), y (yPos |> toString) ] []
             ]
         ]
 
