@@ -2,11 +2,11 @@ module Main exposing (..)
 
 import Browser
 import Html exposing (..)
-import Html.Attributes exposing (..)
+import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick)
 import Json.Decode as JD exposing (Decoder)
-import Svg as S exposing (svg)
-import Svg.Attributes as SvgA exposing (height, viewBox, width)
+import Svg as S exposing (rect, svg)
+import Svg.Attributes as SvgA exposing (cx, cy, fill, fontSize, height, r, textAnchor, version, viewBox, width, x, y)
 
 
 
@@ -63,7 +63,9 @@ view : Model -> Html Msg
 view _ =
     div
         [ style "background-color" background, style "width" "100vw", style "height" "100vh", on "click" (JD.succeed NoOp) ]
-        [ svg [] []
+        [ svg [ version "1.1", width "300", height "200" ]
+            [ rect [ width "100%", height "100%", fill "red" ] []
+            ]
         ]
 
 
