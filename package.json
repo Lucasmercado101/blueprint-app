@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "dev": "concurrently \"npm:dev:elm\" \"npm:dev:ts\"",
+    "dev:elm": "elm-watch hot",
+    "dev:ts": "tsc -w",
+    "elm:review": "elm-review"
+  },
+  "dependencies": {
+    "elm-watch": "^1.1.2"
+  }
+}
