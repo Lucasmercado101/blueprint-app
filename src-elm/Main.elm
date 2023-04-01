@@ -1,4 +1,4 @@
-module Main exposing (..)
+module ...src-elm.Main exposing (..)
 
 import Browser
 import Html exposing (Html, div)
@@ -39,10 +39,11 @@ type Msg
 
 
 update : msg -> model -> ( model, Cmd msg )
-update msg model =
+update _ model =
     ( model, Cmd.none )
 
 
+main : Program () Model Msg
 main =
     Browser.element
         { init = init
