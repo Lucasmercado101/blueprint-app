@@ -1,4 +1,4 @@
-module ...src-elm.Main exposing (..)
+module Main exposing (..)
 
 import Browser
 import Html exposing (Html, div)
