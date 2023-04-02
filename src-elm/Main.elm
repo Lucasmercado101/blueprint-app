@@ -88,7 +88,7 @@ type Mode
 
 type DrawState
     = NotDrawing
-    | SelectedStart ( Point, Point )
+    | SelectedStart ( Point, Point, Point )
 
 
 type Msg
@@ -152,12 +152,12 @@ update msg model =
                     case state of
                         NotDrawing ->
                             ( { model
-                                | mode = Draw (SelectedStart ( ( x, y ), ( x, y ) ))
+                                | mode = Draw (SelectedStart ( ( x, y ), ( x, y ), ( x, y ) ))
                               }
                             , Cmd.none
                             )
 
-                        SelectedStart ( start, end ) ->
+                        SelectedStart ( _, start, end ) ->
                             ( { model
                                 | shapes =
                                     Rectangle
@@ -203,9 +203,18 @@ update msg model =
                         NotDrawing ->
                             ( model, Cmd.none )
 
-                        SelectedStart ( start, _ ) ->
+                        SelectedStart ( startingPoint, _, _ ) ->
+                            let
+                                ( xStart, yStart ) =
+                                    startingPoint
+                            in
                             ( { model
-                                | mode = Draw (SelectedStart ( start, ( x, y ) ))
+                                | mode =
+                                    if x < xStart || y < yStart then
+                                        Draw (SelectedStart ( startingPoint, ( x, y ), startingPoint ))
+
+                                    else
+                                        Draw (SelectedStart ( startingPoint, startingPoint, ( x, y ) ))
                               }
                             , Cmd.none
                             )
@@ -281,7 +290,7 @@ view model =
                             NotDrawing ->
                                 rect [] []
 
-                            SelectedStart ( start, end ) ->
+                            SelectedStart ( _, start, end ) ->
                                 let
                                     ( x1, y1 ) =
                                         start
