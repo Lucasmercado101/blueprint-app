@@ -149,6 +149,11 @@ view model =
 
           else
             on "mousemove" (JD.succeed NoOp)
+        , if model.holdingLeftMouseDown then
+            style "cursor" "grabbing"
+
+          else
+            style "cursor" "grab"
         , on "mousedown" (mouseMoveDecoder |> JD.map MouseDown)
         ]
         [ svg [ version "1.1", width "800", height "800", viewBox "0 0 800 800" ]
