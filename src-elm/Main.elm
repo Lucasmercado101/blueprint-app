@@ -69,7 +69,7 @@ init _ =
             , current = ( 0, 0 )
             , originalView = ( 0, 0 )
             }
-      , mode = Draw NotDrawing
+      , mode = Drag
       , holdingLeftMouseDown = False
       , shapes = []
       }
