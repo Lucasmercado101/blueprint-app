@@ -8,7 +8,7 @@ import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick, onMouseDown, onMouseUp)
 import Json.Decode as JD exposing (Decoder)
 import Svg as S exposing (Svg, rect, svg)
-import Svg.Attributes as SvgA exposing (color, cx, cy, fill, fontSize, height, r, rx, ry, stroke, strokeWidth, version, viewBox, width, x, y)
+import Svg.Attributes as SvgA exposing (color, cx, cy, fill, fontSize, height, r, rx, ry, stroke, strokeWidth, version, viewBox, width, x, x1, x2, y, y1, y2)
 
 
 type alias Point =
@@ -315,6 +315,7 @@ view model =
                                     []
                  )
                     :: (model.shapes |> List.map (drawShape model.view))
+                    ++ backgroundGrid model.view
                     -- debug stuff
                     ++ (model.shapes |> List.map (drawShapePoint model.view))
                 )
@@ -420,6 +421,66 @@ drawShapePoint globalView shape =
 
 
 
+-- infinitely repeating grid
+
+
+backgroundGrid : Point -> List (Svg Msg)
+backgroundGrid ( gx, gy ) =
+    let
+        ( x, y ) =
+            ( gx |> abs |> modBy 100, gy |> abs |> modBy 100 )
+    in
+    (List.range 0 40
+        |> List.map
+            (\i ->
+                S.line
+                    -- TODO: use dynamic screen resolution
+                    [ x1 (i * 50 - x |> String.fromInt)
+                    , y1 (0 - y |> String.fromInt)
+                    , x2 (i * 50 - x |> String.fromInt)
+                    , y2 (1200 - y |> String.fromInt)
+                    , SvgA.stroke "white"
+                    , SvgA.strokeWidth "1"
+                    , SvgA.strokeDasharray "5,5"
+                    ]
+                    []
+            )
+    )
+        ++ (List.range 0 18
+                |> List.map
+                    (\i ->
+                        S.line
+                            [ x1 (0 - x |> String.fromInt)
+                            , y1 (i * 50 - y |> String.fromInt)
+                            , x2 (1900 - x |> String.fromInt)
+                            , y2 (i * 50 - y |> String.fromInt)
+                            , SvgA.stroke "white"
+                            , SvgA.strokeWidth "1"
+                            , SvgA.strokeDasharray "5,5"
+                            ]
+                            []
+                    )
+           )
+
+
+
+-- , S.g
+--     [ SvgA.class "grid" ]
+--     (List.range 0 7
+--         |> List.map
+--             (\i ->
+--                 S.line
+--                     [ x1 (0 - x |> String.fromInt)
+--                     , y1 (i * 50 - y |> String.fromInt)
+--                     , x2 (1900 - x |> String.fromInt)
+--                     , y2 (i * 50 - y |> String.fromInt)
+--                     , SvgA.stroke "white"
+--                     , SvgA.strokeWidth "1"
+--                     , SvgA.strokeDasharray "5,5"
+--                     ]
+--                     []
+--             )
+--     )
 -- OTHER
 
 
