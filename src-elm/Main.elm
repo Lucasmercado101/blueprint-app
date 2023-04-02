@@ -16,12 +16,8 @@ import Svg.Attributes as SvgA exposing (cx, cy, fill, fontSize, height, r, rx, r
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-    if model.holdingLeftMouseDown then
-        onMouseMove (mouseMoveDecoder |> JD.map MouseMove)
-
-    else
-        Sub.none
+subscriptions _ =
+    Sub.none
 
 
 mouseMoveDecoder : Decoder ( Int, Int )
@@ -33,10 +29,17 @@ mouseMoveDecoder =
 
 
 -- MODEL
+-- type alias Vec2 =
+--     ( Int, Int )
 
 
 type alias Model =
     { view : ( Int, Int )
+    , relativeView :
+        { start : ( Int, Int )
+        , current : ( Int, Int )
+        , originalView : ( Int, Int )
+        }
     , holdingLeftMouseDown : Bool
     }
 
@@ -48,6 +51,11 @@ type alias Model =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { view = ( 0, 0 )
+      , relativeView =
+            { start = ( 0, 0 )
+            , current = ( 0, 0 )
+            , originalView = ( 0, 0 )
+            }
       , holdingLeftMouseDown = False
       }
     , Cmd.none
@@ -62,7 +70,7 @@ type Msg
     = NoOp
     | Clicked
     | MouseMove ( Int, Int )
-    | MouseDown
+    | MouseDown ( Int, Int )
     | MouseUp
 
 
@@ -75,11 +83,41 @@ update msg model =
         Clicked ->
             ( model, Cmd.none )
 
-        MouseMove ( x, y ) ->
-            ( { model | view = ( x, y ) }, Cmd.none )
+        MouseDown ( x, y ) ->
+            ( { model
+                | holdingLeftMouseDown = True
+                , relativeView =
+                    { start = ( x, y )
+                    , current = ( 0, 0 )
+                    , originalView = model.view
+                    }
+              }
+            , Cmd.none
+            )
 
-        MouseDown ->
-            ( { model | holdingLeftMouseDown = True }, Cmd.none )
+        MouseMove ( x, y ) ->
+            let
+                relative =
+                    model.relativeView
+
+                ( sx, sy ) =
+                    relative.start
+
+                ( ox, oy ) =
+                    relative.originalView
+
+                ( cx, cy ) =
+                    ( (sx - x) * -1, (sy - y) * -1 )
+            in
+            ( { model
+                | view = ( ox + cx, oy + cy )
+                , relativeView =
+                    { relative
+                        | current = ( cx, cy )
+                    }
+              }
+            , Cmd.none
+            )
 
         MouseUp ->
             ( { model | holdingLeftMouseDown = False }, Cmd.none )
@@ -102,10 +140,23 @@ view model =
             model.view
     in
     div
-        [ style "background-color" background, style "width" "100vw", style "height" "100vh", onMouseDown MouseDown, onMouseUp MouseUp ]
+        [ style "background-color" background
+        , style "width" "100vw"
+        , style "height" "100vh"
+        , onMouseUp MouseUp
+        , if model.holdingLeftMouseDown then
+            on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
+
+          else
+            on "mousemove" (JD.succeed NoOp)
+        , on "mousedown" (mouseMoveDecoder |> JD.map MouseDown)
+        ]
         [ svg [ version "1.1", width "800", height "800", viewBox "0 0 800 800" ]
             [ rect [ width "50", height "50", fill "white", x (xPos |> toString), y (yPos |> toString) ] []
             ]
+        , div [ style "color" "white" ] [ text ("Current View: " ++ (model.view |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.view |> (\( x, y ) -> y |> String.fromInt))) ]
+        , div [ style "color" "white" ] [ text ("Current Start: " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ]
+        , div [ style "color" "white" ] [ text ("Current Relative to start: " ++ (model.relativeView.current |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.current |> (\( x, y ) -> y |> String.fromInt))) ]
         ]
 
 
