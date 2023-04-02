@@ -249,7 +249,7 @@ update msg model =
                                         Draw
                                             (SelectedStart
                                                 { selectedStart
-                                                    | position = { start = start, end = ( x, y ) }
+                                                    | position = { start = relativeStartingPoint, end = ( x, y ) }
                                                 }
                                             )
                               }
