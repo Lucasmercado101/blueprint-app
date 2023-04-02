@@ -442,6 +442,7 @@ backgroundGrid ( gx, gy ) =
                     , SvgA.stroke "white"
                     , SvgA.strokeWidth "1"
                     , SvgA.strokeDasharray "5,5"
+                    , SvgA.opacity "0.5"
                     ]
                     []
             )
@@ -457,6 +458,7 @@ backgroundGrid ( gx, gy ) =
                             , SvgA.stroke "white"
                             , SvgA.strokeWidth "1"
                             , SvgA.strokeDasharray "5,5"
+                            , SvgA.opacity "0.5"
                             ]
                             []
                     )
