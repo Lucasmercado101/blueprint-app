@@ -175,14 +175,11 @@ update msg model =
             case model.mode of
                 Drag ->
                     let
-                        relative =
-                            model.relativeView
-
                         ( sx, sy ) =
-                            relative.start
+                            model.relativeView.start
 
                         ( ox, oy ) =
-                            relative.originalView
+                            model.relativeView.originalView
 
                         ( dx, dy ) =
                             ( sx - x, sy - y )
