@@ -8,7 +8,7 @@ import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick, onMouseDown, onMouseUp)
 import Json.Decode as JD exposing (Decoder)
 import Svg as S exposing (rect, svg)
-import Svg.Attributes as SvgA exposing (cx, cy, fill, fontSize, height, r, rx, ry, textAnchor, version, viewBox, width, x, y)
+import Svg.Attributes as SvgA exposing (color, cx, cy, fill, fontSize, height, r, rx, ry, stroke, strokeWidth, version, viewBox, width, x, y)
 
 
 
@@ -157,7 +157,7 @@ view model =
         , on "mousedown" (mouseMoveDecoder |> JD.map MouseDown)
         ]
         [ svg [ version "1.1", width "800", height "800", viewBox "0 0 800 800" ]
-            [ rect [ width "50", height "50", fill "white", x (xPos |> toString), y (yPos |> toString) ] []
+            [ rect [ width "50", height "50", strokeWidth "2", stroke "white", fill "transparent", x (xPos |> toString), y (yPos |> toString) ] []
             ]
         , div [ style "color" "white" ] [ text ("Current View: " ++ (model.view |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.view |> (\( x, y ) -> y |> String.fromInt))) ]
         , div [ style "color" "white" ] [ text ("Current Start: " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ]
