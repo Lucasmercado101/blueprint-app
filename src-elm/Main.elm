@@ -251,7 +251,7 @@ view model =
              , style "width" "100vw"
              , style "height" "100vh"
 
-             --  TODO:
+             --  TODO: drag by holding middle click and moving mouse
              --  , on "auxclick"
              ]
                 ++ (case model.mode of
