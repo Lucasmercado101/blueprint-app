@@ -97,6 +97,8 @@ type Msg
     | MouseMove Point
     | MouseDown Point
     | MouseUp
+    | DrawMode
+    | DragMode
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -107,6 +109,30 @@ update msg model =
 
         Clicked ->
             ( model, Cmd.none )
+
+        DrawMode ->
+            ( { model
+                | mode = Draw NotDrawing
+                , relativeView =
+                    { start = ( 0, 0 )
+                    , current = ( 0, 0 )
+                    , originalView = ( 0, 0 )
+                    }
+              }
+            , Cmd.none
+            )
+
+        DragMode ->
+            ( { model
+                | mode = Drag
+                , relativeView =
+                    { start = ( 0, 0 )
+                    , current = ( 0, 0 )
+                    , originalView = ( 0, 0 )
+                    }
+              }
+            , Cmd.none
+            )
 
         MouseDown ( x, y ) ->
             case model.mode of
@@ -219,65 +245,82 @@ view model =
             , on "mousedown" (mouseMoveDecoder |> JD.map MouseDown)
             ]
     in
-    div
-        ([ style "background-color" background
-         , style "width" "100vw"
-         , style "height" "100vh"
+    div []
+        [ div
+            ([ style "background-color" background
+             , style "width" "100vw"
+             , style "height" "100vh"
 
-         --  TODO:
-         --  , on "auxclick"
-         ]
-            ++ (case model.mode of
+             --  TODO:
+             --  , on "auxclick"
+             ]
+                ++ (case model.mode of
+                        Drag ->
+                            onDrag
+
+                        Draw state ->
+                            [ onMouseUp MouseUp
+                            , on "click" (mouseMoveDecoder |> JD.map MouseDown)
+                            , case state of
+                                NotDrawing ->
+                                    style "" ""
+
+                                SelectedStart _ ->
+                                    on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
+                            ]
+                   )
+            )
+            [ svg [ version "1.1", width "800", height "800", viewBox "0 0 800 800" ]
+                ([ rect [ width "50", height "50", strokeWidth "2", stroke "white", fill "transparent", x (xPos |> toString), y (yPos |> toString) ] []
+                 , case model.mode of
                     Drag ->
-                        onDrag
+                        rect [] []
 
                     Draw state ->
-                        [ onMouseUp MouseUp
-                        , on "click" (mouseMoveDecoder |> JD.map MouseDown)
-                        , case state of
+                        case state of
                             NotDrawing ->
-                                style "" ""
+                                rect [] []
 
-                            SelectedStart _ ->
-                                on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
-                        ]
-               )
-        )
-        [ svg [ version "1.1", width "800", height "800", viewBox "0 0 800 800" ]
-            ([ rect [ width "50", height "50", strokeWidth "2", stroke "white", fill "transparent", x (xPos |> toString), y (yPos |> toString) ] []
-             , case model.mode of
-                Drag ->
-                    rect [] []
+                            SelectedStart ( start, end ) ->
+                                let
+                                    ( x1, y1 ) =
+                                        start
 
-                Draw state ->
-                    case state of
-                        NotDrawing ->
-                            rect [] []
-
-                        SelectedStart ( start, end ) ->
-                            let
-                                ( x1, y1 ) =
-                                    start
-
-                                ( x2, y2 ) =
-                                    end
-                            in
-                            rect
-                                [ x (x1 |> toString)
-                                , y (y1 |> toString)
-                                , height ((y2 - y1) |> toString)
-                                , width ((x2 - x1) |> toString)
-                                , strokeWidth "2"
-                                , stroke "white"
-                                , fill "transparent"
-                                ]
-                                []
-             ]
-                ++ (model.shapes |> List.map drawShape)
-            )
-        , div [ style "color" "white" ] [ text ("Current View: " ++ (model.view |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.view |> (\( x, y ) -> y |> String.fromInt))) ]
-        , div [ style "color" "white" ] [ text ("Current Start: " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ]
-        , div [ style "color" "white" ] [ text ("Current Relative to start: " ++ (model.relativeView.current |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.current |> (\( x, y ) -> y |> String.fromInt))) ]
+                                    ( x2, y2 ) =
+                                        end
+                                in
+                                rect
+                                    [ x (x1 |> toString)
+                                    , y (y1 |> toString)
+                                    , height ((y2 - y1) |> toString)
+                                    , width ((x2 - x1) |> toString)
+                                    , strokeWidth "2"
+                                    , stroke "white"
+                                    , fill "transparent"
+                                    ]
+                                    []
+                 ]
+                    ++ (model.shapes |> List.map drawShape)
+                )
+            , div [ style "color" "white" ] [ text ("Current View: " ++ (model.view |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.view |> (\( x, y ) -> y |> String.fromInt))) ]
+            , div [ style "color" "white" ] [ text ("Current Start: " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ]
+            , div [ style "color" "white" ] [ text ("Current Relative to start: " ++ (model.relativeView.current |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.current |> (\( x, y ) -> y |> String.fromInt))) ]
+            ]
+        , div
+            [ style "position" "absolute"
+            , style
+                "left"
+                "50%"
+            , style "bottom" "0"
+            , style "transform" "translate(-50%, 0)"
+            , style "background-color" "white"
+            , style "padding" "15px"
+            , style "display" "flex"
+            , style "gap" "15px"
+            ]
+            [ button [ style "padding" "5px", onClick DragMode ] [ text "Move" ]
+            , button [ style "padding" "5px", onClick DrawMode ] [ text "Draw" ]
+            ]
         ]
 
 
