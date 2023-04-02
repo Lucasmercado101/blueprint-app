@@ -189,14 +189,14 @@ update msg model =
                         ( ox, oy ) =
                             relative.originalView
 
-                        ( cx, cy ) =
-                            ( (sx - x) * -1, (sy - y) * -1 )
+                        ( dx, dy ) =
+                            ( sx - x, sy - y )
                     in
                     ( { model
-                        | view = ( ox + cx, oy + cy )
+                        | view = ( ox + dx, oy + dy )
                         , relativeView =
                             { relative
-                                | current = ( cx, cy )
+                                | current = ( dx, dy )
                             }
                       }
                     , Cmd.none
