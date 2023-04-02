@@ -300,7 +300,7 @@ view model =
                                     ]
                                     []
                  ]
-                    ++ (model.shapes |> List.map drawShape)
+                    ++ (model.shapes |> List.map (drawShape model.view))
                 )
             , div [ style "color" "white" ] [ text ("Current View: " ++ (model.view |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.view |> (\( x, y ) -> y |> String.fromInt))) ]
             , div [ style "color" "white" ] [ text ("Current Start: " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ]
@@ -324,13 +324,17 @@ view model =
         ]
 
 
-drawShape : Shape -> Svg Msg
-drawShape shape =
+drawShape : Point -> Shape -> Svg Msg
+drawShape globalView shape =
+    let
+        ( gx, gy ) =
+            globalView
+    in
     case shape of
         Rectangle { x1, y1, x2, y2 } ->
             rect
-                [ x (x1 |> toString)
-                , y (y1 |> toString)
+                [ x ((x1 + gx) |> toString)
+                , y ((y1 + gy) |> toString)
                 , height ((y2 - y1) |> toString)
                 , width ((x2 - x1) |> toString)
                 , strokeWidth "2"
@@ -341,8 +345,8 @@ drawShape shape =
 
         Square { position, size } ->
             rect
-                [ x (position |> Tuple.first |> toString)
-                , y (position |> Tuple.second |> toString)
+                [ x (((position |> Tuple.first) + gx) |> toString)
+                , y (((position |> Tuple.second) + gy) |> toString)
                 , height (size |> toString)
                 , width (size |> toString)
                 , strokeWidth "2"
