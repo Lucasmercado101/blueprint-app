@@ -7,7 +7,7 @@ import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick, onMouseDown, onMouseUp)
 import Json.Decode as JD exposing (Decoder)
-import Svg as S exposing (rect, svg)
+import Svg as S exposing (Svg, rect, svg)
 import Svg.Attributes as SvgA exposing (color, cx, cy, fill, fontSize, height, r, rx, ry, stroke, strokeWidth, version, viewBox, width, x, y)
 
 
@@ -31,6 +31,19 @@ mouseMoveDecoder =
         (JD.field "layerY" JD.int)
 
 
+type Shape
+    = Rectangle
+        { x1 : Int
+        , y1 : Int
+        , x2 : Int
+        , y2 : Int
+        }
+    | Square
+        { position : Point
+        , size : Int
+        }
+
+
 type alias Model =
     { view : Point
     , relativeView :
@@ -40,6 +53,7 @@ type alias Model =
         }
     , mode : Mode
     , holdingLeftMouseDown : Bool
+    , shapes : List Shape
     }
 
 
@@ -57,6 +71,7 @@ init _ =
             }
       , mode = Draw NotDrawing
       , holdingLeftMouseDown = False
+      , shapes = []
       }
     , Cmd.none
     )
@@ -116,9 +131,17 @@ update msg model =
                             , Cmd.none
                             )
 
-                        SelectedStart ( start, _ ) ->
+                        SelectedStart ( start, end ) ->
                             ( { model
-                                | mode = Draw (SelectedStart ( start, ( x, y ) ))
+                                | shapes =
+                                    Rectangle
+                                        { x1 = start |> Tuple.first
+                                        , y1 = start |> Tuple.second
+                                        , x2 = end |> Tuple.first
+                                        , y2 = end |> Tuple.second
+                                        }
+                                        :: model.shapes
+                                , mode = Draw NotDrawing
                               }
                             , Cmd.none
                             )
@@ -218,8 +241,8 @@ view model =
                )
         )
         [ svg [ version "1.1", width "800", height "800", viewBox "0 0 800 800" ]
-            [ rect [ width "50", height "50", strokeWidth "2", stroke "white", fill "transparent", x (xPos |> toString), y (yPos |> toString) ] []
-            , case model.mode of
+            ([ rect [ width "50", height "50", strokeWidth "2", stroke "white", fill "transparent", x (xPos |> toString), y (yPos |> toString) ] []
+             , case model.mode of
                 Drag ->
                     rect [] []
 
@@ -246,11 +269,41 @@ view model =
                                 , fill "transparent"
                                 ]
                                 []
-            ]
+             ]
+                ++ (model.shapes |> List.map drawShape)
+            )
         , div [ style "color" "white" ] [ text ("Current View: " ++ (model.view |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.view |> (\( x, y ) -> y |> String.fromInt))) ]
         , div [ style "color" "white" ] [ text ("Current Start: " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ]
         , div [ style "color" "white" ] [ text ("Current Relative to start: " ++ (model.relativeView.current |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.current |> (\( x, y ) -> y |> String.fromInt))) ]
         ]
+
+
+drawShape : Shape -> Svg Msg
+drawShape shape =
+    case shape of
+        Rectangle { x1, y1, x2, y2 } ->
+            rect
+                [ x (x1 |> toString)
+                , y (y1 |> toString)
+                , height ((y2 - y1) |> toString)
+                , width ((x2 - x1) |> toString)
+                , strokeWidth "2"
+                , stroke "white"
+                , fill "transparent"
+                ]
+                []
+
+        Square { position, size } ->
+            rect
+                [ x (position |> Tuple.first |> toString)
+                , y (position |> Tuple.second |> toString)
+                , height (size |> toString)
+                , width (size |> toString)
+                , strokeWidth "2"
+                , stroke "white"
+                , fill "transparent"
+                ]
+                []
 
 
 
