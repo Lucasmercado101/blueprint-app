@@ -31,17 +31,12 @@ mouseMoveDecoder =
         (JD.field "layerY" JD.int)
 
 
-type Shape
-    = Rectangle
-        { x1 : Int
-        , y1 : Int
-        , x2 : Int
-        , y2 : Int
-        }
-    | Square
-        { position : Point
-        , size : Int
-        }
+
+-- MODEL
+
+
+type alias Rectangle =
+    { x1 : Int, y1 : Int, x2 : Int, y2 : Int }
 
 
 type alias Model =
@@ -53,7 +48,13 @@ type alias Model =
         }
     , mode : Mode
     , holdingLeftMouseDown : Bool
-    , shapes : List Shape
+    , rectangles :
+        List
+            { x1 : Int
+            , y1 : Int
+            , x2 : Int
+            , y2 : Int
+            }
     }
 
 
@@ -71,7 +72,7 @@ init _ =
             }
       , mode = Drag
       , holdingLeftMouseDown = False
-      , shapes = []
+      , rectangles = []
       }
     , Cmd.none
     )
@@ -159,14 +160,13 @@ update msg model =
 
                         SelectedStart ( _, start, end ) ->
                             ( { model
-                                | shapes =
-                                    Rectangle
-                                        { x1 = (start |> Tuple.first) - (model.view |> Tuple.first)
-                                        , y1 = (start |> Tuple.second) - (model.view |> Tuple.second)
-                                        , x2 = (end |> Tuple.first) - (model.view |> Tuple.first)
-                                        , y2 = (end |> Tuple.second) - (model.view |> Tuple.second)
-                                        }
-                                        :: model.shapes
+                                | rectangles =
+                                    { x1 = (start |> Tuple.first) - (model.view |> Tuple.first)
+                                    , y1 = (start |> Tuple.second) - (model.view |> Tuple.second)
+                                    , x2 = (end |> Tuple.first) - (model.view |> Tuple.first)
+                                    , y2 = (end |> Tuple.second) - (model.view |> Tuple.second)
+                                    }
+                                        :: model.rectangles
                                 , mode = Draw NotDrawing
                               }
                             , Cmd.none
@@ -314,10 +314,10 @@ view model =
                                     ]
                                     []
                  )
-                    :: (model.shapes |> List.map (drawShape model.view))
+                    :: (model.rectangles |> List.map (drawShape model.view))
                     ++ backgroundGrid model.view
                     -- debug stuff
-                    ++ (model.shapes |> List.map (drawShapePoint model.view))
+                    ++ (model.rectangles |> List.map (drawShapePoint model.view))
                 )
              , div [ style "color" "white" ] [ text ("Current View: " ++ (model.view |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.view |> (\( x, y ) -> y |> String.fromInt))) ]
              ]
@@ -358,66 +358,47 @@ view model =
         ]
 
 
-drawShape : Point -> Shape -> Svg Msg
-drawShape globalView shape =
+drawShape : Point -> Rectangle -> Svg Msg
+drawShape globalView { x1, y1, x2, y2 } =
     let
         ( gx, gy ) =
             globalView
     in
-    case shape of
-        Rectangle { x1, y1, x2, y2 } ->
-            rect
-                [ x ((x1 + gx) |> toString)
-                , y ((y1 + gy) |> toString)
-                , height ((y2 - y1) |> toString)
-                , width ((x2 - x1) |> toString)
-                , strokeWidth "2"
-                , stroke "white"
-                , fill "transparent"
-                ]
-                []
-
-        Square { position, size } ->
-            rect
-                [ x (((position |> Tuple.first) + gx) |> toString)
-                , y (((position |> Tuple.second) + gy) |> toString)
-                , height (size |> toString)
-                , width (size |> toString)
-                , strokeWidth "2"
-                , stroke "white"
-                , fill "transparent"
-                ]
-                []
+    rect
+        [ x ((x1 + gx) |> toString)
+        , y ((y1 + gy) |> toString)
+        , height ((y2 - y1) |> toString)
+        , width ((x2 - x1) |> toString)
+        , strokeWidth "2"
+        , stroke "white"
+        , fill "transparent"
+        ]
+        []
 
 
-drawShapePoint : Point -> Shape -> Svg Msg
-drawShapePoint globalView shape =
+drawShapePoint : Point -> Rectangle -> Svg Msg
+drawShapePoint globalView { x1, y1, x2, y2 } =
     let
         ( gx, gy ) =
             globalView
     in
-    case shape of
-        Rectangle { x1, y1, x2, y2 } ->
-            S.text_
-                [ x (x1 + gx |> String.fromInt)
-                , y (y1 + gy - 10 |> String.fromInt)
-                , SvgA.class "svgText"
-                , SvgA.fill "white"
-                ]
-                [ S.text
-                    ("X: "
-                        ++ (x1 + gx |> String.fromInt)
-                        ++ " Y: "
-                        ++ (y1 + gy |> String.fromInt)
-                        ++ " W: "
-                        ++ (x2 - x1 |> String.fromInt)
-                        ++ " H: "
-                        ++ (y2 - y1 |> String.fromInt)
-                    )
-                ]
-
-        Square { position, size } ->
-            Debug.todo "square"
+    S.text_
+        [ x (x1 + gx |> String.fromInt)
+        , y (y1 + gy - 10 |> String.fromInt)
+        , SvgA.class "svgText"
+        , SvgA.fill "white"
+        ]
+        [ S.text
+            ("X: "
+                ++ (x1 + gx |> String.fromInt)
+                ++ " Y: "
+                ++ (y1 + gy |> String.fromInt)
+                ++ " W: "
+                ++ (x2 - x1 |> String.fromInt)
+                ++ " H: "
+                ++ (y2 - y1 |> String.fromInt)
+            )
+        ]
 
 
 
