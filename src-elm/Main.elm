@@ -286,8 +286,7 @@ view model =
                    )
             )
             ([ svg [ version "1.1", width "1900", height "800", viewBox "0 0 1900 800" ]
-                ([ rect [ width "50", height "50", strokeWidth "2", stroke "white", fill "transparent", x (xPos |> toString), y (yPos |> toString) ] []
-                 , case model.mode of
+                ((case model.mode of
                     Drag ->
                         rect [] []
 
@@ -314,8 +313,8 @@ view model =
                                     , fill "transparent"
                                     ]
                                     []
-                 ]
-                    ++ (model.shapes |> List.map (drawShape model.view))
+                 )
+                    :: (model.shapes |> List.map (drawShape model.view))
                     -- debug stuff
                     ++ (model.shapes |> List.map (drawShapePoint model.view))
                 )
