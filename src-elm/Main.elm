@@ -174,8 +174,8 @@ update msg model =
                             in
                             ( { model
                                 | rectangles =
-                                    { x1 = ox + x1
-                                    , y1 = oy + y1
+                                    { x1 = x1 - ox
+                                    , y1 = y1 - oy
                                     , width = x2 - x1
                                     , height = y2 - y1
                                     }
