@@ -89,7 +89,7 @@ type Mode
 
 type DrawState
     = NotDrawing
-    | SelectedStart ( Point, Point, Point )
+    | SelectedStart { position : ( Point, Point, Point ), isOverlappingAnotherRectangle : Bool }
 
 
 type Msg
@@ -153,12 +153,16 @@ update msg model =
                     case state of
                         NotDrawing ->
                             ( { model
-                                | mode = Draw (SelectedStart ( ( x, y ), ( x, y ), ( x, y ) ))
+                                | mode = Draw (SelectedStart { position = ( ( x, y ), ( x, y ), ( x, y ) ), isOverlappingAnotherRectangle = False })
                               }
                             , Cmd.none
                             )
 
-                        SelectedStart ( _, start, end ) ->
+                        SelectedStart { position } ->
+                            let
+                                ( _, start, end ) =
+                                    position
+                            in
                             ( { model
                                 | rectangles =
                                     { x1 = (start |> Tuple.first) - (model.view |> Tuple.first)
@@ -203,24 +207,34 @@ update msg model =
                         NotDrawing ->
                             ( model, Cmd.none )
 
-                        SelectedStart ( startingPoint, _, _ ) ->
+                        SelectedStart ({ position } as selectedStart) ->
                             let
+                                ( startingPoint, _, _ ) =
+                                    position
+
                                 ( xStart, yStart ) =
                                     startingPoint
+
+                                insideAnotherRectangle =
+                                    model.rectangles
+                                        |> List.any
+                                            (\{ x1, y1, x2, y2 } ->
+                                                x >= x1 && x <= x2 && y >= y1 && y <= y2
+                                            )
                             in
                             ( { model
                                 | mode =
                                     if x <= xStart && y <= yStart then
-                                        Draw (SelectedStart ( startingPoint, ( x, y ), startingPoint ))
+                                        Draw (SelectedStart { position = ( startingPoint, ( x, y ), startingPoint ), isOverlappingAnotherRectangle = insideAnotherRectangle })
 
                                     else if y <= yStart then
-                                        Draw (SelectedStart ( startingPoint, ( xStart, y ), ( x, yStart ) ))
+                                        Draw (SelectedStart { position = ( startingPoint, ( xStart, y ), ( x, yStart ) ), isOverlappingAnotherRectangle = insideAnotherRectangle })
 
                                     else if x <= xStart then
-                                        Draw (SelectedStart ( startingPoint, ( x, yStart ), ( xStart, y ) ))
+                                        Draw (SelectedStart { position = ( startingPoint, ( x, yStart ), ( xStart, y ) ), isOverlappingAnotherRectangle = insideAnotherRectangle })
 
                                     else
-                                        Draw (SelectedStart ( startingPoint, startingPoint, ( x, y ) ))
+                                        Draw (SelectedStart { position = ( startingPoint, startingPoint, ( x, y ) ), isOverlappingAnotherRectangle = insideAnotherRectangle })
                               }
                             , Cmd.none
                             )
@@ -295,8 +309,11 @@ view model =
                             NotDrawing ->
                                 rect [] []
 
-                            SelectedStart ( _, start, end ) ->
+                            SelectedStart { position, isOverlappingAnotherRectangle } ->
                                 let
+                                    ( _, start, end ) =
+                                        position
+
                                     ( x1, y1 ) =
                                         start
 
@@ -309,7 +326,13 @@ view model =
                                     , height ((y2 - y1) |> toString)
                                     , width ((x2 - x1) |> toString)
                                     , strokeWidth "2"
-                                    , stroke "white"
+                                    , stroke
+                                        (if isOverlappingAnotherRectangle then
+                                            "red"
+
+                                         else
+                                            "white"
+                                        )
                                     , fill "transparent"
                                     ]
                                     []
@@ -327,7 +350,11 @@ view model =
                                 NotDrawing ->
                                     [ div [ style "color" "white" ] [ text "Current State: Not Drawing" ] ]
 
-                                SelectedStart ( sp, start, end ) ->
+                                SelectedStart { position } ->
+                                    let
+                                        ( sp, start, end ) =
+                                            position
+                                    in
                                     [ div [ style "color" "white" ] [ text "Current State: Selected Start" ]
                                     , div [ style "color" "white" ] [ text ("Current Start: " ++ (start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (start |> (\( x, y ) -> y |> String.fromInt))) ]
                                     , div [ style "color" "white" ] [ text ("Current End: " ++ (end |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (end |> (\( x, y ) -> y |> String.fromInt))) ]
