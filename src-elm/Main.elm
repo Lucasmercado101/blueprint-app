@@ -210,14 +210,17 @@ update msg model =
                             in
                             ( { model
                                 | mode =
-                                    -- if y <= xStart then
-                                    -- Draw (SelectedStart ( startingPoint, ( xStart, y ), ( x, yStart ) ))
-                                    -- else if x < yStart then
-                                    --     Draw (SelectedStart ( startingPoint, ( x, yStart ), ( xStart, y ) ))
-                                    -- else if x < xStart && y < yStart then
-                                    --     Draw (SelectedStart ( startingPoint, ( x, y ), ( xStart, yStart ) ))
-                                    -- else
-                                    Draw (SelectedStart ( startingPoint, startingPoint, ( x, y ) ))
+                                    if x <= xStart && y <= yStart then
+                                        Draw (SelectedStart ( startingPoint, ( x, y ), startingPoint ))
+
+                                    else if y <= yStart then
+                                        Draw (SelectedStart ( startingPoint, ( xStart, y ), ( x, yStart ) ))
+
+                                    else if x <= xStart then
+                                        Draw (SelectedStart ( startingPoint, ( x, yStart ), ( xStart, y ) ))
+
+                                    else
+                                        Draw (SelectedStart ( startingPoint, startingPoint, ( x, y ) ))
                               }
                             , Cmd.none
                             )
@@ -324,10 +327,11 @@ view model =
                                 NotDrawing ->
                                     [ div [ style "color" "white" ] [ text "Current State: Not Drawing" ] ]
 
-                                SelectedStart ( _, start, end ) ->
+                                SelectedStart ( sp, start, end ) ->
                                     [ div [ style "color" "white" ] [ text "Current State: Selected Start" ]
                                     , div [ style "color" "white" ] [ text ("Current Start: " ++ (start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (start |> (\( x, y ) -> y |> String.fromInt))) ]
                                     , div [ style "color" "white" ] [ text ("Current End: " ++ (end |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (end |> (\( x, y ) -> y |> String.fromInt))) ]
+                                    , div [ style "color" "white" ] [ text ("Current StartingPoint: " ++ (sp |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (sp |> (\( x, y ) -> y |> String.fromInt))) ]
                                     ]
 
                         Drag ->
