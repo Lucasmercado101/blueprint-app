@@ -174,8 +174,8 @@ update msg model =
                             in
                             ( { model
                                 | rectangles =
-                                    { x1 = x1 - ox
-                                    , y1 = y1 - oy
+                                    { x1 = x1 + ox
+                                    , y1 = y1 + oy
                                     , width = x2 - x1
                                     , height = y2 - y1
                                     }
@@ -435,6 +435,10 @@ drawShapePoint globalView { x1, y1, width, height } =
                 ++ (width |> String.fromInt)
                 ++ " H: "
                 ++ (height |> String.fromInt)
+                ++ " GlobalX: "
+                ++ (x1 |> String.fromInt)
+                ++ " GlobalY: "
+                ++ (y1 |> String.fromInt)
             )
         ]
 
