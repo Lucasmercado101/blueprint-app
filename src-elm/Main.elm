@@ -310,6 +310,8 @@ view model =
                                     []
                  ]
                     ++ (model.shapes |> List.map (drawShape model.view))
+                    -- debug stuff
+                    ++ (model.shapes |> List.map (drawShapePoint model.view))
                 )
             , div [ style "color" "white" ] [ text ("Current View: " ++ (model.view |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.view |> (\( x, y ) -> y |> String.fromInt))) ]
             , div [ style "color" "white" ] [ text ("Current Start: " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ]
@@ -363,6 +365,36 @@ drawShape globalView shape =
                 , fill "transparent"
                 ]
                 []
+
+
+drawShapePoint : Point -> Shape -> Svg Msg
+drawShapePoint globalView shape =
+    let
+        ( gx, gy ) =
+            globalView
+    in
+    case shape of
+        Rectangle { x1, y1, x2, y2 } ->
+            S.text_
+                [ x (x1 + gx |> String.fromInt)
+                , y (y1 + gy - 10 |> String.fromInt)
+                , SvgA.class "svgText"
+                , SvgA.fill "white"
+                ]
+                [ S.text
+                    ("X: "
+                        ++ (x1 + gx |> String.fromInt)
+                        ++ " Y: "
+                        ++ (y1 + gy |> String.fromInt)
+                        ++ " W: "
+                        ++ (x2 - x1 |> String.fromInt)
+                        ++ " H: "
+                        ++ (y2 - y1 |> String.fromInt)
+                    )
+                ]
+
+        Square { position, size } ->
+            Debug.todo "square"
 
 
 
