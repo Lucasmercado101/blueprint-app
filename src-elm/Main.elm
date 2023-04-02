@@ -8,7 +8,7 @@ import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick, onMouseDown, onMouseUp)
 import Json.Decode as JD exposing (Decoder)
 import Svg as S exposing (Svg, rect, svg)
-import Svg.Attributes as SvgA exposing (color, cx, cy, fill, fontSize, height, r, rx, ry, stroke, strokeWidth, version, viewBox, width, x, x1, x2, y, y1, y2)
+import Svg.Attributes as SA exposing (color, cx, cy, fill, fontSize, r, rx, ry, stroke, strokeWidth, version, viewBox, x, x1, x2, y, y1, y2)
 
 
 type alias Point =
@@ -36,24 +36,18 @@ mouseMoveDecoder =
 
 
 type alias Rectangle =
-    { x1 : Int, y1 : Int, x2 : Int, y2 : Int }
+    { x1 : Int, y1 : Int, width : Int, height : Int }
 
 
 type alias Model =
-    { view : Point
+    { mapPanOffset : Point
     , relativeView :
         { start : Point
         , originalView : Point
         }
     , mode : Mode
     , holdingLeftMouseDown : Bool
-    , rectangles :
-        List
-            { x1 : Int
-            , y1 : Int
-            , x2 : Int
-            , y2 : Int
-            }
+    , rectangles : List Rectangle
     }
 
 
@@ -63,7 +57,7 @@ type alias Model =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { view = ( 0, 0 )
+    ( { mapPanOffset = ( 0, 0 )
       , relativeView =
             { start = ( 0, 0 )
             , originalView = ( 0, 0 )
@@ -87,7 +81,11 @@ type Mode
 
 type DrawState
     = NotDrawing
-    | SelectedStart { position : ( Point, Point, Point ), isOverlappingAnotherRectangle : Bool }
+    | SelectedStart
+        { position : { start : Point, end : Point }
+        , relativeStartingPoint : Point
+        , isOverlappingAnotherRectangle : Bool
+        }
 
 
 type Msg
@@ -138,7 +136,7 @@ update msg model =
                         | holdingLeftMouseDown = True
                         , relativeView =
                             { start = ( x, y )
-                            , originalView = model.view
+                            , originalView = model.mapPanOffset
                             }
                       }
                     , Cmd.none
@@ -148,22 +146,38 @@ update msg model =
                     case state of
                         NotDrawing ->
                             ( { model
-                                | mode = Draw (SelectedStart { position = ( ( x, y ), ( x, y ), ( x, y ) ), isOverlappingAnotherRectangle = False })
+                                | mode =
+                                    Draw
+                                        (SelectedStart
+                                            { position = { start = ( x, y ), end = ( x, y ) }
+                                            , isOverlappingAnotherRectangle = False
+                                            , relativeStartingPoint = ( x, y )
+                                            }
+                                        )
                               }
                             , Cmd.none
                             )
 
                         SelectedStart { position } ->
                             let
-                                ( _, start, end ) =
+                                { start, end } =
                                     position
+
+                                ( x1, y1 ) =
+                                    start
+
+                                ( x2, y2 ) =
+                                    end
+
+                                ( ox, oy ) =
+                                    model.mapPanOffset
                             in
                             ( { model
                                 | rectangles =
-                                    { x1 = (start |> Tuple.first) - (model.view |> Tuple.first)
-                                    , y1 = (start |> Tuple.second) - (model.view |> Tuple.second)
-                                    , x2 = (end |> Tuple.first) - (model.view |> Tuple.first)
-                                    , y2 = (end |> Tuple.second) - (model.view |> Tuple.second)
+                                    { x1 = ox + x1
+                                    , y1 = oy + y1
+                                    , width = x2 - x1
+                                    , height = y2 - y1
                                     }
                                         :: model.rectangles
                                 , mode = Draw NotDrawing
@@ -185,7 +199,7 @@ update msg model =
                             ( sx - x, sy - y )
                     in
                     ( { model
-                        | view = ( ox + dx, oy + dy )
+                        | mapPanOffset = ( ox + dx, oy + dy )
                       }
                     , Cmd.none
                     )
@@ -195,34 +209,49 @@ update msg model =
                         NotDrawing ->
                             ( model, Cmd.none )
 
-                        SelectedStart ({ position } as selectedStart) ->
+                        SelectedStart ({ position, relativeStartingPoint } as selectedStart) ->
+                            -- I only want the rectangle to be drawn, i do not care about
+                            -- the map panning offset, that is set on MouseDown
                             let
-                                ( startingPoint, _, _ ) =
+                                { start } =
                                     position
 
                                 ( xStart, yStart ) =
-                                    startingPoint
-
-                                insideAnotherRectangle =
-                                    model.rectangles
-                                        |> List.any
-                                            (\{ x1, y1, x2, y2 } ->
-                                                x >= x1 && x <= x2 && y >= y1 && y <= y2
-                                            )
+                                    relativeStartingPoint
                             in
                             ( { model
                                 | mode =
                                     if x <= xStart && y <= yStart then
-                                        Draw (SelectedStart { position = ( startingPoint, ( x, y ), startingPoint ), isOverlappingAnotherRectangle = insideAnotherRectangle })
+                                        Draw
+                                            (SelectedStart
+                                                { selectedStart
+                                                    | position = { start = ( x, y ), end = relativeStartingPoint }
+                                                }
+                                            )
 
                                     else if y <= yStart then
-                                        Draw (SelectedStart { position = ( startingPoint, ( xStart, y ), ( x, yStart ) ), isOverlappingAnotherRectangle = insideAnotherRectangle })
+                                        Draw
+                                            (SelectedStart
+                                                { selectedStart
+                                                    | position = { start = ( xStart, y ), end = ( x, yStart ) }
+                                                }
+                                            )
 
                                     else if x <= xStart then
-                                        Draw (SelectedStart { position = ( startingPoint, ( x, yStart ), ( xStart, y ) ), isOverlappingAnotherRectangle = insideAnotherRectangle })
+                                        Draw
+                                            (SelectedStart
+                                                { selectedStart
+                                                    | position = { start = ( x, yStart ), end = ( xStart, y ) }
+                                                }
+                                            )
 
                                     else
-                                        Draw (SelectedStart { position = ( startingPoint, startingPoint, ( x, y ) ), isOverlappingAnotherRectangle = insideAnotherRectangle })
+                                        Draw
+                                            (SelectedStart
+                                                { selectedStart
+                                                    | position = { start = start, end = ( x, y ) }
+                                                }
+                                            )
                               }
                             , Cmd.none
                             )
@@ -245,7 +274,7 @@ view : Model -> Html Msg
 view model =
     let
         ( xPos, yPos ) =
-            model.view
+            model.mapPanOffset
 
         onDrag =
             [ onMouseUp MouseUp
@@ -287,7 +316,7 @@ view model =
                             ]
                    )
             )
-            ([ svg [ version "1.1", width "1900", height "800", viewBox "0 0 1900 800" ]
+            ([ svg [ version "1.1", SA.width "1900", SA.height "800", viewBox "0 0 1900 800" ]
                 ((case model.mode of
                     Drag ->
                         rect [] []
@@ -299,7 +328,7 @@ view model =
 
                             SelectedStart { position, isOverlappingAnotherRectangle } ->
                                 let
-                                    ( _, start, end ) =
+                                    { start, end } =
                                         position
 
                                     ( x1, y1 ) =
@@ -311,8 +340,8 @@ view model =
                                 rect
                                     [ x (x1 |> toString)
                                     , y (y1 |> toString)
-                                    , height ((y2 - y1) |> toString)
-                                    , width ((x2 - x1) |> toString)
+                                    , SA.height ((y2 - y1) |> toString)
+                                    , SA.width ((x2 - x1) |> toString)
                                     , strokeWidth "2"
                                     , stroke
                                         (if isOverlappingAnotherRectangle then
@@ -325,12 +354,12 @@ view model =
                                     ]
                                     []
                  )
-                    :: (model.rectangles |> List.map (drawShape model.view))
-                    ++ backgroundGrid model.view
+                    :: (model.rectangles |> List.map (drawShape model.mapPanOffset))
+                    ++ backgroundGrid model.mapPanOffset
                     -- debug stuff
-                    ++ (model.rectangles |> List.map (drawShapePoint model.view))
+                    ++ (model.rectangles |> List.map (drawShapePoint model.mapPanOffset))
                 )
-             , div [ style "color" "white" ] [ text ("Current View: " ++ (model.view |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.view |> (\( x, y ) -> y |> String.fromInt))) ]
+             , div [ style "color" "white" ] [ text ("Current View: " ++ (model.mapPanOffset |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.mapPanOffset |> (\( x, y ) -> y |> String.fromInt))) ]
              ]
                 ++ (case model.mode of
                         Draw state ->
@@ -340,17 +369,16 @@ view model =
 
                                 SelectedStart { position } ->
                                     let
-                                        ( sp, start, end ) =
+                                        { start, end } =
                                             position
                                     in
                                     [ div [ style "color" "white" ] [ text "Current State: Selected Start" ]
                                     , div [ style "color" "white" ] [ text ("Current Start: " ++ (start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (start |> (\( x, y ) -> y |> String.fromInt))) ]
                                     , div [ style "color" "white" ] [ text ("Current End: " ++ (end |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (end |> (\( x, y ) -> y |> String.fromInt))) ]
-                                    , div [ style "color" "white" ] [ text ("Current StartingPoint: " ++ (sp |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (sp |> (\( x, y ) -> y |> String.fromInt))) ]
                                     ]
 
                         Drag ->
-                            [ div [ style "color" "white" ] [ text ("Current Start: " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ] ]
+                            [ div [ style "color" "white" ] [ text ("Current Start (relative): " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ] ]
                    )
             )
         , div
@@ -372,16 +400,16 @@ view model =
 
 
 drawShape : Point -> Rectangle -> Svg Msg
-drawShape globalView { x1, y1, x2, y2 } =
+drawShape globalViewPanOffset { x1, y1, width, height } =
     let
         ( gx, gy ) =
-            globalView
+            globalViewPanOffset
     in
     rect
-        [ x ((x1 + gx) |> toString)
-        , y ((y1 + gy) |> toString)
-        , height ((y2 - y1) |> toString)
-        , width ((x2 - x1) |> toString)
+        [ x (x1 + gx |> toString)
+        , y (y1 + gy |> toString)
+        , SA.height (height |> toString)
+        , SA.width (width |> toString)
         , strokeWidth "2"
         , stroke "white"
         , fill "transparent"
@@ -390,7 +418,7 @@ drawShape globalView { x1, y1, x2, y2 } =
 
 
 drawShapePoint : Point -> Rectangle -> Svg Msg
-drawShapePoint globalView { x1, y1, x2, y2 } =
+drawShapePoint globalView { x1, y1, width, height } =
     let
         ( gx, gy ) =
             globalView
@@ -398,8 +426,8 @@ drawShapePoint globalView { x1, y1, x2, y2 } =
     S.text_
         [ x (x1 + gx |> String.fromInt)
         , y (y1 + gy - 10 |> String.fromInt)
-        , SvgA.class "svgText"
-        , SvgA.fill "white"
+        , SA.class "svgText"
+        , SA.fill "white"
         ]
         [ S.text
             ("X: "
@@ -407,9 +435,9 @@ drawShapePoint globalView { x1, y1, x2, y2 } =
                 ++ " Y: "
                 ++ (y1 + gy |> String.fromInt)
                 ++ " W: "
-                ++ (x2 - x1 |> String.fromInt)
+                ++ (width |> String.fromInt)
                 ++ " H: "
-                ++ (y2 - y1 |> String.fromInt)
+                ++ (height |> String.fromInt)
             )
         ]
 
@@ -433,10 +461,10 @@ backgroundGrid ( gx, gy ) =
                     , y1 (0 - y |> String.fromInt)
                     , x2 (i * 50 - x |> String.fromInt)
                     , y2 (1200 - y |> String.fromInt)
-                    , SvgA.stroke "white"
-                    , SvgA.strokeWidth "1"
-                    , SvgA.strokeDasharray "5,5"
-                    , SvgA.opacity "0.5"
+                    , SA.stroke "white"
+                    , SA.strokeWidth "1"
+                    , SA.strokeDasharray "5,5"
+                    , SA.opacity "0.5"
                     ]
                     []
             )
@@ -449,10 +477,10 @@ backgroundGrid ( gx, gy ) =
                             , y1 (i * 50 - y |> String.fromInt)
                             , x2 (1900 - x |> String.fromInt)
                             , y2 (i * 50 - y |> String.fromInt)
-                            , SvgA.stroke "white"
-                            , SvgA.strokeWidth "1"
-                            , SvgA.strokeDasharray "5,5"
-                            , SvgA.opacity "0.5"
+                            , SA.stroke "white"
+                            , SA.strokeWidth "1"
+                            , SA.strokeDasharray "5,5"
+                            , SA.opacity "0.5"
                             ]
                             []
                     )
