@@ -237,20 +237,14 @@ update msg model =
                                             toGlobal position.end model.mapPanOffset |> (\( x1, y1 ) -> ( x1 - gx, y1 - gy ))
                                     in
                                     List.any
-                                        (\{ x1, y1, width, height } ->
-                                            -- top left is between the start and end
-                                            (gx >= x1 && gx <= x1 + width && gy >= y1 && gy <= y1 + height)
-                                                -- top right is between the start and end
-                                                || (gx + w1 >= x1 && gx + w1 <= x1 + width && gy >= y1 && gy <= y1 + height)
-                                                -- bottom left is between the start and end
-                                                || (gx >= x1 && gx <= x1 + width && gy + h1 >= y1 && gy + h1 <= y1 + height)
-                                                -- bottom right is between the start and end
-                                                || (gx + w1 >= x1 && gx + w1 <= x1 + width && gy + h1 >= y1 && gy + h1 <= y1 + height)
-                                                -- same but with the other rectangle
-                                                || (x1 >= gx && x1 <= gx + w1 && y1 >= gy && y1 <= gy + h1)
-                                                || (x1 + width >= gx && x1 + width <= gx + w1 && y1 >= gy && y1 <= gy + h1)
-                                                || (x1 >= gx && x1 <= gx + w1 && y1 + height >= gy && y1 + height <= gy + h1)
-                                                || (x1 + width >= gx && x1 + width <= gx + w1 && y1 + height >= gy && y1 + height <= gy + h1)
+                                        (\rect ->
+                                            rectanglesOverlap
+                                                { x1 = gx
+                                                , y1 = gy
+                                                , width = w1
+                                                , height = h1
+                                                }
+                                                rect
                                         )
                                         model.rectangles
                             in
@@ -524,3 +518,45 @@ toGlobal relativeToOffset offsetPan =
             relativeToOffset
     in
     ( x + gx, y + gy )
+
+
+rectanglesOverlap : Rectangle -> Rectangle -> Bool
+rectanglesOverlap firstRectangle secondRectangle =
+    let
+        x1 =
+            firstRectangle.x1
+
+        y1 =
+            firstRectangle.y1
+
+        width1 =
+            firstRectangle.width
+
+        height1 =
+            firstRectangle.height
+
+        x2 =
+            secondRectangle.x1
+
+        y2 =
+            secondRectangle.y1
+
+        width2 =
+            secondRectangle.width
+
+        height2 =
+            secondRectangle.height
+    in
+    -- top left is between the start and end
+    (x1 >= x2 && x1 <= x2 + width2 && y1 >= y2 && y1 <= y2 + height2)
+        -- top right is between the start and end
+        || (x1 + width1 >= x2 && x1 + width1 <= x2 + width2 && y1 >= y2 && y1 <= y2 + height2)
+        -- bottom left is between the start and end
+        || (x1 >= x2 && x1 <= x2 + width2 && y1 + height1 >= y2 && y1 + height1 <= y2 + height2)
+        -- bottom right is between the start and end
+        || (x1 + width1 >= x2 && x1 + width1 <= x2 + width2 && y1 + height1 >= y2 && y1 + height1 <= y2 + height2)
+        -- same but with the other rectangle
+        || (x2 >= x1 && x2 <= x1 + width1 && y2 >= y1 && y2 <= y1 + height1)
+        || (x2 + width2 >= x1 && x2 + width2 <= x1 + width1 && y2 >= y1 && y2 <= y1 + height1)
+        || (x2 >= x1 && x2 <= x1 + width1 && y2 + height2 >= y1 && y2 + height2 <= y1 + height1)
+        || (x2 + width2 >= x1 && x2 + width2 <= x1 + width1 && y2 + height2 >= y1 && y2 + height2 <= y1 + height1)
