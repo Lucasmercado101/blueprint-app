@@ -466,23 +466,6 @@ backgroundGrid ( gx, gy ) =
 
 
 
--- , S.g
---     [ SvgA.class "grid" ]
---     (List.range 0 7
---         |> List.map
---             (\i ->
---                 S.line
---                     [ x1 (0 - x |> String.fromInt)
---                     , y1 (i * 50 - y |> String.fromInt)
---                     , x2 (1900 - x |> String.fromInt)
---                     , y2 (i * 50 - y |> String.fromInt)
---                     , SvgA.stroke "white"
---                     , SvgA.strokeWidth "1"
---                     , SvgA.strokeDasharray "5,5"
---                     ]
---                     []
---             )
---     )
 -- OTHER
 
 
