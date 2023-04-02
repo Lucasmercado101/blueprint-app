@@ -270,7 +270,7 @@ view model =
                             ]
                    )
             )
-            [ svg [ version "1.1", width "800", height "800", viewBox "0 0 800 800" ]
+            [ svg [ version "1.1", width "1900", height "800", viewBox "0 0 1900 800" ]
                 ([ rect [ width "50", height "50", strokeWidth "2", stroke "white", fill "transparent", x (xPos |> toString), y (yPos |> toString) ] []
                  , case model.mode of
                     Drag ->
