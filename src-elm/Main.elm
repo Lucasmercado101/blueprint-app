@@ -210,11 +210,14 @@ update msg model =
                             in
                             ( { model
                                 | mode =
-                                    if x < xStart || y < yStart then
-                                        Draw (SelectedStart ( startingPoint, ( x, y ), startingPoint ))
-
-                                    else
-                                        Draw (SelectedStart ( startingPoint, startingPoint, ( x, y ) ))
+                                    -- if y <= xStart then
+                                    -- Draw (SelectedStart ( startingPoint, ( xStart, y ), ( x, yStart ) ))
+                                    -- else if x < yStart then
+                                    --     Draw (SelectedStart ( startingPoint, ( x, yStart ), ( xStart, y ) ))
+                                    -- else if x < xStart && y < yStart then
+                                    --     Draw (SelectedStart ( startingPoint, ( x, y ), ( xStart, yStart ) ))
+                                    -- else
+                                    Draw (SelectedStart ( startingPoint, startingPoint, ( x, y ) ))
                               }
                             , Cmd.none
                             )
@@ -279,7 +282,7 @@ view model =
                             ]
                    )
             )
-            [ svg [ version "1.1", width "1900", height "800", viewBox "0 0 1900 800" ]
+            ([ svg [ version "1.1", width "1900", height "800", viewBox "0 0 1900 800" ]
                 ([ rect [ width "50", height "50", strokeWidth "2", stroke "white", fill "transparent", x (xPos |> toString), y (yPos |> toString) ] []
                  , case model.mode of
                     Drag ->
@@ -313,10 +316,26 @@ view model =
                     -- debug stuff
                     ++ (model.shapes |> List.map (drawShapePoint model.view))
                 )
-            , div [ style "color" "white" ] [ text ("Current View: " ++ (model.view |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.view |> (\( x, y ) -> y |> String.fromInt))) ]
-            , div [ style "color" "white" ] [ text ("Current Start: " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ]
-            , div [ style "color" "white" ] [ text ("Current Relative to start: " ++ (model.relativeView.current |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.current |> (\( x, y ) -> y |> String.fromInt))) ]
-            ]
+             , div [ style "color" "white" ] [ text ("Current View: " ++ (model.view |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.view |> (\( x, y ) -> y |> String.fromInt))) ]
+             ]
+                ++ (case model.mode of
+                        Draw state ->
+                            case state of
+                                NotDrawing ->
+                                    [ div [ style "color" "white" ] [ text "Current State: Not Drawing" ] ]
+
+                                SelectedStart ( _, start, end ) ->
+                                    [ div [ style "color" "white" ] [ text "Current State: Selected Start" ]
+                                    , div [ style "color" "white" ] [ text ("Current Start: " ++ (start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (start |> (\( x, y ) -> y |> String.fromInt))) ]
+                                    , div [ style "color" "white" ] [ text ("Current End: " ++ (end |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (end |> (\( x, y ) -> y |> String.fromInt))) ]
+                                    ]
+
+                        Drag ->
+                            [ div [ style "color" "white" ] [ text ("Current Start: " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ]
+                            , div [ style "color" "white" ] [ text ("Current Relative to start: " ++ (model.relativeView.current |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.current |> (\( x, y ) -> y |> String.fromInt))) ]
+                            ]
+                   )
+            )
         , div
             [ style "position" "absolute"
             , style
