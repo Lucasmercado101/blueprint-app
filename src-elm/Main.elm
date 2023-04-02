@@ -43,7 +43,6 @@ type alias Model =
     { view : Point
     , relativeView :
         { start : Point
-        , current : Point
         , originalView : Point
         }
     , mode : Mode
@@ -67,7 +66,6 @@ init _ =
     ( { view = ( 0, 0 )
       , relativeView =
             { start = ( 0, 0 )
-            , current = ( 0, 0 )
             , originalView = ( 0, 0 )
             }
       , mode = Drag
@@ -116,7 +114,6 @@ update msg model =
                 | mode = Draw NotDrawing
                 , relativeView =
                     { start = ( 0, 0 )
-                    , current = ( 0, 0 )
                     , originalView = ( 0, 0 )
                     }
               }
@@ -128,7 +125,6 @@ update msg model =
                 | mode = Drag
                 , relativeView =
                     { start = ( 0, 0 )
-                    , current = ( 0, 0 )
                     , originalView = ( 0, 0 )
                     }
               }
@@ -142,7 +138,6 @@ update msg model =
                         | holdingLeftMouseDown = True
                         , relativeView =
                             { start = ( x, y )
-                            , current = ( 0, 0 )
                             , originalView = model.view
                             }
                       }
@@ -194,10 +189,6 @@ update msg model =
                     in
                     ( { model
                         | view = ( ox + dx, oy + dy )
-                        , relativeView =
-                            { relative
-                                | current = ( dx, dy )
-                            }
                       }
                     , Cmd.none
                     )
@@ -362,9 +353,7 @@ view model =
                                     ]
 
                         Drag ->
-                            [ div [ style "color" "white" ] [ text ("Current Start: " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ]
-                            , div [ style "color" "white" ] [ text ("Current Relative to start: " ++ (model.relativeView.current |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.current |> (\( x, y ) -> y |> String.fromInt))) ]
-                            ]
+                            [ div [ style "color" "white" ] [ text ("Current Start: " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ] ]
                    )
             )
         , div
