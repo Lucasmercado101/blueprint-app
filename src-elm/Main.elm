@@ -161,10 +161,10 @@ update msg model =
                             ( { model
                                 | shapes =
                                     Rectangle
-                                        { x1 = start |> Tuple.first
-                                        , y1 = start |> Tuple.second
-                                        , x2 = end |> Tuple.first
-                                        , y2 = end |> Tuple.second
+                                        { x1 = (start |> Tuple.first) - (model.view |> Tuple.first)
+                                        , y1 = (start |> Tuple.second) - (model.view |> Tuple.second)
+                                        , x2 = (end |> Tuple.first) - (model.view |> Tuple.first)
+                                        , y2 = (end |> Tuple.second) - (model.view |> Tuple.second)
                                         }
                                         :: model.shapes
                                 , mode = Draw NotDrawing
