@@ -11,6 +11,10 @@ import Svg as S exposing (rect, svg)
 import Svg.Attributes as SvgA exposing (color, cx, cy, fill, fontSize, height, r, rx, ry, stroke, strokeWidth, version, viewBox, width, x, y)
 
 
+type alias Point =
+    ( Int, Int )
+
+
 
 -- SUBSCRIPTIONS
 
@@ -27,18 +31,12 @@ mouseMoveDecoder =
         (JD.field "layerY" JD.int)
 
 
-
--- MODEL
--- type alias Vec2 =
---     ( Int, Int )
-
-
 type alias Model =
-    { view : ( Int, Int )
+    { view : Point
     , relativeView :
-        { start : ( Int, Int )
-        , current : ( Int, Int )
-        , originalView : ( Int, Int )
+        { start : Point
+        , current : Point
+        , originalView : Point
         }
     , mode : Mode
     , holdingLeftMouseDown : Bool
@@ -57,7 +55,7 @@ init _ =
             , current = ( 0, 0 )
             , originalView = ( 0, 0 )
             }
-      , mode = Draw
+      , mode = Draw NotDrawing
       , holdingLeftMouseDown = False
       }
     , Cmd.none
@@ -70,14 +68,19 @@ init _ =
 
 type Mode
     = Drag
-    | Draw
+    | Draw DrawState
+
+
+type DrawState
+    = NotDrawing
+    | SelectedStart ( Point, Point )
 
 
 type Msg
     = NoOp
     | Clicked
-    | MouseMove ( Int, Int )
-    | MouseDown ( Int, Int )
+    | MouseMove Point
+    | MouseDown Point
     | MouseUp
 
 
@@ -91,40 +94,72 @@ update msg model =
             ( model, Cmd.none )
 
         MouseDown ( x, y ) ->
-            ( { model
-                | holdingLeftMouseDown = True
-                , relativeView =
-                    { start = ( x, y )
-                    , current = ( 0, 0 )
-                    , originalView = model.view
-                    }
-              }
-            , Cmd.none
-            )
+            case model.mode of
+                Drag ->
+                    ( { model
+                        | holdingLeftMouseDown = True
+                        , relativeView =
+                            { start = ( x, y )
+                            , current = ( 0, 0 )
+                            , originalView = model.view
+                            }
+                      }
+                    , Cmd.none
+                    )
+
+                Draw state ->
+                    case state of
+                        NotDrawing ->
+                            ( { model
+                                | mode = Draw (SelectedStart ( ( x, y ), ( x, y ) ))
+                              }
+                            , Cmd.none
+                            )
+
+                        SelectedStart ( start, _ ) ->
+                            ( { model
+                                | mode = Draw (SelectedStart ( start, ( x, y ) ))
+                              }
+                            , Cmd.none
+                            )
 
         MouseMove ( x, y ) ->
-            let
-                relative =
-                    model.relativeView
+            case model.mode of
+                Drag ->
+                    let
+                        relative =
+                            model.relativeView
 
-                ( sx, sy ) =
-                    relative.start
+                        ( sx, sy ) =
+                            relative.start
 
-                ( ox, oy ) =
-                    relative.originalView
+                        ( ox, oy ) =
+                            relative.originalView
 
-                ( cx, cy ) =
-                    ( (sx - x) * -1, (sy - y) * -1 )
-            in
-            ( { model
-                | view = ( ox + cx, oy + cy )
-                , relativeView =
-                    { relative
-                        | current = ( cx, cy )
-                    }
-              }
-            , Cmd.none
-            )
+                        ( cx, cy ) =
+                            ( (sx - x) * -1, (sy - y) * -1 )
+                    in
+                    ( { model
+                        | view = ( ox + cx, oy + cy )
+                        , relativeView =
+                            { relative
+                                | current = ( cx, cy )
+                            }
+                      }
+                    , Cmd.none
+                    )
+
+                Draw state ->
+                    case state of
+                        NotDrawing ->
+                            ( model, Cmd.none )
+
+                        SelectedStart ( start, _ ) ->
+                            ( { model
+                                | mode = Draw (SelectedStart ( start, ( x, y ) ))
+                              }
+                            , Cmd.none
+                            )
 
         MouseUp ->
             ( { model | holdingLeftMouseDown = False }, Cmd.none )
@@ -170,12 +205,47 @@ view model =
                     Drag ->
                         onDrag
 
-                    Draw ->
-                        []
+                    Draw state ->
+                        [ onMouseUp MouseUp
+                        , on "click" (mouseMoveDecoder |> JD.map MouseDown)
+                        , case state of
+                            NotDrawing ->
+                                style "" ""
+
+                            SelectedStart _ ->
+                                on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
+                        ]
                )
         )
         [ svg [ version "1.1", width "800", height "800", viewBox "0 0 800 800" ]
             [ rect [ width "50", height "50", strokeWidth "2", stroke "white", fill "transparent", x (xPos |> toString), y (yPos |> toString) ] []
+            , case model.mode of
+                Drag ->
+                    rect [] []
+
+                Draw state ->
+                    case state of
+                        NotDrawing ->
+                            rect [] []
+
+                        SelectedStart ( start, end ) ->
+                            let
+                                ( x1, y1 ) =
+                                    start
+
+                                ( x2, y2 ) =
+                                    end
+                            in
+                            rect
+                                [ x (x1 |> toString)
+                                , y (y1 |> toString)
+                                , height ((y2 - y1) |> toString)
+                                , width ((x2 - x1) |> toString)
+                                , strokeWidth "2"
+                                , stroke "white"
+                                , fill "transparent"
+                                ]
+                                []
             ]
         , div [ style "color" "white" ] [ text ("Current View: " ++ (model.view |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.view |> (\( x, y ) -> y |> String.fromInt))) ]
         , div [ style "color" "white" ] [ text ("Current Start: " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ]
