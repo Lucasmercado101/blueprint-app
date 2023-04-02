@@ -40,6 +40,7 @@ type alias Model =
         , current : ( Int, Int )
         , originalView : ( Int, Int )
         }
+    , mode : Mode
     , holdingLeftMouseDown : Bool
     }
 
@@ -56,6 +57,7 @@ init _ =
             , current = ( 0, 0 )
             , originalView = ( 0, 0 )
             }
+      , mode = Draw
       , holdingLeftMouseDown = False
       }
     , Cmd.none
@@ -64,6 +66,11 @@ init _ =
 
 
 -- UPDATE
+
+
+type Mode
+    = Drag
+    | Draw
 
 
 type Msg
@@ -138,24 +145,35 @@ view model =
     let
         ( xPos, yPos ) =
             model.view
+
+        onDrag =
+            [ onMouseUp MouseUp
+            , if model.holdingLeftMouseDown then
+                on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
+
+              else
+                on "mousemove" (JD.succeed NoOp)
+            , if model.holdingLeftMouseDown then
+                style "cursor" "grabbing"
+
+              else
+                style "cursor" "grab"
+            , on "mousedown" (mouseMoveDecoder |> JD.map MouseDown)
+            ]
     in
     div
-        [ style "background-color" background
-        , style "width" "100vw"
-        , style "height" "100vh"
-        , onMouseUp MouseUp
-        , if model.holdingLeftMouseDown then
-            on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
+        ([ style "background-color" background
+         , style "width" "100vw"
+         , style "height" "100vh"
+         ]
+            ++ (case model.mode of
+                    Drag ->
+                        onDrag
 
-          else
-            on "mousemove" (JD.succeed NoOp)
-        , if model.holdingLeftMouseDown then
-            style "cursor" "grabbing"
-
-          else
-            style "cursor" "grab"
-        , on "mousedown" (mouseMoveDecoder |> JD.map MouseDown)
-        ]
+                    Draw ->
+                        []
+               )
+        )
         [ svg [ version "1.1", width "800", height "800", viewBox "0 0 800 800" ]
             [ rect [ width "50", height "50", strokeWidth "2", stroke "white", fill "transparent", x (xPos |> toString), y (yPos |> toString) ] []
             ]
