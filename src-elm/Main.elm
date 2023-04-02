@@ -209,13 +209,10 @@ update msg model =
                         NotDrawing ->
                             ( model, Cmd.none )
 
-                        SelectedStart ({ position, relativeStartingPoint } as selectedStart) ->
+                        SelectedStart ({ relativeStartingPoint } as selectedStart) ->
                             -- I only want the rectangle to be drawn, i do not care about
                             -- the map panning offset, that is set on MouseDown
                             let
-                                { start } =
-                                    position
-
                                 ( xStart, yStart ) =
                                     relativeStartingPoint
                             in
