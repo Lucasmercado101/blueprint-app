@@ -403,8 +403,8 @@ drawShape globalViewPanOffset { x1, y1, width, height } =
             globalViewPanOffset
     in
     rect
-        [ x (x1 + gx |> toString)
-        , y (y1 + gy |> toString)
+        [ x (x1 - gx |> toString)
+        , y (y1 - gy |> toString)
         , SA.height (height |> toString)
         , SA.width (width |> toString)
         , strokeWidth "2"
@@ -421,16 +421,16 @@ drawShapePoint globalView { x1, y1, width, height } =
             globalView
     in
     S.text_
-        [ x (x1 + gx |> String.fromInt)
-        , y (y1 + gy - 10 |> String.fromInt)
+        [ x (x1 - gx |> String.fromInt)
+        , y (y1 - gy - 10 |> String.fromInt)
         , SA.class "svgText"
         , SA.fill "white"
         ]
         [ S.text
-            ("X: "
-                ++ (x1 + gx |> String.fromInt)
-                ++ " Y: "
-                ++ (y1 + gy |> String.fromInt)
+            ("Rel X: "
+                ++ (x1 - gx |> String.fromInt)
+                ++ " Rel Y: "
+                ++ (y1 - gy |> String.fromInt)
                 ++ " W: "
                 ++ (width |> String.fromInt)
                 ++ " H: "
