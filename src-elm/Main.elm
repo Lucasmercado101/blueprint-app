@@ -215,40 +215,56 @@ update msg model =
                             let
                                 ( xStart, yStart ) =
                                     relativeStartingPoint
+
+                                position =
+                                    if x <= xStart && y <= yStart then
+                                        { start = ( x, y ), end = relativeStartingPoint }
+
+                                    else if y <= yStart then
+                                        { start = ( xStart, y ), end = ( x, yStart ) }
+
+                                    else if x <= xStart then
+                                        { start = ( x, yStart ), end = ( xStart, y ) }
+
+                                    else
+                                        { start = relativeStartingPoint, end = ( x, y ) }
+
+                                isOverlappingAnotherRectangle : Bool
+                                isOverlappingAnotherRectangle =
+                                    let
+                                        ( gx, gy ) =
+                                            toGlobal position.start model.mapPanOffset
+
+                                        ( w1, h1 ) =
+                                            toGlobal position.end model.mapPanOffset |> (\( x1, y1 ) -> ( x1 - gx, y1 - gy ))
+                                    in
+                                    List.any
+                                        (\{ x1, y1, width, height } ->
+                                            -- top left is between the start and end
+                                            (gx >= x1 && gx <= x1 + width && gy >= y1 && gy <= y1 + height)
+                                                -- top right is between the start and end
+                                                || (gx + w1 >= x1 && gx + w1 <= x1 + width && gy >= y1 && gy <= y1 + height)
+                                                -- bottom left is between the start and end
+                                                || (gx >= x1 && gx <= x1 + width && gy + h1 >= y1 && gy + h1 <= y1 + height)
+                                                -- bottom right is between the start and end
+                                                || (gx + w1 >= x1 && gx + w1 <= x1 + width && gy + h1 >= y1 && gy + h1 <= y1 + height)
+                                                -- same but with the other rectangle
+                                                || (x1 >= gx && x1 <= gx + w1 && y1 >= gy && y1 <= gy + h1)
+                                                || (x1 + width >= gx && x1 + width <= gx + w1 && y1 >= gy && y1 <= gy + h1)
+                                                || (x1 >= gx && x1 <= gx + w1 && y1 + height >= gy && y1 + height <= gy + h1)
+                                                || (x1 + width >= gx && x1 + width <= gx + w1 && y1 + height >= gy && y1 + height <= gy + h1)
+                                        )
+                                        model.rectangles
                             in
                             ( { model
                                 | mode =
-                                    if x <= xStart && y <= yStart then
-                                        Draw
-                                            (SelectedStart
-                                                { selectedStart
-                                                    | position = { start = ( x, y ), end = relativeStartingPoint }
-                                                }
-                                            )
-
-                                    else if y <= yStart then
-                                        Draw
-                                            (SelectedStart
-                                                { selectedStart
-                                                    | position = { start = ( xStart, y ), end = ( x, yStart ) }
-                                                }
-                                            )
-
-                                    else if x <= xStart then
-                                        Draw
-                                            (SelectedStart
-                                                { selectedStart
-                                                    | position = { start = ( x, yStart ), end = ( xStart, y ) }
-                                                }
-                                            )
-
-                                    else
-                                        Draw
-                                            (SelectedStart
-                                                { selectedStart
-                                                    | position = { start = relativeStartingPoint, end = ( x, y ) }
-                                                }
-                                            )
+                                    Draw
+                                        (SelectedStart
+                                            { selectedStart
+                                                | position = position
+                                                , isOverlappingAnotherRectangle = isOverlappingAnotherRectangle
+                                            }
+                                        )
                               }
                             , Cmd.none
                             )
@@ -498,3 +514,15 @@ backgroundGrid ( gx, gy ) =
 background : String
 background =
     "#023770"
+
+
+toGlobal : Point -> Point -> Point
+toGlobal relativeToOffset offsetPan =
+    let
+        ( gx, gy ) =
+            offsetPan
+
+        ( x, y ) =
+            relativeToOffset
+    in
+    ( x + gx, y + gy )
