@@ -450,17 +450,20 @@ drawShapePoint globalView { x1, y1, width, height } =
 backgroundGrid : Point -> List (Svg Msg)
 backgroundGrid ( gx, gy ) =
     let
+        size =
+            50
+
         ( x, y ) =
-            ( gx |> abs |> modBy 100, gy |> abs |> modBy 100 )
+            ( gx |> modBy size, gy |> modBy size )
     in
-    (List.range 0 40
+    (List.range 0 100
         |> List.map
             (\i ->
                 S.line
                     -- TODO: use dynamic screen resolution
-                    [ x1 (i * 50 - x |> String.fromInt)
+                    [ x1 (size * i - x - (size * 2) |> String.fromInt)
                     , y1 (0 - y |> String.fromInt)
-                    , x2 (i * 50 - x |> String.fromInt)
+                    , x2 (size * i - x - (size * 2) |> String.fromInt)
                     , y2 (1200 - y |> String.fromInt)
                     , SA.stroke "white"
                     , SA.strokeWidth "1"
@@ -470,14 +473,14 @@ backgroundGrid ( gx, gy ) =
                     []
             )
     )
-        ++ (List.range 0 18
+        ++ (List.range 0 100
                 |> List.map
                     (\i ->
                         S.line
                             [ x1 (0 - x |> String.fromInt)
-                            , y1 (i * 50 - y |> String.fromInt)
-                            , x2 (1900 - x |> String.fromInt)
-                            , y2 (i * 50 - y |> String.fromInt)
+                            , y1 (size * i - y - (size * 2) |> String.fromInt)
+                            , x2 (1900 - y + (size * 2) |> String.fromInt)
+                            , y2 (size * i - y - (size * 2) |> String.fromInt)
                             , SA.stroke "white"
                             , SA.strokeWidth "1"
                             , SA.strokeDasharray "5,5"
