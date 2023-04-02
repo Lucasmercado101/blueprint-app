@@ -223,6 +223,9 @@ view model =
         ([ style "background-color" background
          , style "width" "100vw"
          , style "height" "100vh"
+
+         --  TODO:
+         --  , on "auxclick"
          ]
             ++ (case model.mode of
                     Drag ->
