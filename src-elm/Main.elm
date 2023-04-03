@@ -252,7 +252,15 @@ update msg model =
 
                         RectangleSelected selectedId ->
                             ( { model
-                                | mode = Select (NothingSelected (Just selectedId))
+                                | mode =
+                                    Select
+                                        (NothingSelected
+                                            (model.rectangles
+                                                |> List.filter (\{ boundingBox } -> Rect.isOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
+                                                |> List.head
+                                                |> Maybe.map .id
+                                            )
+                                        )
                               }
                             , Cmd.none
                             )
