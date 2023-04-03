@@ -248,26 +248,109 @@ update msg model =
                                 bottomSideIsAlignedToAnotherRectangle : Maybe ( ( Point, Point ), ( Point, Point ) )
                                 bottomSideIsAlignedToAnotherRectangle =
                                     let
-                                        ( gx, gy ) =
+                                        -- top left
+                                        ( tlx, tly ) =
                                             toGlobal position.start model.mapPanOffset
 
-                                        ( w1, h1 ) =
+                                        -- bottom right
+                                        ( brx, bry ) =
                                             toGlobal position.end model.mapPanOffset
 
                                         currDrawRect : Rectangle
                                         currDrawRect =
-                                            { x1 = gx
-                                            , y1 = gy
-                                            , width = w1 - gx
-                                            , height = h1 - gy
+                                            { x1 = tlx
+                                            , y1 = tly
+                                            , width = brx - tlx
+                                            , height = bry - tly
                                             }
                                     in
-                                    List.filter
-                                        (\{ y1, height } ->
-                                            y1 + height <= h1 + 10 && y1 + height >= h1 - 10
-                                        )
-                                        model.rectangles
-                                        |> List.head
+                                    model.rectangles
+                                        |> List.filter
+                                            (\{ y1, height } ->
+                                                y1 + height <= bry + 10 && y1 + height >= bry - 10
+                                            )
+                                        |> (\l ->
+                                                let
+                                                    closestRectangleToTheRight : Maybe Rectangle
+                                                    closestRectangleToTheRight =
+                                                        List.foldl
+                                                            (\next curr ->
+                                                                let
+                                                                    ( x1, _ ) =
+                                                                        Rect.bottomLeft next
+                                                                in
+                                                                case curr of
+                                                                    Just val ->
+                                                                        if x1 >= brx && x1 <= (Rect.bottomLeft val |> Tuple.first) then
+                                                                            Just next
+
+                                                                        else
+                                                                            curr
+
+                                                                    Nothing ->
+                                                                        if x1 >= brx then
+                                                                            Just next
+
+                                                                        else
+                                                                            Nothing
+                                                            )
+                                                            Nothing
+                                                            l
+
+                                                    closestRectangleToTheLeft : Maybe Rectangle
+                                                    closestRectangleToTheLeft =
+                                                        List.foldl
+                                                            (\next curr ->
+                                                                let
+                                                                    ( x1, _ ) =
+                                                                        Rect.bottomLeft next
+                                                                in
+                                                                case curr of
+                                                                    Just val ->
+                                                                        if x1 <= tlx && x1 >= (Rect.bottomLeft val |> Tuple.first) then
+                                                                            Just next
+
+                                                                        else
+                                                                            curr
+
+                                                                    Nothing ->
+                                                                        if x1 <= tlx then
+                                                                            Just next
+
+                                                                        else
+                                                                            Nothing
+                                                            )
+                                                            Nothing
+                                                            l
+
+                                                    closestRectangle : Maybe Rectangle
+                                                    closestRectangle =
+                                                        case ( closestRectangleToTheRight, closestRectangleToTheLeft ) of
+                                                            ( Just rr, Just rl ) ->
+                                                                let
+                                                                    x1 =
+                                                                        rr |> Rect.bottomRight |> Rect.x
+
+                                                                    x2 =
+                                                                        rl |> Rect.bottomLeft |> Rect.x
+                                                                in
+                                                                if abs tlx - abs x1 > abs x2 - abs brx then
+                                                                    Just rl
+
+                                                                else
+                                                                    Just rr
+
+                                                            ( Just r1, Nothing ) ->
+                                                                Just r1
+
+                                                            ( Nothing, Just r2 ) ->
+                                                                Just r2
+
+                                                            ( Nothing, Nothing ) ->
+                                                                Nothing
+                                                in
+                                                closestRectangle
+                                           )
                                         |> Maybe.map
                                             (\r ->
                                                 ( r |> Rect.bottomSide

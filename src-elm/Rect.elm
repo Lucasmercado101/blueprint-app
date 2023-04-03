@@ -32,3 +32,13 @@ topRight rect =
 bottomSide : Rectangle -> ( Point, Point )
 bottomSide rect =
     ( bottomLeft rect, bottomRight rect )
+
+
+x : Point -> Int
+x p =
+    Tuple.first p
+
+
+y : Point -> Int
+y p =
+    Tuple.second p
