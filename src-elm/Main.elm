@@ -454,6 +454,7 @@ update msg model =
                                     Draw
                                         (SelectedStart
                                             { selectedStart
+                                              -- BUG: using relative i think, not global OR other
                                                 | position = snapBottomPosition |> Maybe.withDefault position
                                                 , isOverlappingAnotherRectangle = isOverlappingAnotherRectangle
                                             }
@@ -471,7 +472,7 @@ update msg model =
                                     Select
                                         (NothingSelected
                                             (model.rectangles
-                                                |> List.filter (\( rect, _ ) -> Rect.isOnRectangle ( x, y ) rect)
+                                                |> List.filter (\( rect, _ ) -> Rect.isOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) rect)
                                                 |> List.head
                                                 |> Maybe.map Tuple.second
                                             )
