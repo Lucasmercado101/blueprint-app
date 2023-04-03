@@ -59,3 +59,8 @@ isOnRectangle p rect =
             bottomRight rect
     in
     x p >= x1 && x p <= x2 && y p >= y1 && y p <= y2
+
+
+center : Rectangle -> Point
+center rect =
+    ( rect.x1 + rect.width // 2, rect.y1 + rect.height // 2 )

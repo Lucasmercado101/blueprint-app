@@ -7,6 +7,7 @@ import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick, onMouseDown, onMouseUp)
 import Json.Decode as JD exposing (Decoder)
+import Point
 import Random
 import Rect exposing (Point, Rectangle)
 import Svg as S exposing (Svg, line, rect, svg)
@@ -38,6 +39,13 @@ type alias Line =
     ( Point, Point )
 
 
+type alias Room =
+    { id : UUID
+    , boundingBox : Rectangle
+    , name : String
+    }
+
+
 type alias Model =
     { mapPanOffset : Point
 
@@ -49,11 +57,7 @@ type alias Model =
     , mode : Mode
     , holdingLeftMouseDown : Bool
     , rectangles :
-        List
-            { id : UUID
-            , boundingBox : Rectangle
-            , name : String
-            }
+        List Room
     , snappingPointsLine : Maybe ( Line, Line )
     }
 
@@ -398,10 +402,10 @@ update msg model =
                                                             ( Just rr, Just rl ) ->
                                                                 let
                                                                     x1 =
-                                                                        rr |> Rect.bottomLeft |> Rect.x
+                                                                        rr |> Rect.bottomLeft |> Point.x
 
                                                                     x2 =
-                                                                        rl |> Rect.bottomRight |> Rect.x
+                                                                        rl |> Rect.bottomRight |> Point.x
                                                                 in
                                                                 if (abs tlx - abs x2) > (abs x1 - abs brx) then
                                                                     Just rr
@@ -424,10 +428,10 @@ update msg model =
                                             (\rect ->
                                                 let
                                                     bl =
-                                                        rect |> Rect.bottomLeft |> Rect.x
+                                                        rect |> Rect.bottomLeft |> Point.x
 
                                                     br =
-                                                        rect |> Rect.bottomRight |> Rect.x
+                                                        rect |> Rect.bottomRight |> Point.x
 
                                                     leftDist =
                                                         abs tlx - abs br
@@ -474,7 +478,7 @@ update msg model =
                                     bottomSideIsAlignedToAnotherRectangle
                                         |> Maybe.map
                                             (\( ( l, _ ), _ ) ->
-                                                toRelative l model.mapPanOffset |> Rect.y
+                                                toRelative l model.mapPanOffset |> Point.y
                                             )
                                         |> Maybe.map
                                             (\e ->
@@ -629,23 +633,23 @@ view model =
                     :: backgroundGrid model.mapPanOffset
                     ++ (case model.mode of
                             Drag ->
-                                model.rectangles |> List.map (.boundingBox >> drawRectangle model.mapPanOffset False)
+                                model.rectangles |> List.map (drawRectangle model.mapPanOffset False)
 
                             Draw _ ->
-                                model.rectangles |> List.map (.boundingBox >> drawRectangle model.mapPanOffset False)
+                                model.rectangles |> List.map (drawRectangle model.mapPanOffset False)
 
                             Select state ->
                                 case state of
                                     NothingSelected hoveringOverRectangleId ->
                                         case hoveringOverRectangleId of
                                             Just hoveringId ->
-                                                model.rectangles |> List.map (\{ boundingBox, id } -> drawRectangle model.mapPanOffset (id == hoveringId) boundingBox)
+                                                model.rectangles |> List.map (\({ id } as room) -> drawRectangle model.mapPanOffset (id == hoveringId) room)
 
                                             Nothing ->
-                                                model.rectangles |> List.map (.boundingBox >> drawRectangle model.mapPanOffset False)
+                                                model.rectangles |> List.map (drawRectangle model.mapPanOffset False)
 
                                     RectangleSelected selectedId ->
-                                        model.rectangles |> List.map (\{ boundingBox, id } -> drawRectangle model.mapPanOffset (id == selectedId) boundingBox)
+                                        model.rectangles |> List.map (\({ id } as room) -> drawRectangle model.mapPanOffset (id == selectedId) room)
                        )
                     ++ (case model.snappingPointsLine of
                             Just ( firstP, secondP ) ->
@@ -764,28 +768,44 @@ drawX point size attrs =
     ]
 
 
-drawRectangle : Point -> Bool -> Rectangle -> Svg Msg
-drawRectangle globalViewPanOffset beingHoveredOver { x1, y1, width, height } =
+drawRectangle : Point -> Bool -> Room -> Svg Msg
+drawRectangle globalViewPanOffset beingHoveredOver room =
     let
         ( gx, gy ) =
             globalViewPanOffset
-    in
-    rect
-        [ x (x1 - gx |> toString)
-        , y (y1 - gy |> toString)
-        , SA.height (height |> toString)
-        , SA.width (width |> toString)
-        , strokeWidth "2"
-        , stroke "white"
-        , fill
-            (if beingHoveredOver then
-                "rgba(255,255,255,0.1)"
 
-             else
-                "transparent"
-            )
+        { x1, y1, width, height } =
+            room.boundingBox
+    in
+    S.g []
+        [ rect
+            [ x (x1 - gx |> toString)
+            , y (y1 - gy |> toString)
+            , SA.height (height |> toString)
+            , SA.width (width |> toString)
+            , strokeWidth "2"
+            , stroke "white"
+            , fill
+                (if beingHoveredOver then
+                    "rgba(255,255,255,0.1)"
+
+                 else
+                    "transparent"
+                )
+            ]
+            []
+
+        -- TODO: get bounding box to check for collisions and overflows
+        -- and stuff when text gets too large
+        , S.text_
+            [ x (Rect.center room.boundingBox |> Point.x |> String.fromInt)
+            , y (Rect.center room.boundingBox |> Point.y |> String.fromInt)
+            , SA.class "svgText"
+            , SA.fill "white"
+            ]
+            [ S.text room.name
+            ]
         ]
-        []
 
 
 drawRectanglePoint : Point -> Rectangle -> Svg Msg
