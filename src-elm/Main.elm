@@ -220,10 +220,29 @@ update msg model =
                 Select state ->
                     case state of
                         NothingSelected _ ->
-                            Debug.todo "onClick select"
+                            case
+                                model.rectangles
+                                    |> List.filter (\( rect, _ ) -> Rect.isOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) rect)
+                                    |> List.head
+                                    |> Maybe.map Tuple.second
+                            of
+                                Just rectClicked ->
+                                    ( { model
+                                        | mode =
+                                            Select (RectangleSelected rectClicked)
+                                      }
+                                    , Cmd.none
+                                    )
 
-                        RectangleSelected _ ->
-                            Debug.todo "onClick select"
+                                Nothing ->
+                                    ( model, Cmd.none )
+
+                        RectangleSelected selectedId ->
+                            ( { model
+                                | mode = Select (NothingSelected (Just selectedId))
+                              }
+                            , Cmd.none
+                            )
 
         MouseMove ( x, y ) ->
             case model.mode of
@@ -487,7 +506,7 @@ update msg model =
                             )
 
                         RectangleSelected _ ->
-                            Debug.todo ""
+                            ( model, Cmd.none )
 
         MouseUp ->
             ( { model | holdingLeftMouseDown = False }, Cmd.none )
@@ -547,6 +566,7 @@ view model =
 
                         Select state ->
                             [ on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
+                            , on "click" (mouseMoveDecoder |> JD.map MouseDown)
                             ]
                    )
             )
@@ -615,8 +635,8 @@ view model =
                                             Nothing ->
                                                 model.rectangles |> List.map (Tuple.first >> drawRectangle model.mapPanOffset False)
 
-                                    RectangleSelected _ ->
-                                        model.rectangles |> List.map (Tuple.first >> drawRectangle model.mapPanOffset False)
+                                    RectangleSelected selectedId ->
+                                        model.rectangles |> List.map (\( rect, id ) -> drawRectangle model.mapPanOffset (id == selectedId) rect)
                        )
                     ++ (case model.snappingPointsLine of
                             Just ( firstP, secondP ) ->
