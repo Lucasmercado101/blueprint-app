@@ -454,7 +454,6 @@ update msg model =
                                     Draw
                                         (SelectedStart
                                             { selectedStart
-                                              -- BUG: using relative i think, not global OR other
                                                 | position = snapBottomPosition |> Maybe.withDefault position
                                                 , isOverlappingAnotherRectangle = isOverlappingAnotherRectangle
                                             }
