@@ -48,7 +48,12 @@ type alias Model =
         }
     , mode : Mode
     , holdingLeftMouseDown : Bool
-    , rectangles : List ( Rectangle, UUID )
+    , rectangles :
+        List
+            { id : UUID
+            , boundingBox : Rectangle
+            , name : String
+            }
     , snappingPointsLine : Maybe ( Line, Line )
     }
 
@@ -201,15 +206,19 @@ update msg model =
                                 in
                                 ( { model
                                     | rectangles =
-                                        ( { x1 = x1 + ox
-                                          , y1 = y1 + oy
-                                          , width = x2 - x1
-                                          , height = y2 - y1
-                                          }
-                                          --   TODO: change to use random, have it be a command
-                                        , Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 12345))
-                                            |> Tuple.first
-                                        )
+                                        { boundingBox =
+                                            { x1 = x1 + ox
+                                            , y1 = y1 + oy
+                                            , width = x2 - x1
+                                            , height = y2 - y1
+                                            }
+
+                                        --   TODO: change to use random, have it be a command
+                                        , id =
+                                            Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 12345))
+                                                |> Tuple.first
+                                        , name = ""
+                                        }
                                             :: model.rectangles
                                     , mode = Draw NotDrawing
                                     , snappingPointsLine = Nothing
@@ -222,9 +231,9 @@ update msg model =
                         NothingSelected _ ->
                             case
                                 model.rectangles
-                                    |> List.filter (\( rect, _ ) -> Rect.isOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) rect)
+                                    |> List.filter (\{ boundingBox } -> Rect.isOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
                                     |> List.head
-                                    |> Maybe.map Tuple.second
+                                    |> Maybe.map .id
                             of
                                 Just rectClicked ->
                                     ( { model
@@ -305,7 +314,7 @@ update msg model =
                                                 }
                                                 rect
                                         )
-                                        (List.map Tuple.first model.rectangles)
+                                        (List.map .boundingBox model.rectangles)
 
                                 bottomSideIsAlignedToAnotherRectangle : Maybe ( Line, Line )
                                 bottomSideIsAlignedToAnotherRectangle =
@@ -327,7 +336,7 @@ update msg model =
                                             }
                                     in
                                     model.rectangles
-                                        |> List.map Tuple.first
+                                        |> List.map .boundingBox
                                         |> List.filter (\rect -> numWithinRange (rect |> Rect.bottomY) bry 10)
                                         |> (\l ->
                                                 let
@@ -496,9 +505,9 @@ update msg model =
                                     Select
                                         (NothingSelected
                                             (model.rectangles
-                                                |> List.filter (\( rect, _ ) -> Rect.isOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) rect)
+                                                |> List.filter (\{ boundingBox } -> Rect.isOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
                                                 |> List.head
-                                                |> Maybe.map Tuple.second
+                                                |> Maybe.map .id
                                             )
                                         )
                               }
@@ -620,23 +629,23 @@ view model =
                     :: backgroundGrid model.mapPanOffset
                     ++ (case model.mode of
                             Drag ->
-                                model.rectangles |> List.map (Tuple.first >> drawRectangle model.mapPanOffset False)
+                                model.rectangles |> List.map (.boundingBox >> drawRectangle model.mapPanOffset False)
 
                             Draw _ ->
-                                model.rectangles |> List.map (Tuple.first >> drawRectangle model.mapPanOffset False)
+                                model.rectangles |> List.map (.boundingBox >> drawRectangle model.mapPanOffset False)
 
                             Select state ->
                                 case state of
                                     NothingSelected hoveringOverRectangleId ->
                                         case hoveringOverRectangleId of
                                             Just hoveringId ->
-                                                model.rectangles |> List.map (\( rect, id ) -> drawRectangle model.mapPanOffset (id == hoveringId) rect)
+                                                model.rectangles |> List.map (\{ boundingBox, id } -> drawRectangle model.mapPanOffset (id == hoveringId) boundingBox)
 
                                             Nothing ->
-                                                model.rectangles |> List.map (Tuple.first >> drawRectangle model.mapPanOffset False)
+                                                model.rectangles |> List.map (.boundingBox >> drawRectangle model.mapPanOffset False)
 
                                     RectangleSelected selectedId ->
-                                        model.rectangles |> List.map (\( rect, id ) -> drawRectangle model.mapPanOffset (id == selectedId) rect)
+                                        model.rectangles |> List.map (\{ boundingBox, id } -> drawRectangle model.mapPanOffset (id == selectedId) boundingBox)
                        )
                     ++ (case model.snappingPointsLine of
                             Just ( firstP, secondP ) ->
