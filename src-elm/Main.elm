@@ -302,7 +302,7 @@ update msg model =
                                     model.rectangles
                                         |> List.filter
                                             (\( { y1, height }, _ ) ->
-                                                y1 + height <= bry + 10 && y1 + height >= bry - 10
+                                                numWithinRange (y1 + height) bry 10
                                             )
                                         |> (\l ->
                                                 let
@@ -910,11 +910,20 @@ tupleToString ( x, y ) =
     ( String.fromInt x, String.fromInt y )
 
 
-tupleSub : ( Int, Int ) -> ( Int, Int ) -> ( Int, Int )
+tupleSub : ( number, number ) -> ( number, number ) -> ( number, number )
 tupleSub ( x1, y1 ) ( x2, y2 ) =
     ( x1 - x2, y1 - y2 )
 
 
-tupleAdd : ( Int, Int ) -> ( Int, Int ) -> ( Int, Int )
+tupleAdd : ( number, number ) -> ( number, number ) -> ( number, number )
 tupleAdd ( x1, y1 ) ( x2, y2 ) =
     ( x1 + x2, y1 + y2 )
+
+
+
+{- b - range <= a <= b + range -}
+
+
+numWithinRange : number -> number -> number -> Bool
+numWithinRange a b range =
+    b - range <= a && a <= b + range
