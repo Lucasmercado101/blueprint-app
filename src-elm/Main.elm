@@ -7,9 +7,11 @@ import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick, onMouseDown, onMouseUp)
 import Json.Decode as JD exposing (Decoder)
+import Random
 import Rect exposing (Point, Rectangle)
 import Svg as S exposing (Svg, line, rect, svg)
 import Svg.Attributes as SA exposing (color, cx, cy, fill, fontSize, r, rx, ry, stroke, strokeWidth, version, viewBox, x, x1, x2, y, y1, y2)
+import UUID exposing (UUID)
 
 
 
@@ -40,7 +42,7 @@ type alias Model =
         }
     , mode : Mode
     , holdingLeftMouseDown : Bool
-    , rectangles : List Rectangle
+    , rectangles : List ( Rectangle, UUID )
     , snappingPointsLine : Maybe ( ( Point, Point ), ( Point, Point ) )
     }
 
@@ -72,6 +74,12 @@ init _ =
 type Mode
     = Drag
     | Draw DrawState
+    | Select SelectState
+
+
+type SelectState
+    = NothingSelected
+    | RectangleSelected UUID
 
 
 type DrawState
@@ -170,17 +178,28 @@ update msg model =
                             in
                             ( { model
                                 | rectangles =
-                                    { x1 = x1 + ox
-                                    , y1 = y1 + oy
-                                    , width = x2 - x1
-                                    , height = y2 - y1
-                                    }
+                                    ( { x1 = x1 + ox
+                                      , y1 = y1 + oy
+                                      , width = x2 - x1
+                                      , height = y2 - y1
+                                      }
+                                    , Random.step UUID.generator (Random.initialSeed 12345)
+                                        |> Tuple.first
+                                    )
                                         :: model.rectangles
                                 , mode = Draw NotDrawing
                                 , snappingPointsLine = Nothing
                               }
                             , Cmd.none
                             )
+
+                Select state ->
+                    case state of
+                        NothingSelected ->
+                            Debug.todo ""
+
+                        RectangleSelected _ ->
+                            Debug.todo ""
 
         MouseMove ( x, y ) ->
             case model.mode of
@@ -243,7 +262,7 @@ update msg model =
                                                 }
                                                 rect
                                         )
-                                        model.rectangles
+                                        (List.map Tuple.first model.rectangles)
 
                                 bottomSideIsAlignedToAnotherRectangle : Maybe ( ( Point, Point ), ( Point, Point ) )
                                 bottomSideIsAlignedToAnotherRectangle =
@@ -266,7 +285,7 @@ update msg model =
                                     in
                                     model.rectangles
                                         |> List.filter
-                                            (\{ y1, height } ->
+                                            (\( { y1, height }, _ ) ->
                                                 y1 + height <= bry + 10 && y1 + height >= bry - 10
                                             )
                                         |> (\l ->
@@ -295,7 +314,7 @@ update msg model =
                                                                             Nothing
                                                             )
                                                             Nothing
-                                                            l
+                                                            (l |> List.map Tuple.first)
 
                                                     closestRectangleToTheLeft : Maybe Rectangle
                                                     closestRectangleToTheLeft =
@@ -321,7 +340,7 @@ update msg model =
                                                                             Nothing
                                                             )
                                                             Nothing
-                                                            l
+                                                            (l |> List.map Tuple.first)
 
                                                     closestRectangle : Maybe Rectangle
                                                     closestRectangle =
@@ -428,6 +447,14 @@ update msg model =
                             , Cmd.none
                             )
 
+                Select state ->
+                    case state of
+                        NothingSelected ->
+                            Debug.todo ""
+
+                        RectangleSelected _ ->
+                            Debug.todo ""
+
         MouseUp ->
             ( { model | holdingLeftMouseDown = False }, Cmd.none )
 
@@ -483,6 +510,9 @@ view model =
                                 SelectedStart _ ->
                                     on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
                             ]
+
+                        Select state ->
+                            []
                    )
             )
             ([ svg [ version "1.1", SA.width "1900", SA.height "800", viewBox "0 0 1900 800" ]
@@ -522,8 +552,16 @@ view model =
                                     , fill "transparent"
                                     ]
                                     []
+
+                    Select state ->
+                        case state of
+                            NothingSelected ->
+                                rect [] []
+
+                            RectangleSelected _ ->
+                                rect [] []
                  )
-                    :: (model.rectangles |> List.map (drawShape model.mapPanOffset))
+                    :: (model.rectangles |> List.map (Tuple.first >> drawShape model.mapPanOffset))
                     ++ backgroundGrid model.mapPanOffset
                     ++ (case model.snappingPointsLine of
                             Just ( firstP, secondP ) ->
@@ -533,7 +571,7 @@ view model =
                                 []
                        )
                     -- debug stuff
-                    ++ (model.rectangles |> List.map (drawShapePoint model.mapPanOffset))
+                    ++ (model.rectangles |> List.map (Tuple.first >> drawShapePoint model.mapPanOffset))
                 )
              , div [ style "color" "white" ] [ text ("Current View: " ++ (model.mapPanOffset |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.mapPanOffset |> (\( x, y ) -> y |> String.fromInt))) ]
              ]
@@ -555,6 +593,9 @@ view model =
 
                         Drag ->
                             [ div [ style "color" "white" ] [ text ("Current Start (relative): " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ] ]
+
+                        Select _ ->
+                            []
                    )
             )
         , div
