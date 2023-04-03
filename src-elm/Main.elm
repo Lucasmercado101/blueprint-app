@@ -34,6 +34,10 @@ mouseMoveDecoder =
 -- MODEL
 
 
+type alias Line =
+    ( Point, Point )
+
+
 type alias Model =
     { mapPanOffset : Point
 
@@ -45,7 +49,7 @@ type alias Model =
     , mode : Mode
     , holdingLeftMouseDown : Bool
     , rectangles : List ( Rectangle, UUID )
-    , snappingPointsLine : Maybe ( ( Point, Point ), ( Point, Point ) )
+    , snappingPointsLine : Maybe ( Line, Line )
     }
 
 
@@ -280,7 +284,7 @@ update msg model =
                                         )
                                         (List.map Tuple.first model.rectangles)
 
-                                bottomSideIsAlignedToAnotherRectangle : Maybe ( ( Point, Point ), ( Point, Point ) )
+                                bottomSideIsAlignedToAnotherRectangle : Maybe ( Line, Line )
                                 bottomSideIsAlignedToAnotherRectangle =
                                     let
                                         -- top left
@@ -664,7 +668,7 @@ view model =
         ]
 
 
-drawSnappingLines : Point -> ( Point, Point ) -> ( Point, Point ) -> List (Svg Msg)
+drawSnappingLines : Point -> Line -> Line -> List (Svg Msg)
 drawSnappingLines globalViewPanOffset firstLine secondLine =
     let
         ( firstLineStart, firstLineEnd ) =
