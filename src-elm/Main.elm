@@ -329,16 +329,16 @@ update msg model =
                                                             ( Just rr, Just rl ) ->
                                                                 let
                                                                     x1 =
-                                                                        rr |> Rect.bottomRight |> Rect.x
+                                                                        rr |> Rect.bottomLeft |> Rect.x
 
                                                                     x2 =
-                                                                        rl |> Rect.bottomLeft |> Rect.x
+                                                                        rl |> Rect.bottomRight |> Rect.x
                                                                 in
-                                                                if abs tlx - abs x1 > abs x2 - abs brx then
-                                                                    Just rl
+                                                                if (abs tlx - abs x2) > (abs x1 - abs brx) then
+                                                                    Just rr
 
                                                                 else
-                                                                    Just rr
+                                                                    Just rl
 
                                                             ( Just r1, Nothing ) ->
                                                                 Just r1
