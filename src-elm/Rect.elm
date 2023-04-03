@@ -42,3 +42,15 @@ x p =
 y : Point -> Int
 y p =
     Tuple.second p
+
+
+isOnRectangle : Point -> Rectangle -> Bool
+isOnRectangle p rect =
+    let
+        ( x1, y1 ) =
+            topLeft rect
+
+        ( x2, y2 ) =
+            bottomRight rect
+    in
+    x p >= x1 && x p <= x2 && y p >= y1 && y p <= y2

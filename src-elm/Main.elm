@@ -80,7 +80,8 @@ type Mode
 
 
 type SelectState
-    = NothingSelected
+    = -- id if hovering over a rectangle
+      NothingSelected (Maybe UUID)
     | RectangleSelected UUID
 
 
@@ -137,7 +138,7 @@ update msg model =
 
         SelectMode ->
             ( { model
-                | mode = Select NothingSelected
+                | mode = Select (NothingSelected Nothing)
                 , relativeView =
                     { start = ( 0, 0 )
                     , originalView = ( 0, 0 )
@@ -209,11 +210,11 @@ update msg model =
 
                 Select state ->
                     case state of
-                        NothingSelected ->
-                            Debug.todo ""
+                        NothingSelected _ ->
+                            Debug.todo "onClick select"
 
                         RectangleSelected _ ->
-                            Debug.todo ""
+                            Debug.todo "onClick select"
 
         MouseMove ( x, y ) ->
             case model.mode of
@@ -463,8 +464,20 @@ update msg model =
 
                 Select state ->
                     case state of
-                        NothingSelected ->
-                            Debug.todo ""
+                        NothingSelected _ ->
+                            ( { model
+                                | mode =
+                                    Select
+                                        (NothingSelected
+                                            (model.rectangles
+                                                |> List.filter (\( rect, _ ) -> Rect.isOnRectangle ( x, y ) rect)
+                                                |> List.head
+                                                |> Maybe.map Tuple.second
+                                            )
+                                        )
+                              }
+                            , Cmd.none
+                            )
 
                         RectangleSelected _ ->
                             Debug.todo ""
@@ -526,9 +539,11 @@ view model =
                             ]
 
                         Select state ->
-                            []
+                            [ on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
+                            ]
                    )
             )
+            -- Drawing order is bottom to top, draw last on top
             ([ svg [ version "1.1", SA.width "1900", SA.height "800", viewBox "0 0 1900 800" ]
                 ((case model.mode of
                     Drag ->
@@ -569,14 +584,33 @@ view model =
 
                     Select state ->
                         case state of
-                            NothingSelected ->
+                            NothingSelected _ ->
                                 rect [] []
 
                             RectangleSelected _ ->
                                 rect [] []
                  )
-                    :: (model.rectangles |> List.map (Tuple.first >> drawShape model.mapPanOffset))
-                    ++ backgroundGrid model.mapPanOffset
+                    :: backgroundGrid model.mapPanOffset
+                    ++ (case model.mode of
+                            Drag ->
+                                model.rectangles |> List.map (Tuple.first >> drawRectangle model.mapPanOffset False)
+
+                            Draw _ ->
+                                model.rectangles |> List.map (Tuple.first >> drawRectangle model.mapPanOffset False)
+
+                            Select state ->
+                                case state of
+                                    NothingSelected hoveringOverRectangleId ->
+                                        case hoveringOverRectangleId of
+                                            Just hoveringId ->
+                                                model.rectangles |> List.map (\( rect, id ) -> drawRectangle model.mapPanOffset (id == hoveringId) rect)
+
+                                            Nothing ->
+                                                model.rectangles |> List.map (Tuple.first >> drawRectangle model.mapPanOffset False)
+
+                                    RectangleSelected _ ->
+                                        model.rectangles |> List.map (Tuple.first >> drawRectangle model.mapPanOffset False)
+                       )
                     ++ (case model.snappingPointsLine of
                             Just ( firstP, secondP ) ->
                                 drawSnappingLines model.mapPanOffset firstP secondP
@@ -585,7 +619,7 @@ view model =
                                 []
                        )
                     -- debug stuff
-                    ++ (model.rectangles |> List.map (Tuple.first >> drawShapePoint model.mapPanOffset))
+                    ++ (model.rectangles |> List.map (Tuple.first >> drawRectanglePoint model.mapPanOffset))
                 )
              , div [ style "color" "white" ] [ text ("Current View: " ++ (model.mapPanOffset |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.mapPanOffset |> (\( x, y ) -> y |> String.fromInt))) ]
              ]
@@ -694,8 +728,8 @@ drawX point size attrs =
     ]
 
 
-drawShape : Point -> Rectangle -> Svg Msg
-drawShape globalViewPanOffset { x1, y1, width, height } =
+drawRectangle : Point -> Bool -> Rectangle -> Svg Msg
+drawRectangle globalViewPanOffset beingHoveredOver { x1, y1, width, height } =
     let
         ( gx, gy ) =
             globalViewPanOffset
@@ -707,13 +741,19 @@ drawShape globalViewPanOffset { x1, y1, width, height } =
         , SA.width (width |> toString)
         , strokeWidth "2"
         , stroke "white"
-        , fill "transparent"
+        , fill
+            (if beingHoveredOver then
+                "rgba(255,255,255,0.1)"
+
+             else
+                "transparent"
+            )
         ]
         []
 
 
-drawShapePoint : Point -> Rectangle -> Svg Msg
-drawShapePoint globalView { x1, y1, width, height } =
+drawRectanglePoint : Point -> Rectangle -> Svg Msg
+drawRectanglePoint globalView { x1, y1, width, height } =
     let
         ( gx, gy ) =
             globalView
