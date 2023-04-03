@@ -27,3 +27,8 @@ topLeft rect =
 topRight : Rectangle -> Point
 topRight rect =
     ( rect.x1 + rect.width, rect.y1 )
+
+
+bottomSide : Rectangle -> ( Point, Point )
+bottomSide rect =
+    ( bottomLeft rect, bottomRight rect )

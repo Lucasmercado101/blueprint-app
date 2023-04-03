@@ -267,11 +267,7 @@ update msg model =
                                         model.rectangles
                                         |> List.head
                                         |> Maybe.map
-                                            (\r ->
-                                                ( ( r |> Rect.bottomLeft, r |> Rect.bottomRight )
-                                                , ( currDrawRect |> Rect.bottomLeft, currDrawRect |> Rect.bottomRight )
-                                                )
-                                            )
+                                            (\r -> ( r |> Rect.bottomSide, currDrawRect |> Rect.bottomSide ))
                             in
                             ( { model
                                 | mode =
