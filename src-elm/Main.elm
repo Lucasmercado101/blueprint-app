@@ -439,8 +439,8 @@ update msg model =
                                 snapBottomPosition =
                                     bottomSideIsAlignedToAnotherRectangle
                                         |> Maybe.map
-                                            (\( ( ( _, y1 ), _ ), _ ) ->
-                                                y1
+                                            (\( ( l, _ ), _ ) ->
+                                                toRelative l model.mapPanOffset |> Rect.y
                                             )
                                         |> Maybe.map
                                             (\e ->
@@ -850,6 +850,18 @@ toGlobal relativeToOffset offsetPan =
             relativeToOffset
     in
     ( x + gx, y + gy )
+
+
+toRelative : Point -> Point -> Point
+toRelative relativeToOffset offsetPan =
+    let
+        ( gx, gy ) =
+            offsetPan
+
+        ( x, y ) =
+            relativeToOffset
+    in
+    ( x - gx, y - gy )
 
 
 rectanglesOverlap : Rectangle -> Rectangle -> Bool
