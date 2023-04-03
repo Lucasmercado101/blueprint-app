@@ -250,7 +250,7 @@ update msg model =
                                 Nothing ->
                                     ( model, Cmd.none )
 
-                        RectangleSelected selectedId ->
+                        RectangleSelected _ ->
                             ( { model
                                 | mode =
                                     Select
