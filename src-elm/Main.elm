@@ -372,24 +372,26 @@ update msg model =
                                                 in
                                                 if isOnTheRight then
                                                     if (abs bl - abs brx) <= minDistBeforeSnapping then
-                                                        Just rect
+                                                        Just
+                                                            ( ( currDrawRect |> Rect.bottomLeft |> Tuple.mapSecond (always (rect.y1 + rect.height))
+                                                              , currDrawRect |> Rect.bottomRight |> Tuple.mapSecond (always (rect.y1 + rect.height))
+                                                              )
+                                                            , rect |> Rect.bottomSide
+                                                            )
 
                                                     else
                                                         Nothing
 
                                                 else if (abs tlx - abs br) <= minDistBeforeSnapping then
-                                                    Just rect
+                                                    Just
+                                                        ( rect |> Rect.bottomSide
+                                                        , ( currDrawRect |> Rect.bottomLeft |> Tuple.mapSecond (always (rect.y1 + rect.height))
+                                                          , currDrawRect |> Rect.bottomRight |> Tuple.mapSecond (always (rect.y1 + rect.height))
+                                                          )
+                                                        )
 
                                                 else
                                                     Nothing
-                                            )
-                                        |> Maybe.map
-                                            (\r ->
-                                                ( r |> Rect.bottomSide
-                                                , ( currDrawRect |> Rect.bottomLeft |> Tuple.mapSecond (always (r.y1 + r.height))
-                                                  , currDrawRect |> Rect.bottomRight |> Tuple.mapSecond (always (r.y1 + r.height))
-                                                  )
-                                                )
                                             )
 
                                 snapBottomPosition : Maybe { start : Point, end : Point }
