@@ -34,6 +34,11 @@ bottomSide rect =
     ( bottomLeft rect, bottomRight rect )
 
 
+bottomY : Rectangle -> Int
+bottomY rect =
+    rect.y1 + rect.height
+
+
 x : Point -> Int
 x p =
     Tuple.first p

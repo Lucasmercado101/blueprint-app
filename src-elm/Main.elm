@@ -300,10 +300,8 @@ update msg model =
                                             }
                                     in
                                     model.rectangles
-                                        |> List.filter
-                                            (\( { y1, height }, _ ) ->
-                                                numWithinRange (y1 + height) bry 10
-                                            )
+                                        |> List.map Tuple.first
+                                        |> List.filter (\rect -> numWithinRange (rect |> Rect.bottomY) bry 10)
                                         |> (\l ->
                                                 let
                                                     closestRectangleToTheRight : Maybe Rectangle
@@ -330,7 +328,7 @@ update msg model =
                                                                             Nothing
                                                             )
                                                             Nothing
-                                                            (l |> List.map Tuple.first)
+                                                            l
 
                                                     closestRectangleToTheLeft : Maybe Rectangle
                                                     closestRectangleToTheLeft =
@@ -356,7 +354,7 @@ update msg model =
                                                                             Nothing
                                                             )
                                                             Nothing
-                                                            (l |> List.map Tuple.first)
+                                                            l
 
                                                     closestRectangle : Maybe Rectangle
                                                     closestRectangle =
