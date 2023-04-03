@@ -412,8 +412,8 @@ update msg model =
                                                 if isOnTheRight then
                                                     if rightDist <= minDistBeforeSnapping then
                                                         Just
-                                                            ( ( currDrawRect |> Rect.bottomLeft |> Tuple.mapSecond (always (rect.y1 + rect.height))
-                                                              , currDrawRect |> Rect.bottomRight |> Tuple.mapSecond (always (rect.y1 + rect.height))
+                                                            ( ( currDrawRect |> Rect.bottomLeft |> Tuple.mapSecond (always (rect |> Rect.bottomY))
+                                                              , currDrawRect |> Rect.bottomRight |> Tuple.mapSecond (always (rect |> Rect.bottomY))
                                                               )
                                                             , rect |> Rect.bottomSide
                                                             )
@@ -424,8 +424,8 @@ update msg model =
                                                 else if leftDist <= minDistBeforeSnapping then
                                                     Just
                                                         ( rect |> Rect.bottomSide
-                                                        , ( currDrawRect |> Rect.bottomLeft |> Tuple.mapSecond (always (rect.y1 + rect.height))
-                                                          , currDrawRect |> Rect.bottomRight |> Tuple.mapSecond (always (rect.y1 + rect.height))
+                                                        , ( currDrawRect |> Rect.bottomLeft |> Tuple.mapSecond (always (rect |> Rect.bottomY))
+                                                          , currDrawRect |> Rect.bottomRight |> Tuple.mapSecond (always (rect |> Rect.bottomY))
                                                           )
                                                         )
 
