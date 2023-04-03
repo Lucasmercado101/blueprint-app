@@ -149,6 +149,7 @@ update msg model =
                                             , relativeStartingPoint = ( x, y )
                                             }
                                         )
+                                , snappingPointsLine = Nothing
                               }
                             , Cmd.none
                             )
@@ -176,6 +177,7 @@ update msg model =
                                     }
                                         :: model.rectangles
                                 , mode = Draw NotDrawing
+                                , snappingPointsLine = Nothing
                               }
                             , Cmd.none
                             )
@@ -262,19 +264,39 @@ update msg model =
                                     in
                                     List.filter
                                         (\{ y1, height } ->
-                                            y1 + height <= h1 + 5 && y1 + height >= h1 - 5
+                                            y1 + height <= h1 + 10 && y1 + height >= h1 - 10
                                         )
                                         model.rectangles
                                         |> List.head
                                         |> Maybe.map
-                                            (\r -> ( r |> Rect.bottomSide, currDrawRect |> Rect.bottomSide ))
+                                            (\r ->
+                                                ( r |> Rect.bottomSide
+                                                , ( currDrawRect |> Rect.bottomLeft |> Tuple.mapSecond (always (r.y1 + r.height))
+                                                  , currDrawRect |> Rect.bottomRight |> Tuple.mapSecond (always (r.y1 + r.height))
+                                                  )
+                                                )
+                                            )
+
+                                snapBottomPosition : Maybe { start : Point, end : Point }
+                                snapBottomPosition =
+                                    bottomSideIsAlignedToAnotherRectangle
+                                        |> Maybe.map
+                                            (\( ( ( _, y1 ), _ ), _ ) ->
+                                                y1
+                                            )
+                                        |> Maybe.map
+                                            (\e ->
+                                                { start = position.start
+                                                , end = position.end |> Tuple.mapSecond (always e)
+                                                }
+                                            )
                             in
                             ( { model
                                 | mode =
                                     Draw
                                         (SelectedStart
                                             { selectedStart
-                                                | position = position
+                                                | position = snapBottomPosition |> Maybe.withDefault position
                                                 , isOverlappingAnotherRectangle = isOverlappingAnotherRectangle
                                             }
                                         )
