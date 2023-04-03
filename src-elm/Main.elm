@@ -7,7 +7,7 @@ import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick, onMouseDown, onMouseUp)
 import Json.Decode as JD exposing (Decoder)
-import Svg as S exposing (Svg, rect, svg)
+import Svg as S exposing (Svg, line, rect, svg)
 import Svg.Attributes as SA exposing (color, cx, cy, fill, fontSize, r, rx, ry, stroke, strokeWidth, version, viewBox, x, x1, x2, y, y1, y2)
 
 
@@ -48,6 +48,7 @@ type alias Model =
     , mode : Mode
     , holdingLeftMouseDown : Bool
     , rectangles : List Rectangle
+    , snappingPointsLine : Maybe ( Point, Point )
     }
 
 
@@ -65,6 +66,9 @@ init _ =
       , mode = Drag
       , holdingLeftMouseDown = False
       , rectangles = []
+
+      --   , snappingPointsLine = Nothing
+      , snappingPointsLine = Just ( ( 50, 50 ), ( 100, 50 ) )
       }
     , Cmd.none
     )
@@ -278,9 +282,6 @@ main =
 view : Model -> Html Msg
 view model =
     let
-        ( xPos, yPos ) =
-            model.mapPanOffset
-
         onDrag =
             [ onMouseUp MouseUp
             , if model.holdingLeftMouseDown then
@@ -361,6 +362,13 @@ view model =
                  )
                     :: (model.rectangles |> List.map (drawShape model.mapPanOffset))
                     ++ backgroundGrid model.mapPanOffset
+                    ++ (case model.snappingPointsLine of
+                            Just val ->
+                                drawSnappingLines model.mapPanOffset val
+
+                            Nothing ->
+                                []
+                       )
                     -- debug stuff
                     ++ (model.rectangles |> List.map (drawShapePoint model.mapPanOffset))
                 )
@@ -402,6 +410,30 @@ view model =
             , button [ style "padding" "5px", onClick DrawMode ] [ text "Draw" ]
             ]
         ]
+
+
+drawSnappingLines : Point -> ( Point, Point ) -> List (Svg Msg)
+drawSnappingLines globalViewPanOffset snappingPointsLine =
+    let
+        ( firstPoint, secondPoint ) =
+            snappingPointsLine
+
+        ( x1, y1 ) =
+            tupleSub firstPoint globalViewPanOffset |> tupleToString
+
+        ( x2, y2 ) =
+            tupleSub secondPoint globalViewPanOffset |> tupleToString
+    in
+    [ line
+        [ SA.x1 x1
+        , SA.y1 y1
+        , SA.x2 x2
+        , SA.y2 y2
+        , stroke "orange"
+        , strokeWidth "2"
+        ]
+        []
+    ]
 
 
 drawShape : Point -> Rectangle -> Svg Msg
@@ -560,3 +592,18 @@ rectanglesOverlap firstRectangle secondRectangle =
         || (x2 + width2 >= x1 && x2 + width2 <= x1 + width1 && y2 >= y1 && y2 <= y1 + height1)
         || (x2 >= x1 && x2 <= x1 + width1 && y2 + height2 >= y1 && y2 + height2 <= y1 + height1)
         || (x2 + width2 >= x1 && x2 + width2 <= x1 + width1 && y2 + height2 >= y1 && y2 + height2 <= y1 + height1)
+
+
+tupleToString : ( Int, Int ) -> ( String, String )
+tupleToString ( x, y ) =
+    ( String.fromInt x, String.fromInt y )
+
+
+tupleSub : ( Int, Int ) -> ( Int, Int ) -> ( Int, Int )
+tupleSub ( x1, y1 ) ( x2, y2 ) =
+    ( x1 - x2, y1 - y2 )
+
+
+tupleAdd : ( Int, Int ) -> ( Int, Int ) -> ( Int, Int )
+tupleAdd ( x1, y1 ) ( x2, y2 ) =
+    ( x1 + x2, y1 + y2 )
