@@ -48,7 +48,7 @@ type alias Model =
     , mode : Mode
     , holdingLeftMouseDown : Bool
     , rectangles : List Rectangle
-    , snappingPointsLine : Maybe ( Point, Point )
+    , snappingPointsLine : Maybe ( ( Point, Point ), ( Point, Point ) )
     }
 
 
@@ -68,7 +68,7 @@ init _ =
       , rectangles = []
 
       --   , snappingPointsLine = Nothing
-      , snappingPointsLine = Just ( ( 50, 50 ), ( 100, 50 ) )
+      , snappingPointsLine = Just ( ( ( 50, 50 ), ( 100, 50 ) ), ( ( 350, 50 ), ( 450, 50 ) ) )
       }
     , Cmd.none
     )
@@ -363,8 +363,8 @@ view model =
                     :: (model.rectangles |> List.map (drawShape model.mapPanOffset))
                     ++ backgroundGrid model.mapPanOffset
                     ++ (case model.snappingPointsLine of
-                            Just val ->
-                                drawSnappingLines model.mapPanOffset val
+                            Just ( firstP, secondP ) ->
+                                drawSnappingLines model.mapPanOffset firstP secondP
 
                             Nothing ->
                                 []
@@ -412,26 +412,65 @@ view model =
         ]
 
 
-drawSnappingLines : Point -> ( Point, Point ) -> List (Svg Msg)
-drawSnappingLines globalViewPanOffset snappingPointsLine =
+drawSnappingLines : Point -> ( Point, Point ) -> ( Point, Point ) -> List (Svg Msg)
+drawSnappingLines globalViewPanOffset firstLine secondLine =
     let
-        ( firstPoint, secondPoint ) =
-            snappingPointsLine
+        ( firstLineStart, firstLineEnd ) =
+            firstLine
+
+        ( secondLineStart, secondLineEnd ) =
+            secondLine
 
         ( x1, y1 ) =
-            tupleSub firstPoint globalViewPanOffset |> tupleToString
+            tupleSub firstLineStart globalViewPanOffset
 
         ( x2, y2 ) =
-            tupleSub secondPoint globalViewPanOffset |> tupleToString
+            tupleSub secondLineStart globalViewPanOffset
+
+        ( x3, y3 ) =
+            tupleSub firstLineEnd globalViewPanOffset
+
+        ( x4, y4 ) =
+            tupleSub secondLineEnd globalViewPanOffset
     in
-    [ line
-        [ SA.x1 x1
-        , SA.y1 y1
-        , SA.x2 x2
-        , SA.y2 y2
+    line
+        [ SA.x1 (x1 |> String.fromInt)
+        , SA.y1 (y1 |> String.fromInt)
+        , SA.x2 (x4 |> String.fromInt)
+        , SA.y2 (y4 |> String.fromInt)
         , stroke "orange"
         , strokeWidth "2"
         ]
+        []
+        :: drawX ( x1, y1 ) 5 [ stroke "orange", strokeWidth "2" ]
+        ++ drawX ( x2, y2 ) 5 [ stroke "orange", strokeWidth "2" ]
+        ++ drawX ( x3, y3 ) 5 [ stroke "orange", strokeWidth "2" ]
+        ++ drawX ( x4, y4 ) 5 [ stroke "orange", strokeWidth "2" ]
+
+
+drawX : Point -> Int -> List (S.Attribute msg) -> List (Svg msg)
+drawX point size attrs =
+    let
+        ( x, y ) =
+            point
+    in
+    [ line
+        ([ SA.x1 (x - size |> String.fromInt)
+         , SA.y1 (y - size |> String.fromInt)
+         , SA.x2 (x + size |> String.fromInt)
+         , SA.y2 (y + size |> String.fromInt)
+         ]
+            ++ attrs
+        )
+        []
+    , line
+        ([ SA.x1 (x - size |> String.fromInt)
+         , SA.y1 (y + size |> String.fromInt)
+         , SA.x2 (x + size |> String.fromInt)
+         , SA.y2 (y - size |> String.fromInt)
+         ]
+            ++ attrs
+        )
         []
     ]
 
