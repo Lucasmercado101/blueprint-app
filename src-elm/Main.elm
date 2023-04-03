@@ -36,6 +36,8 @@ mouseMoveDecoder =
 
 type alias Model =
     { mapPanOffset : Point
+
+    -- TODO: move this to Drag
     , relativeView :
         { start : Point
         , originalView : Point
@@ -99,6 +101,7 @@ type Msg
     | MouseUp
     | DrawMode
     | DragMode
+    | SelectMode
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -124,6 +127,17 @@ update msg model =
         DragMode ->
             ( { model
                 | mode = Drag
+                , relativeView =
+                    { start = ( 0, 0 )
+                    , originalView = ( 0, 0 )
+                    }
+              }
+            , Cmd.none
+            )
+
+        SelectMode ->
+            ( { model
+                | mode = Select NothingSelected
                 , relativeView =
                     { start = ( 0, 0 )
                     , originalView = ( 0, 0 )
@@ -612,6 +626,7 @@ view model =
             ]
             [ button [ style "padding" "5px", onClick DragMode ] [ text "Move" ]
             , button [ style "padding" "5px", onClick DrawMode ] [ text "Draw" ]
+            , button [ style "padding" "5px", onClick SelectMode ] [ text "Select" ]
             ]
         ]
 
