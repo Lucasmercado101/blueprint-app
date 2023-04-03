@@ -181,37 +181,41 @@ update msg model =
                             , Cmd.none
                             )
 
-                        SelectedStart { position } ->
-                            let
-                                { start, end } =
-                                    position
+                        SelectedStart { position, isOverlappingAnotherRectangle } ->
+                            if isOverlappingAnotherRectangle then
+                                ( model, Cmd.none )
 
-                                ( x1, y1 ) =
-                                    start
+                            else
+                                let
+                                    { start, end } =
+                                        position
 
-                                ( x2, y2 ) =
-                                    end
+                                    ( x1, y1 ) =
+                                        start
 
-                                ( ox, oy ) =
-                                    model.mapPanOffset
-                            in
-                            ( { model
-                                | rectangles =
-                                    ( { x1 = x1 + ox
-                                      , y1 = y1 + oy
-                                      , width = x2 - x1
-                                      , height = y2 - y1
-                                      }
-                                      --   TODO: change to use random, have it be a command
-                                    , Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 12345))
-                                        |> Tuple.first
-                                    )
-                                        :: model.rectangles
-                                , mode = Draw NotDrawing
-                                , snappingPointsLine = Nothing
-                              }
-                            , Cmd.none
-                            )
+                                    ( x2, y2 ) =
+                                        end
+
+                                    ( ox, oy ) =
+                                        model.mapPanOffset
+                                in
+                                ( { model
+                                    | rectangles =
+                                        ( { x1 = x1 + ox
+                                          , y1 = y1 + oy
+                                          , width = x2 - x1
+                                          , height = y2 - y1
+                                          }
+                                          --   TODO: change to use random, have it be a command
+                                        , Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 12345))
+                                            |> Tuple.first
+                                        )
+                                            :: model.rectangles
+                                    , mode = Draw NotDrawing
+                                    , snappingPointsLine = Nothing
+                                  }
+                                , Cmd.none
+                                )
 
                 Select state ->
                     case state of
@@ -621,8 +625,8 @@ view model =
                             Nothing ->
                                 []
                        )
-                    -- debug stuff
-                    ++ (model.rectangles |> List.map (Tuple.first >> drawRectanglePoint model.mapPanOffset))
+                 -- debug stuff
+                 -- ++ (model.rectangles |> List.map (Tuple.first >> drawRectanglePoint model.mapPanOffset))
                 )
              , div [ style "color" "white" ] [ text ("Current View: " ++ (model.mapPanOffset |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.mapPanOffset |> (\( x, y ) -> y |> String.fromInt))) ]
              ]
