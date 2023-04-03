@@ -351,6 +351,38 @@ update msg model =
                                                 in
                                                 closestRectangle
                                            )
+                                        |> Maybe.andThen
+                                            (\rect ->
+                                                let
+                                                    bl =
+                                                        rect |> Rect.bottomLeft |> Rect.x
+
+                                                    br =
+                                                        rect |> Rect.bottomRight |> Rect.x
+
+                                                    isOnTheRight =
+                                                        if (abs tlx - abs br) < (abs bl - abs brx) then
+                                                            True
+
+                                                        else
+                                                            False
+
+                                                    minDistBeforeSnapping =
+                                                        200
+                                                in
+                                                if isOnTheRight then
+                                                    if (abs bl - abs brx) <= minDistBeforeSnapping then
+                                                        Just rect
+
+                                                    else
+                                                        Nothing
+
+                                                else if (abs tlx - abs br) <= minDistBeforeSnapping then
+                                                    Just rect
+
+                                                else
+                                                    Nothing
+                                            )
                                         |> Maybe.map
                                             (\r ->
                                                 ( r |> Rect.bottomSide
