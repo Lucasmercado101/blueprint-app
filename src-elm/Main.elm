@@ -7,12 +7,9 @@ import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick, onMouseDown, onMouseUp)
 import Json.Decode as JD exposing (Decoder)
+import Rect exposing (Point, Rectangle)
 import Svg as S exposing (Svg, line, rect, svg)
 import Svg.Attributes as SA exposing (color, cx, cy, fill, fontSize, r, rx, ry, stroke, strokeWidth, version, viewBox, x, x1, x2, y, y1, y2)
-
-
-type alias Point =
-    ( Int, Int )
 
 
 
@@ -33,10 +30,6 @@ mouseMoveDecoder =
 
 
 -- MODEL
-
-
-type alias Rectangle =
-    { x1 : Int, y1 : Int, width : Int, height : Int }
 
 
 type alias Model =
@@ -66,9 +59,7 @@ init _ =
       , mode = Drag
       , holdingLeftMouseDown = False
       , rectangles = []
-
-      --   , snappingPointsLine = Nothing
-      , snappingPointsLine = Just ( ( ( 50, 50 ), ( 100, 50 ) ), ( ( 350, 50 ), ( 450, 50 ) ) )
+      , snappingPointsLine = Nothing
       }
     , Cmd.none
     )
@@ -251,6 +242,36 @@ update msg model =
                                                 rect
                                         )
                                         model.rectangles
+
+                                bottomSideIsAlignedToAnotherRectangle : Maybe ( ( Point, Point ), ( Point, Point ) )
+                                bottomSideIsAlignedToAnotherRectangle =
+                                    let
+                                        ( gx, gy ) =
+                                            toGlobal position.start model.mapPanOffset
+
+                                        ( w1, h1 ) =
+                                            toGlobal position.end model.mapPanOffset
+
+                                        currDrawRect : Rectangle
+                                        currDrawRect =
+                                            { x1 = gx
+                                            , y1 = gy
+                                            , width = w1 - gx
+                                            , height = h1 - gy
+                                            }
+                                    in
+                                    List.filter
+                                        (\{ y1, height } ->
+                                            y1 + height <= h1 + 5 && y1 + height >= h1 - 5
+                                        )
+                                        model.rectangles
+                                        |> List.head
+                                        |> Maybe.map
+                                            (\r ->
+                                                ( ( r |> Rect.bottomLeft, r |> Rect.bottomRight )
+                                                , ( currDrawRect |> Rect.bottomLeft, currDrawRect |> Rect.bottomRight )
+                                                )
+                                            )
                             in
                             ( { model
                                 | mode =
@@ -261,6 +282,7 @@ update msg model =
                                                 , isOverlappingAnotherRectangle = isOverlappingAnotherRectangle
                                             }
                                         )
+                                , snappingPointsLine = bottomSideIsAlignedToAnotherRectangle
                               }
                             , Cmd.none
                             )
