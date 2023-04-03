@@ -198,7 +198,8 @@ update msg model =
                                       , width = x2 - x1
                                       , height = y2 - y1
                                       }
-                                    , Random.step UUID.generator (Random.initialSeed 12345)
+                                      --   TODO: change to use random, have it be a command
+                                    , Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 12345))
                                         |> Tuple.first
                                     )
                                         :: model.rectangles
