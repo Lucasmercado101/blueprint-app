@@ -360,18 +360,24 @@ update msg model =
                                                     br =
                                                         rect |> Rect.bottomRight |> Rect.x
 
+                                                    leftDist =
+                                                        abs tlx - abs br
+
+                                                    rightDist =
+                                                        abs bl - abs brx
+
                                                     isOnTheRight =
-                                                        if (abs tlx - abs br) < (abs bl - abs brx) then
+                                                        if leftDist < rightDist then
                                                             True
 
                                                         else
                                                             False
 
                                                     minDistBeforeSnapping =
-                                                        200
+                                                        150
                                                 in
                                                 if isOnTheRight then
-                                                    if (abs bl - abs brx) <= minDistBeforeSnapping then
+                                                    if rightDist <= minDistBeforeSnapping then
                                                         Just
                                                             ( ( currDrawRect |> Rect.bottomLeft |> Tuple.mapSecond (always (rect.y1 + rect.height))
                                                               , currDrawRect |> Rect.bottomRight |> Tuple.mapSecond (always (rect.y1 + rect.height))
@@ -382,7 +388,7 @@ update msg model =
                                                     else
                                                         Nothing
 
-                                                else if (abs tlx - abs br) <= minDistBeforeSnapping then
+                                                else if leftDist <= minDistBeforeSnapping then
                                                     Just
                                                         ( rect |> Rect.bottomSide
                                                         , ( currDrawRect |> Rect.bottomLeft |> Tuple.mapSecond (always (rect.y1 + rect.height))
