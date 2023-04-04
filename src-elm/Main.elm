@@ -4,8 +4,8 @@ import Browser
 import Browser.Events exposing (onMouseMove)
 import Debug exposing (toString)
 import Html exposing (..)
-import Html.Attributes exposing (style)
-import Html.Events exposing (on, onClick, onMouseDown, onMouseUp)
+import Html.Attributes exposing (style, value)
+import Html.Events exposing (on, onClick, onInput, onMouseDown, onMouseUp)
 import Json.Decode as JD exposing (Decoder)
 import Point
 import Random
@@ -131,6 +131,7 @@ type Msg
     | DrawMode
     | DragMode
     | SelectMode
+    | OnChangeRectangleName ( UUID, String )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -138,6 +139,22 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+
+        OnChangeRectangleName ( rectId, newName ) ->
+            ( { model
+                | rectangles =
+                    model.rectangles
+                        |> List.map
+                            (\rect ->
+                                if rect.id == rectId then
+                                    { rect | name = newName }
+
+                                else
+                                    rect
+                            )
+              }
+            , Cmd.none
+            )
 
         Clicked ->
             ( model, Cmd.none )
@@ -797,6 +814,48 @@ view model =
             , button [ style "padding" "5px", onClick DrawMode ] [ text "Draw" ]
             , button [ style "padding" "5px", onClick SelectMode ] [ text "Select" ]
             ]
+        , div
+            [ style "position" "absolute"
+            , style "top" "50%"
+            , style "bottom" "50%"
+            , style "right" "0"
+            , style "transform" "translate(0, -50%)"
+            ]
+            (case model.mode of
+                Drag ->
+                    []
+
+                Draw _ ->
+                    []
+
+                Select state ->
+                    case state of
+                        NothingSelected _ ->
+                            []
+
+                        RectangleSelected ( idSelected, _ ) ->
+                            let
+                                rectangle =
+                                    List.filter (\{ id } -> id == idSelected) model.rectangles
+                                        |> List.head
+                            in
+                            case rectangle of
+                                Just rect ->
+                                    [ div
+                                        [ style "background-color" "white"
+                                        , style "padding" "15px"
+                                        , style "display" "flex"
+                                        , style "flex-direction" "column"
+                                        ]
+                                        [ div [] [ text "Drag mode" ]
+                                        , div [] [ text "Name", text rect.name ]
+                                        , input [ value rect.name, onInput (\l -> OnChangeRectangleName ( idSelected, l )) ] []
+                                        ]
+                                    ]
+
+                                Nothing ->
+                                    []
+            )
         ]
 
 
@@ -893,8 +952,8 @@ drawRectangle globalViewPanOffset beingHoveredOver room =
         -- TODO: get bounding box to check for collisions and overflows
         -- and stuff when text gets too large
         , S.text_
-            [ x (Rect.center room.boundingBox |> Point.x |> String.fromInt)
-            , y (Rect.center room.boundingBox |> Point.y |> String.fromInt)
+            [ x ((x1 + width // 2) - gx |> String.fromInt)
+            , y ((y1 + height // 2) - gy |> String.fromInt)
             , SA.class "svgText"
             , SA.fill "white"
             ]
