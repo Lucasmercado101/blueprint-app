@@ -146,6 +146,7 @@ type Mode
     = Drag
     | Draw DrawState
     | Select SelectState
+    | Delete
 
 
 type SelectState
@@ -166,12 +167,12 @@ type DrawState
 
 type Msg
     = NoOp
-    | Clicked
     | MouseMove Point
     | MouseDown Point
     | MouseUp
     | DrawMode
     | DragMode
+    | DeleteMode
     | SelectMode
     | OnChangeRectangleName ( UUID, String )
     | ReceivedSvgBoundingBox JD.Value
@@ -182,6 +183,13 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+
+        DeleteMode ->
+            ( { model
+                | mode = Delete
+              }
+            , Cmd.none
+            )
 
         ReceivedSvgBoundingBox value ->
             case JD.decodeValue receiveGotSvgBoundingBoxDecoder value of
@@ -254,9 +262,6 @@ update msg model =
                     Cmd.none
             )
 
-        Clicked ->
-            ( model, Cmd.none )
-
         DrawMode ->
             ( { model
                 | mode = Draw NotDrawing
@@ -290,8 +295,17 @@ update msg model =
             , Cmd.none
             )
 
-        MouseDown ( x, y ) ->
+        MouseDown (( x, y ) as relCoords) ->
             case model.mode of
+                Delete ->
+                    ( { model
+                        | rectangles =
+                            model.rectangles
+                                |> List.filter ((\{ boundingBox } -> Rect.isOnRectangle (relCoords |> toGlobal model.mapPanOffset) boundingBox) >> not)
+                      }
+                    , Cmd.none
+                    )
+
                 Drag ->
                     ( { model
                         | holdingLeftMouseDown = True
@@ -416,6 +430,9 @@ update msg model =
 
         MouseMove ( x, y ) ->
             case model.mode of
+                Delete ->
+                    ( model, Cmd.none )
+
                 Drag ->
                     let
                         ( sx, sy ) =
@@ -768,6 +785,11 @@ view model =
              --  , on "auxclick"
              ]
                 ++ (case model.mode of
+                        -- TODO: add highlight on hover on delete mode
+                        Delete ->
+                            [ on "click" (mouseMoveDecoder |> JD.map MouseDown)
+                            ]
+
                         Drag ->
                             onDrag
 
@@ -791,6 +813,9 @@ view model =
             -- Drawing order is bottom to top, draw last on top
             ([ svg [ version "1.1", SA.width "1900", SA.height "800", viewBox "0 0 1900 800" ]
                 ((case model.mode of
+                    Delete ->
+                        rect [] []
+
                     Drag ->
                         rect [] []
 
@@ -837,6 +862,9 @@ view model =
                  )
                     :: backgroundGrid model.mapPanOffset
                     ++ (case model.mode of
+                            Delete ->
+                                model.rectangles |> List.map (drawRectangle model.mapPanOffset False)
+
                             Drag ->
                                 model.rectangles |> List.map (drawRectangle model.mapPanOffset False)
 
@@ -883,6 +911,9 @@ view model =
              , div [ style "color" "white" ] [ text ("Current View: " ++ (model.mapPanOffset |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.mapPanOffset |> (\( x, y ) -> y |> String.fromInt))) ]
              ]
                 ++ (case model.mode of
+                        Delete ->
+                            []
+
                         Draw state ->
                             case state of
                                 NotDrawing ->
@@ -920,6 +951,7 @@ view model =
             [ button [ style "padding" "5px", onClick DragMode ] [ text "Move" ]
             , button [ style "padding" "5px", onClick DrawMode ] [ text "Draw" ]
             , button [ style "padding" "5px", onClick SelectMode ] [ text "Select" ]
+            , button [ style "padding" "5px", onClick DeleteMode ] [ text "Delete" ]
             ]
         , div
             [ style "position" "absolute"
@@ -929,6 +961,9 @@ view model =
             , style "transform" "translate(0, -50%)"
             ]
             (case model.mode of
+                Delete ->
+                    []
+
                 Drag ->
                     []
 
