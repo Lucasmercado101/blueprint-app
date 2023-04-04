@@ -365,6 +365,7 @@ update msg model =
                                     , mode = Draw NotDrawing
                                     , snappingPointsLine = Nothing
                                   }
+                                  -- NOTE: not fetching the bounding box here because it's not in the dom yet
                                 , Cmd.none
                                 )
 
