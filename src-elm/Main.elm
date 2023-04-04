@@ -763,22 +763,6 @@ main =
 
 view : Model -> Html Msg
 view model =
-    let
-        onDrag =
-            [ onMouseUp MouseUp
-            , if model.holdingLeftMouseDown then
-                on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
-
-              else
-                on "mousemove" (JD.succeed NoOp)
-            , if model.holdingLeftMouseDown then
-                style "cursor" "grabbing"
-
-              else
-                style "cursor" "grab"
-            , on "mousedown" (mouseMoveDecoder |> JD.map MouseDown)
-            ]
-    in
     div []
         [ div
             ([ style "background-color" background
@@ -795,7 +779,19 @@ view model =
                             ]
 
                         Drag ->
-                            onDrag
+                            [ onMouseUp MouseUp
+                            , if model.holdingLeftMouseDown then
+                                on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
+
+                              else
+                                style "" ""
+                            , if model.holdingLeftMouseDown then
+                                style "cursor" "grabbing"
+
+                              else
+                                style "cursor" "grab"
+                            , on "mousedown" (mouseMoveDecoder |> JD.map MouseDown)
+                            ]
 
                         Draw state ->
                             [ onMouseUp MouseUp
