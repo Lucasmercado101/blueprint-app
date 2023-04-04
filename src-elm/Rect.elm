@@ -64,3 +64,95 @@ isOnRectangle p rect =
 center : Rectangle -> Point
 center rect =
     ( rect.x1 + rect.width // 2, rect.y1 + rect.height // 2 )
+
+
+leftmostRectangle : List Rectangle -> Maybe Rectangle
+leftmostRectangle rects =
+    case rects of
+        [] ->
+            Nothing
+
+        rect :: rest ->
+            let
+                leftmost =
+                    List.foldl
+                        (\a b ->
+                            if a.x1 < b.x1 then
+                                a
+
+                            else
+                                b
+                        )
+                        rect
+                        rest
+            in
+            Just leftmost
+
+
+rightmostRectangle : List Rectangle -> Maybe Rectangle
+rightmostRectangle rects =
+    case rects of
+        [] ->
+            Nothing
+
+        rect :: rest ->
+            let
+                rightmost =
+                    List.foldl
+                        (\a b ->
+                            if a.x1 + a.width > b.x1 + b.width then
+                                a
+
+                            else
+                                b
+                        )
+                        rect
+                        rest
+            in
+            Just rightmost
+
+
+topmostRectangle : List Rectangle -> Maybe Rectangle
+topmostRectangle rects =
+    case rects of
+        [] ->
+            Nothing
+
+        rect :: rest ->
+            let
+                topmost =
+                    List.foldl
+                        (\a b ->
+                            if a.y1 < b.y1 then
+                                a
+
+                            else
+                                b
+                        )
+                        rect
+                        rest
+            in
+            Just topmost
+
+
+bottommostRectangle : List Rectangle -> Maybe Rectangle
+bottommostRectangle rects =
+    case rects of
+        [] ->
+            Nothing
+
+        rect :: rest ->
+            let
+                bottommost =
+                    List.foldl
+                        (\a b ->
+                            if a.y1 + a.height > b.y1 + b.height then
+                                a
+
+                            else
+                                b
+                        )
+                        rect
+                        rest
+            in
+            Just bottommost

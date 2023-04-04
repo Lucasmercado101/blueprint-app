@@ -16,6 +16,20 @@ import UUID exposing (UUID)
 
 
 
+-- TODO: get dynamically
+
+
+screenHeight : Int
+screenHeight =
+    800
+
+
+screenWidth : Int
+screenWidth =
+    1900
+
+
+
 -- SUBSCRIPTIONS
 
 
@@ -288,9 +302,44 @@ update msg model =
 
                         ( dx, dy ) =
                             ( sx - x, sy - y )
+
+                        maxTopPan : Maybe Rectangle
+                        maxTopPan =
+                            List.map .boundingBox model.rectangles |> Rect.topmostRectangle
+
+                        maxBottomPan : Maybe Rectangle
+                        maxBottomPan =
+                            List.map .boundingBox model.rectangles |> Rect.bottommostRectangle
+
+                        maxLeftPan : Maybe Rectangle
+                        maxLeftPan =
+                            List.map .boundingBox model.rectangles |> Rect.leftmostRectangle
+
+                        maxRightPan : Maybe Rectangle
+                        maxRightPan =
+                            List.map .boundingBox model.rectangles |> Rect.rightmostRectangle
+
+                        -- NOTE:
+                        -- these are in charge of clamping the pan
+                        -- just use the else case if i want to undo it
+                        newY =
+                            case ( maxTopPan, maxBottomPan ) of
+                                ( Just maxY, Just minY ) ->
+                                    clamp (maxY.y1 - screenHeight - 50) (minY.y1 + minY.height + 50) (oy + dy)
+
+                                _ ->
+                                    oy + dy
+
+                        newX =
+                            case ( maxLeftPan, maxRightPan ) of
+                                ( Just maxX, Just minX ) ->
+                                    clamp (maxX.x1 - screenWidth - 50) (minX.x1 + minX.width + 50) (ox + dx)
+
+                                _ ->
+                                    ox + dx
                     in
                     ( { model
-                        | mapPanOffset = ( ox + dx, oy + dy )
+                        | mapPanOffset = ( newX, newY )
                       }
                     , Cmd.none
                     )
