@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Browser
 import Browser.Events exposing (onMouseMove)
@@ -30,12 +30,50 @@ screenWidth =
 
 
 
+-- PORTS
+{- Svg UUID as String since that's the id's name -}
+
+
+port requestGetSvgBoundingBox : String -> Cmd msg
+
+
+
+{- Svg UUID as String since that's the id's name -}
+
+
+port receiveGotSvgBoundingBox : (JD.Value -> msg) -> Sub msg
+
+
+receiveGotSvgBoundingBoxDecoder : Decoder ( String, Rectangle )
+receiveGotSvgBoundingBoxDecoder =
+    JD.map2 (\id rect -> ( id, rect ))
+        (JD.field "id" JD.string)
+        (JD.field "boundingBox" bboxDecoder)
+
+
+bboxDecoder : Decoder Rectangle
+bboxDecoder =
+    JD.map4
+        (\x y w h ->
+            { x1 = x |> round
+            , y1 = y |> round
+            , width = w |> round
+            , height = h |> round
+            }
+        )
+        (JD.field "x" JD.float)
+        (JD.field "y" JD.float)
+        (JD.field "width" JD.float)
+        (JD.field "height" JD.float)
+
+
+
 -- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    receiveGotSvgBoundingBox ReceivedSvgBoundingBox
 
 
 mouseMoveDecoder : Decoder ( Int, Int )
@@ -56,7 +94,11 @@ type alias Line =
 type alias Room =
     { id : UUID
     , boundingBox : Rectangle
-    , name : String
+    , name :
+        { id : UUID
+        , value : String
+        , boundingBox : Maybe Rectangle
+        }
     }
 
 
@@ -132,6 +174,7 @@ type Msg
     | DragMode
     | SelectMode
     | OnChangeRectangleName ( UUID, String )
+    | ReceivedSvgBoundingBox JD.Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -140,20 +183,75 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
+        ReceivedSvgBoundingBox value ->
+            case JD.decodeValue receiveGotSvgBoundingBoxDecoder value of
+                Ok ( idStr, boundingBox ) ->
+                    case UUID.fromString idStr of
+                        Ok textId ->
+                            ( { model
+                                | rectangles =
+                                    model.rectangles
+                                        |> List.map
+                                            (\rect ->
+                                                if rect.name.id == textId then
+                                                    let
+                                                        name =
+                                                            rect.name
+                                                    in
+                                                    { rect
+                                                        | name =
+                                                            { name
+                                                                | boundingBox = Just boundingBox
+                                                            }
+                                                    }
+
+                                                else
+                                                    rect
+                                            )
+                              }
+                            , Cmd.none
+                            )
+
+                        Err err ->
+                            ( model, Cmd.none )
+
+                Err err ->
+                    ( model, Cmd.none )
+
         OnChangeRectangleName ( rectId, newName ) ->
+            let
+                textId =
+                    List.filter (\rect -> rect.id == rectId) model.rectangles
+                        |> List.head
+                        |> Maybe.map (.name >> .id)
+            in
             ( { model
                 | rectangles =
                     model.rectangles
                         |> List.map
                             (\rect ->
                                 if rect.id == rectId then
-                                    { rect | name = newName }
+                                    let
+                                        name =
+                                            rect.name
+                                    in
+                                    { rect
+                                        | name =
+                                            { name
+                                                | value = newName
+                                            }
+                                    }
 
                                 else
                                     rect
                             )
               }
-            , Cmd.none
+            , case textId of
+                Just id ->
+                    requestGetSvgBoundingBox (id |> UUID.toString)
+
+                Nothing ->
+                    Cmd.none
             )
 
         Clicked ->
@@ -239,6 +337,10 @@ update msg model =
 
                                     ( ox, oy ) =
                                         model.mapPanOffset
+
+                                    nameId =
+                                        Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 54321))
+                                            |> Tuple.first
                                 in
                                 ( { model
                                     | rectangles =
@@ -253,7 +355,11 @@ update msg model =
                                         , id =
                                             Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 12345))
                                                 |> Tuple.first
-                                        , name = ""
+                                        , name =
+                                            { id = nameId
+                                            , value = ""
+                                            , boundingBox = Nothing
+                                            }
                                         }
                                             :: model.rectangles
                                     , mode = Draw NotDrawing
@@ -840,7 +946,7 @@ view model =
                                         |> List.head
                             in
                             case rectangle of
-                                Just rect ->
+                                Just ({ name } as rect) ->
                                     [ div
                                         [ style "background-color" "white"
                                         , style "padding" "15px"
@@ -848,8 +954,8 @@ view model =
                                         , style "flex-direction" "column"
                                         ]
                                         [ div [] [ text "Drag mode" ]
-                                        , div [] [ text "Name", text rect.name ]
-                                        , input [ value rect.name, onInput (\l -> OnChangeRectangleName ( idSelected, l )) ] []
+                                        , div [] [ text "Name", text name.value ]
+                                        , input [ value name.value, onInput (\l -> OnChangeRectangleName ( idSelected, l )) ] []
                                         ]
                                     ]
 
@@ -930,6 +1036,9 @@ drawRectangle globalViewPanOffset beingHoveredOver room =
 
         { x1, y1, width, height } =
             room.boundingBox
+
+        { id } =
+            room.name
     in
     S.g []
         [ rect
@@ -952,12 +1061,27 @@ drawRectangle globalViewPanOffset beingHoveredOver room =
         -- TODO: get bounding box to check for collisions and overflows
         -- and stuff when text gets too large
         , S.text_
-            [ x ((x1 + width // 2) - gx |> String.fromInt)
+            [ x
+                ((x1
+                    + width
+                    // 2
+                    - (case room.name.boundingBox of
+                        Just bbox ->
+                            bbox.width // 2
+
+                        Nothing ->
+                            0
+                      )
+                 )
+                    - gx
+                    |> String.fromInt
+                )
             , y ((y1 + height // 2) - gy |> String.fromInt)
             , SA.class "svgText"
             , SA.fill "white"
+            , SA.id (id |> UUID.toString)
             ]
-            [ S.text room.name
+            [ S.text room.name.value
             ]
         ]
 
