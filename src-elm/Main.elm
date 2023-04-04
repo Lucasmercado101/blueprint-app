@@ -336,7 +336,11 @@ update msg model =
 
                         SelectedStart { position, isOverlappingAnotherRectangle } ->
                             if isOverlappingAnotherRectangle then
-                                ( model, Cmd.none )
+                                ( { model
+                                    | mode = Draw NotDrawing
+                                  }
+                                , Cmd.none
+                                )
 
                             else
                                 let
