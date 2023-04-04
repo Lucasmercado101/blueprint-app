@@ -407,6 +407,8 @@ update msg model =
                                 Nothing ->
                                     ( model, Cmd.none )
 
+                        -- TODO: if selected and then move mouse within same rectangle
+                        -- and click then doesn't deselect
                         RectangleSelected ( _, hoveringId ) ->
                             case hoveringId of
                                 Just val ->
