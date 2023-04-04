@@ -426,7 +426,11 @@ update msg model =
                                 Nothing ->
                                     ( model, Cmd.none )
 
-                        RectangleSelected { hoveringId } ->
+                        RectangleSelected { hoveringId, selectedId } ->
+                            let
+                                globalCoordsClicked =
+                                    ( x, y ) |> toGlobal model.mapPanOffset
+                            in
                             case hoveringId of
                                 Just val ->
                                     ( { model
@@ -442,7 +446,7 @@ update msg model =
                                             Select
                                                 (NothingSelected
                                                     (model.rectangles
-                                                        |> List.filter (\{ boundingBox } -> Rect.isPointOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
+                                                        |> List.filter (\{ boundingBox } -> Rect.isPointOnRectangle globalCoordsClicked boundingBox)
                                                         |> List.head
                                                         |> Maybe.map .id
                                                     )
