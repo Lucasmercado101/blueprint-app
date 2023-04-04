@@ -49,8 +49,8 @@ y p =
     Tuple.second p
 
 
-isOnRectangle : Point -> Rectangle -> Bool
-isOnRectangle p rect =
+isPointOnRectangle : Point -> Rectangle -> Bool
+isPointOnRectangle p rect =
     let
         ( x1, y1 ) =
             topLeft rect
@@ -59,6 +59,11 @@ isOnRectangle p rect =
             bottomRight rect
     in
     x p >= x1 && x p <= x2 && y p >= y1 && y p <= y2
+
+
+rectanglesPointIsOn : Point -> List Rectangle -> List Rectangle
+rectanglesPointIsOn p rects =
+    List.filter (isPointOnRectangle p) rects
 
 
 center : Rectangle -> Point

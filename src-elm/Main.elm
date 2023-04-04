@@ -163,7 +163,10 @@ type SelectState
 type DraggingSelectedRectangle
     = NotDragging
     | HoldingClickOnTopOfSelectedRectangle
-    | DraggingRectangle Point
+    | DraggingRectangle
+        { newPosition : Point
+        , isOverlappingAnother : Bool
+        }
 
 
 type DrawState
@@ -311,7 +314,7 @@ update msg model =
                     ( { model
                         | rectangles =
                             model.rectangles
-                                |> List.filter ((\{ boundingBox } -> Rect.isOnRectangle (relCoords |> toGlobal model.mapPanOffset) boundingBox) >> not)
+                                |> List.filter ((\{ boundingBox } -> Rect.isPointOnRectangle (relCoords |> toGlobal model.mapPanOffset) boundingBox) >> not)
                       }
                     , Cmd.none
                     )
@@ -402,7 +405,7 @@ update msg model =
                         NothingSelected _ ->
                             case
                                 model.rectangles
-                                    |> List.filter (\{ boundingBox } -> Rect.isOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
+                                    |> List.filter (\{ boundingBox } -> Rect.isPointOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
                                     |> List.head
                                     |> Maybe.map .id
                             of
@@ -423,8 +426,6 @@ update msg model =
                                 Nothing ->
                                     ( model, Cmd.none )
 
-                        -- TODO: if selected and then move mouse within same rectangle
-                        -- and click then doesn't deselect
                         RectangleSelected { hoveringId } ->
                             case hoveringId of
                                 Just val ->
@@ -441,7 +442,7 @@ update msg model =
                                             Select
                                                 (NothingSelected
                                                     (model.rectangles
-                                                        |> List.filter (\{ boundingBox } -> Rect.isOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
+                                                        |> List.filter (\{ boundingBox } -> Rect.isPointOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
                                                         |> List.head
                                                         |> Maybe.map .id
                                                     )
@@ -740,7 +741,7 @@ update msg model =
                                     Select
                                         (NothingSelected
                                             (model.rectangles
-                                                |> List.filter (\{ boundingBox } -> Rect.isOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
+                                                |> List.filter (\{ boundingBox } -> Rect.isPointOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
                                                 |> List.head
                                                 |> Maybe.map .id
                                             )
@@ -757,7 +758,7 @@ update msg model =
                                             { selectedState
                                                 | hoveringId =
                                                     model.rectangles
-                                                        |> List.filter (\{ boundingBox } -> Rect.isOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
+                                                        |> List.filter (\{ boundingBox } -> Rect.isPointOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
                                                         |> List.head
                                                         |> Maybe.map .id
                                             }
