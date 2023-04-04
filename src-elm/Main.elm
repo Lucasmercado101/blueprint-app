@@ -129,7 +129,7 @@ init _ =
             { start = ( 0, 0 )
             , originalView = ( 0, 0 )
             }
-      , mode = Drag
+      , mode = Pan
       , holdingLeftMouseDown = False
       , rectangles = []
       , snappingPointsLine = Nothing
@@ -143,7 +143,7 @@ init _ =
 
 
 type Mode
-    = Drag
+    = Pan
     | Draw DrawState
     | Select SelectState
     | Delete
@@ -171,7 +171,7 @@ type Msg
     | MouseDown Point
     | MouseUp
     | DrawMode
-    | DragMode
+    | PanMode
     | DeleteMode
     | SelectMode
     | OnChangeRectangleName ( UUID, String )
@@ -273,9 +273,9 @@ update msg model =
             , Cmd.none
             )
 
-        DragMode ->
+        PanMode ->
             ( { model
-                | mode = Drag
+                | mode = Pan
                 , relativeView =
                     { start = ( 0, 0 )
                     , originalView = ( 0, 0 )
@@ -306,7 +306,7 @@ update msg model =
                     , Cmd.none
                     )
 
-                Drag ->
+                Pan ->
                     ( { model
                         | holdingLeftMouseDown = True
                         , relativeView =
@@ -439,7 +439,7 @@ update msg model =
                 Delete ->
                     ( model, Cmd.none )
 
-                Drag ->
+                Pan ->
                     let
                         ( sx, sy ) =
                             model.relativeView.start
@@ -780,7 +780,7 @@ view model =
                             [ on "click" (mouseMoveDecoder |> JD.map MouseDown)
                             ]
 
-                        Drag ->
+                        Pan ->
                             [ onMouseUp MouseUp
                             , if model.holdingLeftMouseDown then
                                 on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
@@ -818,7 +818,7 @@ view model =
                     Delete ->
                         rect [] []
 
-                    Drag ->
+                    Pan ->
                         rect [] []
 
                     Draw state ->
@@ -867,7 +867,7 @@ view model =
                             Delete ->
                                 model.rectangles |> List.map (drawRectangle model.mapPanOffset False)
 
-                            Drag ->
+                            Pan ->
                                 model.rectangles |> List.map (drawRectangle model.mapPanOffset False)
 
                             Draw _ ->
@@ -931,7 +931,7 @@ view model =
                                     , div [ style "color" "white" ] [ text ("Current End: " ++ (end |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (end |> (\( x, y ) -> y |> String.fromInt))) ]
                                     ]
 
-                        Drag ->
+                        Pan ->
                             [ div [ style "color" "white" ] [ text ("Current Start (relative): " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ] ]
 
                         Select _ ->
@@ -950,7 +950,7 @@ view model =
             , style "display" "flex"
             , style "gap" "15px"
             ]
-            [ button [ style "padding" "5px", onClick DragMode ] [ text "Move" ]
+            [ button [ style "padding" "5px", onClick PanMode ] [ text "Pan" ]
             , button [ style "padding" "5px", onClick DrawMode ] [ text "Draw" ]
             , button [ style "padding" "5px", onClick SelectMode ] [ text "Select" ]
             , button [ style "padding" "5px", onClick DeleteMode ] [ text "Delete" ]
@@ -966,7 +966,7 @@ view model =
                 Delete ->
                     []
 
-                Drag ->
+                Pan ->
                     []
 
                 Draw _ ->
@@ -991,8 +991,7 @@ view model =
                                         , style "display" "flex"
                                         , style "flex-direction" "column"
                                         ]
-                                        [ div [] [ text "Drag mode" ]
-                                        , div [] [ text "Name:", text nbsp, text name.value ]
+                                        [ div [] [ text "Name:", text nbsp, text name.value ]
                                         , input [ value name.value, onInput (\l -> OnChangeRectangleName ( idSelected, l )) ] []
                                         ]
                                     ]
