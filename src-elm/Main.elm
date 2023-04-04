@@ -153,7 +153,17 @@ type SelectState
     = -- id if hovering over a rectangle
       NothingSelected (Maybe UUID)
       --   id selected, id of another one it's hovering on
-    | RectangleSelected ( UUID, Maybe UUID )
+    | RectangleSelected
+        { selectedId : UUID
+        , hoveringId : Maybe UUID
+        , draggingSelected : DraggingSelectedRectangle
+        }
+
+
+type DraggingSelectedRectangle
+    = NotDragging
+    | HoldingClickOnTopOfSelectedRectangle
+    | DraggingRectangle Point
 
 
 type DrawState
@@ -399,7 +409,13 @@ update msg model =
                                 Just rectClicked ->
                                     ( { model
                                         | mode =
-                                            Select (RectangleSelected ( rectClicked, Nothing ))
+                                            Select
+                                                (RectangleSelected
+                                                    { selectedId = rectClicked
+                                                    , hoveringId = Nothing
+                                                    , draggingSelected = NotDragging
+                                                    }
+                                                )
                                       }
                                     , Cmd.none
                                     )
@@ -409,12 +425,12 @@ update msg model =
 
                         -- TODO: if selected and then move mouse within same rectangle
                         -- and click then doesn't deselect
-                        RectangleSelected ( _, hoveringId ) ->
+                        RectangleSelected { hoveringId } ->
                             case hoveringId of
                                 Just val ->
                                     ( { model
                                         | mode =
-                                            Select (RectangleSelected ( val, Nothing ))
+                                            Select (RectangleSelected { selectedId = val, hoveringId = Nothing, draggingSelected = NotDragging })
                                       }
                                     , Cmd.none
                                     )
@@ -733,17 +749,18 @@ update msg model =
                             , Cmd.none
                             )
 
-                        RectangleSelected ( selected, _ ) ->
+                        RectangleSelected selectedState ->
                             ( { model
                                 | mode =
                                     Select
                                         (RectangleSelected
-                                            ( selected
-                                            , model.rectangles
-                                                |> List.filter (\{ boundingBox } -> Rect.isOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
-                                                |> List.head
-                                                |> Maybe.map .id
-                                            )
+                                            { selectedState
+                                                | hoveringId =
+                                                    model.rectangles
+                                                        |> List.filter (\{ boundingBox } -> Rect.isOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
+                                                        |> List.head
+                                                        |> Maybe.map .id
+                                            }
                                         )
                               }
                             , Cmd.none
@@ -883,7 +900,7 @@ view model =
                                             Nothing ->
                                                 model.rectangles |> List.map (drawRectangle model.mapPanOffset False)
 
-                                    RectangleSelected ( selectedId, hoveringId ) ->
+                                    RectangleSelected { selectedId, hoveringId } ->
                                         model.rectangles
                                             |> List.map
                                                 (\({ id } as room) ->
@@ -977,10 +994,10 @@ view model =
                         NothingSelected _ ->
                             []
 
-                        RectangleSelected ( idSelected, _ ) ->
+                        RectangleSelected { selectedId } ->
                             let
                                 rectangle =
-                                    List.filter (\{ id } -> id == idSelected) model.rectangles
+                                    List.filter (\{ id } -> id == selectedId) model.rectangles
                                         |> List.head
                             in
                             case rectangle of
@@ -992,7 +1009,7 @@ view model =
                                         , style "flex-direction" "column"
                                         ]
                                         [ div [] [ text "Name:", text nbsp, text name.value ]
-                                        , input [ value name.value, onInput (\l -> OnChangeRectangleName ( idSelected, l )) ] []
+                                        , input [ value name.value, onInput (\l -> OnChangeRectangleName ( selectedId, l )) ] []
                                         ]
                                     ]
 
