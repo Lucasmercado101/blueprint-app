@@ -955,7 +955,7 @@ view model =
                                         , style "flex-direction" "column"
                                         ]
                                         [ div [] [ text "Drag mode" ]
-                                        , div [] [ text "Name", text name.value ]
+                                        , div [] [ text "Name:", text nbsp, text name.value ]
                                         , input [ value name.value, onInput (\l -> OnChangeRectangleName ( idSelected, l )) ] []
                                         ]
                                     ]
@@ -1261,3 +1261,8 @@ tupleAdd ( x1, y1 ) ( x2, y2 ) =
 numWithinRange : number -> number -> number -> Bool
 numWithinRange a b range =
     b - range <= a && a <= b + range
+
+
+nbsp : String
+nbsp =
+    "\u{00A0}"
