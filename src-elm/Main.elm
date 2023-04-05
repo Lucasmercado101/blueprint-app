@@ -403,9 +403,6 @@ update msg model =
 
                 Select state ->
                     case state of
-                        RectangleSelected _ ->
-                            ( model, Cmd.none )
-
                         NothingSelected _ ->
                             let
                                 clickedOnARectangle =
@@ -420,8 +417,6 @@ update msg model =
                                             Select
                                                 (RectangleSelected
                                                     { selectedId = rectClicked
-
-                                                    -- NOTE: ?
                                                     , hoveringId = Just rectClicked
                                                     , draggingSelected = HoldingClickOnTopOfSelectedRectangle
                                                     }
@@ -432,6 +427,9 @@ update msg model =
 
                                 Nothing ->
                                     ( model, Cmd.none )
+
+                        RectangleSelected _ ->
+                            ( model, Cmd.none )
 
         MouseMove (( x, y ) as mouseMoveRelCoords) ->
             case model.mode of
@@ -944,7 +942,14 @@ view model =
 
                                     RectangleSelected { selectedId, hoveringId, draggingSelected } ->
                                         (model.rooms
-                                            |> List.filter (\{ id } -> id /= selectedId)
+                                            |> (\r ->
+                                                    case draggingSelected of
+                                                        DraggingRectangle _ ->
+                                                            r |> List.filter (\{ id } -> id /= selectedId)
+
+                                                        _ ->
+                                                            r
+                                               )
                                             |> List.map
                                                 (\({ id } as room) ->
                                                     let
