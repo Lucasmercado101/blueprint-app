@@ -354,6 +354,7 @@ update msg model =
                             if isOverlappingAnotherRectangle then
                                 ( { model
                                     | mode = Draw NotDrawing
+                                    , snappingPointsLine = Nothing
                                   }
                                 , Cmd.none
                                 )
