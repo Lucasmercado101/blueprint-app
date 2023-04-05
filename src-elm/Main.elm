@@ -585,19 +585,23 @@ update msg model =
                                                         List.foldl
                                                             (\next curr ->
                                                                 let
-                                                                    ( x1, _ ) =
-                                                                        Rect.bottomLeft next
+                                                                    x1 =
+                                                                        next |> Rect.bottomLeft |> Point.x
                                                                 in
                                                                 case curr of
-                                                                    Just val ->
-                                                                        if x1 >= brx && x1 <= (Rect.bottomLeft val |> Tuple.first) then
+                                                                    Just currBiggest ->
+                                                                        let
+                                                                            x2 =
+                                                                                currBiggest |> Rect.bottomLeft |> Point.x
+                                                                        in
+                                                                        if brx <= x1 && x1 <= x2 then
                                                                             Just next
 
                                                                         else
                                                                             curr
 
                                                                     Nothing ->
-                                                                        if x1 >= brx then
+                                                                        if brx <= x1 then
                                                                             Just next
 
                                                                         else
