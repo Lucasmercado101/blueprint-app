@@ -112,7 +112,7 @@ type alias Model =
         }
     , mode : Mode
     , holdingLeftMouseDown : Bool
-    , rectangles :
+    , rooms :
         List Room
     , snappingPointsLine : Maybe ( Line, Line )
     }
@@ -131,7 +131,7 @@ init _ =
             }
       , mode = Pan
       , holdingLeftMouseDown = False
-      , rectangles = []
+      , rooms = []
       , snappingPointsLine = Nothing
       }
     , Cmd.none
@@ -164,7 +164,8 @@ type DraggingSelectedRectangle
     = NotDragging
     | HoldingClickOnTopOfSelectedRectangle
     | DraggingRectangle
-        { newPosition : Point
+        { mousePos : Point
+        , initialPos : Point
         , isOverlappingAnother : Bool
         }
 
@@ -182,7 +183,7 @@ type Msg
     = NoOp
     | MouseMove Point
     | MouseDown Point
-    | MouseUp
+    | MouseUp Point
     | DrawMode
     | PanMode
     | DeleteMode
@@ -210,8 +211,8 @@ update msg model =
                     case UUID.fromString idStr of
                         Ok textId ->
                             ( { model
-                                | rectangles =
-                                    model.rectangles
+                                | rooms =
+                                    model.rooms
                                         |> List.map
                                             (\rect ->
                                                 if rect.name.id == textId then
@@ -242,13 +243,13 @@ update msg model =
         OnChangeRectangleName ( rectId, newName ) ->
             let
                 textId =
-                    List.filter (\rect -> rect.id == rectId) model.rectangles
+                    List.filter (\rect -> rect.id == rectId) model.rooms
                         |> List.head
                         |> Maybe.map (.name >> .id)
             in
             ( { model
-                | rectangles =
-                    model.rectangles
+                | rooms =
+                    model.rooms
                         |> List.map
                             (\rect ->
                                 if rect.id == rectId then
@@ -308,13 +309,13 @@ update msg model =
             , Cmd.none
             )
 
-        MouseDown (( x, y ) as relCoords) ->
+        MouseDown (( x, y ) as mouseDownRelCoords) ->
             case model.mode of
                 Delete ->
                     ( { model
-                        | rectangles =
-                            model.rectangles
-                                |> List.filter ((\{ boundingBox } -> Rect.isPointOnRectangle (relCoords |> toGlobal model.mapPanOffset) boundingBox) >> not)
+                        | rooms =
+                            model.rooms
+                                |> List.filter ((\{ boundingBox } -> Rect.isPointOnRectangle (mouseDownRelCoords |> toGlobal model.mapPanOffset) boundingBox) >> not)
                       }
                     , Cmd.none
                     )
@@ -374,7 +375,7 @@ update msg model =
                                             |> Tuple.first
                                 in
                                 ( { model
-                                    | rectangles =
+                                    | rooms =
                                         { boundingBox =
                                             { x1 = x1 + ox
                                             , y1 = y1 + oy
@@ -392,7 +393,7 @@ update msg model =
                                             , boundingBox = Nothing
                                             }
                                         }
-                                            :: model.rectangles
+                                            :: model.rooms
                                     , mode = Draw NotDrawing
                                     , snappingPointsLine = Nothing
                                   }
@@ -402,21 +403,27 @@ update msg model =
 
                 Select state ->
                     case state of
+                        RectangleSelected _ ->
+                            ( model, Cmd.none )
+
                         NothingSelected _ ->
-                            case
-                                model.rectangles
-                                    |> List.filter (\{ boundingBox } -> Rect.isPointOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
-                                    |> List.head
-                                    |> Maybe.map .id
-                            of
+                            let
+                                clickedOnARectangle =
+                                    model.rooms
+                                        |> getFirstRoom (\{ boundingBox } -> Rect.isPointOnRectangle (mouseDownRelCoords |> toGlobal model.mapPanOffset) boundingBox)
+                                        |> Maybe.map .id
+                            in
+                            case clickedOnARectangle of
                                 Just rectClicked ->
                                     ( { model
                                         | mode =
                                             Select
                                                 (RectangleSelected
                                                     { selectedId = rectClicked
-                                                    , hoveringId = Nothing
-                                                    , draggingSelected = NotDragging
+
+                                                    -- NOTE: ?
+                                                    , hoveringId = Just rectClicked
+                                                    , draggingSelected = HoldingClickOnTopOfSelectedRectangle
                                                     }
                                                 )
                                       }
@@ -426,36 +433,7 @@ update msg model =
                                 Nothing ->
                                     ( model, Cmd.none )
 
-                        RectangleSelected { hoveringId, selectedId } ->
-                            let
-                                globalCoordsClicked =
-                                    ( x, y ) |> toGlobal model.mapPanOffset
-                            in
-                            case hoveringId of
-                                Just val ->
-                                    ( { model
-                                        | mode =
-                                            Select (RectangleSelected { selectedId = val, hoveringId = Nothing, draggingSelected = NotDragging })
-                                      }
-                                    , Cmd.none
-                                    )
-
-                                Nothing ->
-                                    ( { model
-                                        | mode =
-                                            Select
-                                                (NothingSelected
-                                                    (model.rectangles
-                                                        |> List.filter (\{ boundingBox } -> Rect.isPointOnRectangle globalCoordsClicked boundingBox)
-                                                        |> List.head
-                                                        |> Maybe.map .id
-                                                    )
-                                                )
-                                      }
-                                    , Cmd.none
-                                    )
-
-        MouseMove ( x, y ) ->
+        MouseMove (( x, y ) as mouseMoveRelCoords) ->
             case model.mode of
                 Delete ->
                     ( model, Cmd.none )
@@ -473,23 +451,23 @@ update msg model =
 
                         maxTopPan : Maybe Rectangle
                         maxTopPan =
-                            List.map .boundingBox model.rectangles |> Rect.topmostRectangle
+                            List.map .boundingBox model.rooms |> Rect.topmostRectangle
 
                         maxBottomPan : Maybe Rectangle
                         maxBottomPan =
-                            List.map .boundingBox model.rectangles |> Rect.bottommostRectangle
+                            List.map .boundingBox model.rooms |> Rect.bottommostRectangle
 
                         maxLeftPan : Maybe Rectangle
                         maxLeftPan =
-                            List.map .boundingBox model.rectangles |> Rect.leftmostRectangle
+                            List.map .boundingBox model.rooms |> Rect.leftmostRectangle
 
                         maxRightPan : Maybe Rectangle
                         maxRightPan =
-                            List.map .boundingBox model.rectangles |> Rect.rightmostRectangle
+                            List.map .boundingBox model.rooms |> Rect.rightmostRectangle
 
                         -- NOTE:
                         -- these are in charge of clamping the pan
-                        -- just use the else case if i want to undo it
+                        -- just use the 'else' case if i want to undo it
                         newY =
                             case ( maxTopPan, maxBottomPan ) of
                                 ( Just maxY, Just minY ) ->
@@ -554,7 +532,7 @@ update msg model =
                                                 }
                                                 rect
                                         )
-                                        (List.map .boundingBox model.rectangles)
+                                        (List.map .boundingBox model.rooms)
 
                                 bottomSideIsAlignedToAnotherRectangle : Maybe ( Line, Line )
                                 bottomSideIsAlignedToAnotherRectangle =
@@ -575,7 +553,7 @@ update msg model =
                                             , height = bry - tly
                                             }
                                     in
-                                    model.rectangles
+                                    model.rooms
                                         |> List.map .boundingBox
                                         |> List.filter (\rect -> numWithinRange (rect |> Rect.bottomY) bry 10)
                                         |> (\l ->
@@ -742,41 +720,96 @@ update msg model =
                             )
 
                 Select state ->
+                    let
+                        roomIMayBeHoveringOver =
+                            model.rooms
+                                |> getFirstRoom (\{ boundingBox } -> Rect.isPointOnRectangle (mouseMoveRelCoords |> toGlobal model.mapPanOffset) boundingBox)
+                                |> Maybe.map .id
+                    in
                     case state of
                         NothingSelected _ ->
-                            ( { model
-                                | mode =
-                                    Select
-                                        (NothingSelected
-                                            (model.rectangles
-                                                |> List.filter (\{ boundingBox } -> Rect.isPointOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
-                                                |> List.head
-                                                |> Maybe.map .id
-                                            )
-                                        )
-                              }
-                            , Cmd.none
-                            )
+                            ( { model | mode = Select (NothingSelected roomIMayBeHoveringOver) }, Cmd.none )
 
                         RectangleSelected selectedState ->
-                            ( { model
-                                | mode =
-                                    Select
-                                        (RectangleSelected
-                                            { selectedState
-                                                | hoveringId =
-                                                    model.rectangles
-                                                        |> List.filter (\{ boundingBox } -> Rect.isPointOnRectangle (( x, y ) |> toGlobal model.mapPanOffset) boundingBox)
-                                                        |> List.head
-                                                        |> Maybe.map .id
-                                            }
-                                        )
-                              }
-                            , Cmd.none
-                            )
+                            let
+                                roomIMayBeHoveringOverExcludingSelectedRoom : Maybe UUID
+                                roomIMayBeHoveringOverExcludingSelectedRoom =
+                                    model.rooms
+                                        |> List.filter (\{ id } -> id /= selectedState.selectedId)
+                                        |> getFirstRoom (\{ boundingBox } -> Rect.isPointOnRectangle (mouseMoveRelCoords |> toGlobal model.mapPanOffset) boundingBox)
+                                        |> Maybe.map .id
+                            in
+                            case selectedState.draggingSelected of
+                                NotDragging ->
+                                    ( { model | mode = Select (RectangleSelected { selectedState | hoveringId = roomIMayBeHoveringOver }) }, Cmd.none )
 
-        MouseUp ->
-            ( { model | holdingLeftMouseDown = False }, Cmd.none )
+                                HoldingClickOnTopOfSelectedRectangle ->
+                                    ( { model
+                                        | mode =
+                                            Select
+                                                (RectangleSelected
+                                                    { selectedId = selectedState.selectedId
+                                                    , hoveringId = roomIMayBeHoveringOverExcludingSelectedRoom
+                                                    , draggingSelected =
+                                                        DraggingRectangle
+                                                            { mousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                            , initialPos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                            , isOverlappingAnother = False
+                                                            }
+                                                    }
+                                                )
+                                      }
+                                    , Cmd.none
+                                    )
+
+                                DraggingRectangle { initialPos } ->
+                                    ( { model
+                                        | mode =
+                                            Select
+                                                (RectangleSelected
+                                                    { selectedId = selectedState.selectedId
+                                                    , hoveringId = roomIMayBeHoveringOverExcludingSelectedRoom
+                                                    , draggingSelected =
+                                                        DraggingRectangle
+                                                            { mousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                            , initialPos = initialPos
+
+                                                            -- TODO:
+                                                            , isOverlappingAnother = False
+                                                            }
+                                                    }
+                                                )
+                                      }
+                                    , Cmd.none
+                                    )
+
+        MouseUp mouseUpRelCoords ->
+            case model.mode of
+                Pan ->
+                    ( { model | holdingLeftMouseDown = False }, Cmd.none )
+
+                Select state ->
+                    -- TODO: move mouseDown logic to here
+                    case state of
+                        NothingSelected _ ->
+                            ( model, Cmd.none )
+
+                        RectangleSelected selectedState ->
+                            case selectedState.draggingSelected of
+                                NotDragging ->
+                                    ( model, Cmd.none )
+
+                                HoldingClickOnTopOfSelectedRectangle ->
+                                    ( { model | mode = Select (NothingSelected (Just selectedState.selectedId)) }, Cmd.none )
+
+                                DraggingRectangle _ ->
+                                    ( { model | mode = Select (RectangleSelected { selectedState | hoveringId = selectedState.hoveringId, draggingSelected = NotDragging }) }, Cmd.none )
+
+                Delete ->
+                    ( model, Cmd.none )
+
+                Draw _ ->
+                    ( model, Cmd.none )
 
 
 main : Program () Model Msg
@@ -807,7 +840,7 @@ view model =
                             ]
 
                         Pan ->
-                            [ onMouseUp MouseUp
+                            [ on "mouseup" (mouseMoveDecoder |> JD.map MouseUp)
                             , if model.holdingLeftMouseDown then
                                 on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
 
@@ -822,8 +855,7 @@ view model =
                             ]
 
                         Draw state ->
-                            [ onMouseUp MouseUp
-                            , on "click" (mouseMoveDecoder |> JD.map MouseDown)
+                            [ on "click" (mouseMoveDecoder |> JD.map MouseDown)
                             , case state of
                                 NotDrawing ->
                                     style "" ""
@@ -834,7 +866,8 @@ view model =
 
                         Select _ ->
                             [ on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
-                            , on "click" (mouseMoveDecoder |> JD.map MouseDown)
+                            , on "mousedown" (mouseMoveDecoder |> JD.map MouseDown)
+                            , on "mouseup" (mouseMoveDecoder |> JD.map MouseUp)
                             ]
                    )
             )
@@ -891,26 +924,27 @@ view model =
                     :: backgroundGrid model.mapPanOffset
                     ++ (case model.mode of
                             Delete ->
-                                model.rectangles |> List.map (drawRectangle model.mapPanOffset False)
+                                model.rooms |> List.map (drawRectangle model.mapPanOffset False)
 
                             Pan ->
-                                model.rectangles |> List.map (drawRectangle model.mapPanOffset False)
+                                model.rooms |> List.map (drawRectangle model.mapPanOffset False)
 
                             Draw _ ->
-                                model.rectangles |> List.map (drawRectangle model.mapPanOffset False)
+                                model.rooms |> List.map (drawRectangle model.mapPanOffset False)
 
                             Select state ->
                                 case state of
                                     NothingSelected hoveringOverRectangleId ->
                                         case hoveringOverRectangleId of
                                             Just hoveringId ->
-                                                model.rectangles |> List.map (\({ id } as room) -> drawRectangle model.mapPanOffset (id == hoveringId) room)
+                                                model.rooms |> List.map (\({ id } as room) -> drawRectangle model.mapPanOffset (id == hoveringId) room)
 
                                             Nothing ->
-                                                model.rectangles |> List.map (drawRectangle model.mapPanOffset False)
+                                                model.rooms |> List.map (drawRectangle model.mapPanOffset False)
 
-                                    RectangleSelected { selectedId, hoveringId } ->
-                                        model.rectangles
+                                    RectangleSelected { selectedId, hoveringId, draggingSelected } ->
+                                        (model.rooms
+                                            |> List.filter (\{ id } -> id /= selectedId)
                                             |> List.map
                                                 (\({ id } as room) ->
                                                     let
@@ -925,6 +959,52 @@ view model =
                                                     in
                                                     drawRectangle model.mapPanOffset (id == selectedId || hoveringIdMatches) room
                                                 )
+                                        )
+                                            ++ [ case draggingSelected of
+                                                    NotDragging ->
+                                                        S.text ""
+
+                                                    HoldingClickOnTopOfSelectedRectangle ->
+                                                        S.text ""
+
+                                                    DraggingRectangle { mousePos, initialPos } ->
+                                                        model.rooms
+                                                            |> List.filter (\{ id } -> id == selectedId)
+                                                            |> List.head
+                                                            |> Maybe.map
+                                                                (\{ boundingBox } ->
+                                                                    let
+                                                                        { width, height, x1, y1 } =
+                                                                            boundingBox
+
+                                                                        ( initialMx1, initialMy1 ) =
+                                                                            initialPos
+
+                                                                        ( mx1, my1 ) =
+                                                                            mousePos
+
+                                                                        ( gx, gy ) =
+                                                                            model.mapPanOffset
+
+                                                                        distFromSelectedX =
+                                                                            initialMx1 - mx1
+
+                                                                        distFromSelectedY =
+                                                                            initialMy1 - my1
+                                                                    in
+                                                                    rect
+                                                                        [ x ((x1 - distFromSelectedX) - gx |> toString)
+                                                                        , y ((y1 - distFromSelectedY) - gy |> toString)
+                                                                        , SA.height (height |> toString)
+                                                                        , SA.width (width |> toString)
+                                                                        , strokeWidth "2"
+                                                                        , stroke "white"
+                                                                        , fill "rgba(255,255,255,0.1)"
+                                                                        ]
+                                                                        []
+                                                                )
+                                                            |> Maybe.withDefault (S.text "")
+                                               ]
                        )
                     ++ (case model.snappingPointsLine of
                             Just ( firstP, secondP ) ->
@@ -934,7 +1014,7 @@ view model =
                                 []
                        )
                  -- debug stuff
-                 -- ++ (model.rectangles |> List.map (Tuple.first >> drawRectanglePoint model.mapPanOffset))
+                 -- ++ (model.rooms |> List.map (Tuple.first >> drawRectanglePoint model.mapPanOffset))
                 )
              , div [ style "color" "white" ] [ text ("Current View: " ++ (model.mapPanOffset |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.mapPanOffset |> (\( x, y ) -> y |> String.fromInt))) ]
              ]
@@ -1006,7 +1086,7 @@ view model =
                         RectangleSelected { selectedId } ->
                             let
                                 rectangle =
-                                    List.filter (\{ id } -> id == selectedId) model.rectangles
+                                    List.filter (\{ id } -> id == selectedId) model.rooms
                                         |> List.head
                             in
                             case rectangle of
@@ -1328,3 +1408,10 @@ numWithinRange a b range =
 nbsp : String
 nbsp =
     "\u{00A0}"
+
+
+getFirstRoom : (Room -> Bool) -> List Room -> Maybe Room
+getFirstRoom predicate rooms =
+    rooms
+        |> List.filter predicate
+        |> List.head
