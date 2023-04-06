@@ -747,7 +747,7 @@ update msg model =
                             , Cmd.none
                             )
 
-                        DraggingRoom { room, initialMousePos } ->
+                        DraggingRoom { room, initialMousePos, mousePos } ->
                             ( { model
                                 | mode =
                                     Select
@@ -759,7 +759,48 @@ update msg model =
                                                 , mousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
 
                                                 -- TODO:
-                                                , isOverlappingAnotherRoom = False
+                                                , isOverlappingAnotherRoom =
+                                                    model.rooms
+                                                        |> List.any
+                                                            (\r ->
+                                                                if r.id == room then
+                                                                    let
+                                                                        ( mInitX, mInitY ) =
+                                                                            initialMousePos
+
+                                                                        ( mX, mY ) =
+                                                                            mousePos
+
+                                                                        ( x1, y1 ) =
+                                                                            r.boundingBox |> Rect.topLeft
+
+                                                                        ( newX1, newY1 ) =
+                                                                            ( mX - (mInitX - x1)
+                                                                            , mY - (mInitY - y1)
+                                                                            )
+
+                                                                        isOverlappingAnotherRoom : Bool
+                                                                        isOverlappingAnotherRoom =
+                                                                            model.rooms
+                                                                                |> List.filter (\e -> e.id /= room)
+                                                                                |> List.filter
+                                                                                    (.boundingBox
+                                                                                        >> Rect.isThereOverlap
+                                                                                            { x1 = newX1
+                                                                                            , y1 = newY1
+                                                                                            , width = r.boundingBox.width
+                                                                                            , height = r.boundingBox.height
+                                                                                            }
+                                                                                    )
+                                                                                |> List.head
+                                                                                |> Maybe.map (always True)
+                                                                                |> Maybe.withDefault False
+                                                                    in
+                                                                    isOverlappingAnotherRoom
+
+                                                                else
+                                                                    False
+                                                            )
                                                 }
                                         }
                               }
@@ -1026,7 +1067,7 @@ view model =
                                             HoldingClickOnRoom _ ->
                                                 S.text ""
 
-                                            DraggingRoom { initialMousePos, mousePos, room } ->
+                                            DraggingRoom { initialMousePos, mousePos, room, isOverlappingAnotherRoom } ->
                                                 model.rooms
                                                     |> List.filter (\{ id } -> id == room)
                                                     |> List.head
@@ -1057,8 +1098,20 @@ view model =
                                                                 , SA.height (height |> toString)
                                                                 , SA.width (width |> toString)
                                                                 , strokeWidth "2"
-                                                                , stroke "white"
-                                                                , fill "rgba(255,255,255,0.1)"
+                                                                , stroke
+                                                                    (if isOverlappingAnotherRoom then
+                                                                        "red"
+
+                                                                     else
+                                                                        "white"
+                                                                    )
+                                                                , fill
+                                                                    (if isOverlappingAnotherRoom then
+                                                                        "rgba(255,0,0,0.1)"
+
+                                                                     else
+                                                                        "rgba(255,255,255,0.1)"
+                                                                    )
                                                                 ]
                                                                 []
                                                         )
