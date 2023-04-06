@@ -1438,6 +1438,10 @@ rectanglesOverlap firstRectangle secondRectangle =
         || (x2 + width2 >= x1 && x2 + width2 <= x1 + width1 && y2 >= y1 && y2 <= y1 + height1)
         || (x2 >= x1 && x2 <= x1 + width1 && y2 + height2 >= y1 && y2 + height2 <= y1 + height1)
         || (x2 + width2 >= x1 && x2 + width2 <= x1 + width1 && y2 + height2 >= y1 && y2 + height2 <= y1 + height1)
+        -- rectangle A is inside of rectangle B
+        || (y2 >= y1 && y2 + height2 <= y1 + height1 && x2 <= x1 && x2 + width2 >= x1 + width1)
+        -- rectangle B is inside of rectangle A
+        || (y1 >= y2 && y1 + height1 <= y2 + height2 && x1 <= x2 && x1 + width1 >= x2 + width2)
 
 
 tupleToString : ( Int, Int ) -> ( String, String )
