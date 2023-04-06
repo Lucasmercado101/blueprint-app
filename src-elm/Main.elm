@@ -510,7 +510,7 @@ update msg model =
                                     in
                                     List.any
                                         (\rect ->
-                                            rectanglesOverlap
+                                            Rect.isThereOverlap
                                                 { x1 = gx
                                                 , y1 = gy
                                                 , width = w1
@@ -828,7 +828,7 @@ update msg model =
                                                                 |> List.filter (\e -> e.id /= room)
                                                                 |> List.filter
                                                                     (.boundingBox
-                                                                        >> rectanglesOverlap
+                                                                        >> Rect.isThereOverlap
                                                                             { x1 = newX1
                                                                             , y1 = newY1
                                                                             , width = r.boundingBox.width
@@ -1396,52 +1396,6 @@ toRelative relativeToOffset offsetPan =
             relativeToOffset
     in
     ( x - gx, y - gy )
-
-
-rectanglesOverlap : Rectangle -> Rectangle -> Bool
-rectanglesOverlap firstRectangle secondRectangle =
-    let
-        x1 =
-            firstRectangle.x1
-
-        y1 =
-            firstRectangle.y1
-
-        width1 =
-            firstRectangle.width
-
-        height1 =
-            firstRectangle.height
-
-        x2 =
-            secondRectangle.x1
-
-        y2 =
-            secondRectangle.y1
-
-        width2 =
-            secondRectangle.width
-
-        height2 =
-            secondRectangle.height
-    in
-    -- top left is between the start and end
-    (x1 >= x2 && x1 <= x2 + width2 && y1 >= y2 && y1 <= y2 + height2)
-        -- top right is between the start and end
-        || (x1 + width1 >= x2 && x1 + width1 <= x2 + width2 && y1 >= y2 && y1 <= y2 + height2)
-        -- bottom left is between the start and end
-        || (x1 >= x2 && x1 <= x2 + width2 && y1 + height1 >= y2 && y1 + height1 <= y2 + height2)
-        -- bottom right is between the start and end
-        || (x1 + width1 >= x2 && x1 + width1 <= x2 + width2 && y1 + height1 >= y2 && y1 + height1 <= y2 + height2)
-        -- same but with the other rectangle
-        || (x2 >= x1 && x2 <= x1 + width1 && y2 >= y1 && y2 <= y1 + height1)
-        || (x2 + width2 >= x1 && x2 + width2 <= x1 + width1 && y2 >= y1 && y2 <= y1 + height1)
-        || (x2 >= x1 && x2 <= x1 + width1 && y2 + height2 >= y1 && y2 + height2 <= y1 + height1)
-        || (x2 + width2 >= x1 && x2 + width2 <= x1 + width1 && y2 + height2 >= y1 && y2 + height2 <= y1 + height1)
-        -- rectangle A is inside of rectangle B
-        || (y2 >= y1 && y2 + height2 <= y1 + height1 && x2 <= x1 && x2 + width2 >= x1 + width1)
-        -- rectangle B is inside of rectangle A
-        || (y1 >= y2 && y1 + height1 <= y2 + height2 && x1 <= x2 && x1 + width1 >= x2 + width2)
 
 
 tupleToString : ( Int, Int ) -> ( String, String )
