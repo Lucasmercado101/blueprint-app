@@ -164,7 +164,7 @@ type HoveringOverOrDraggingRoom
         { room : RoomID
         , mousePos : Point
         , initialMousePos : Point
-        , isOverlappingAnother : Bool
+        , isOverlappingAnotherRoom : Bool
         }
 
 
@@ -173,7 +173,7 @@ type DrawState
     | SelectedStart
         { position : { start : Point, end : Point }
         , relativeStartingPoint : Point
-        , isOverlappingAnotherRectangle : Bool
+        , isOverlappingAnotherRoom : Bool
         }
 
 
@@ -341,7 +341,7 @@ update msg model =
                                     Draw
                                         (SelectedStart
                                             { position = { start = ( x, y ), end = ( x, y ) }
-                                            , isOverlappingAnotherRectangle = False
+                                            , isOverlappingAnotherRoom = False
                                             , relativeStartingPoint = ( x, y )
                                             }
                                         )
@@ -350,8 +350,8 @@ update msg model =
                             , Cmd.none
                             )
 
-                        SelectedStart { position, isOverlappingAnotherRectangle } ->
-                            if isOverlappingAnotherRectangle then
+                        SelectedStart { position, isOverlappingAnotherRoom } ->
+                            if isOverlappingAnotherRoom then
                                 ( { model
                                     | mode = Draw NotDrawing
                                     , snappingPointsLine = Nothing
@@ -499,8 +499,8 @@ update msg model =
                                     else
                                         { start = relativeStartingPoint, end = ( x, y ) }
 
-                                isOverlappingAnotherRectangle : Bool
-                                isOverlappingAnotherRectangle =
+                                isOverlappingAnotherRoom : Bool
+                                isOverlappingAnotherRoom =
                                     let
                                         ( gx, gy ) =
                                             toGlobal position.start model.mapPanOffset
@@ -697,7 +697,7 @@ update msg model =
                                         (SelectedStart
                                             { selectedStart
                                                 | position = snapBottomPosition |> Maybe.withDefault position
-                                                , isOverlappingAnotherRectangle = isOverlappingAnotherRectangle
+                                                , isOverlappingAnotherRoom = isOverlappingAnotherRoom
                                             }
                                         )
                                 , snappingPointsLine = bottomSideIsAlignedToAnotherRectangle
@@ -740,7 +740,7 @@ update msg model =
                                                 { room = room
                                                 , mousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
                                                 , initialMousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
-                                                , isOverlappingAnother = False
+                                                , isOverlappingAnotherRoom = False
                                                 }
                                         }
                               }
@@ -759,14 +759,14 @@ update msg model =
                                                 , mousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
 
                                                 -- TODO:
-                                                , isOverlappingAnother = False
+                                                , isOverlappingAnotherRoom = False
                                                 }
                                         }
                               }
                             , Cmd.none
                             )
 
-        MouseUp mouseUpRelCoords ->
+        MouseUp _ ->
             case model.mode of
                 Pan ->
                     ( { model | holdingLeftMouseDown = False }, Cmd.none )
@@ -800,9 +800,65 @@ update msg model =
                             , Cmd.none
                             )
 
-                        DraggingRoom { room } ->
-                            -- TODO: confirm new position by changing rooms location
-                            ( { model | mode = Select { editingRoom = editingRoom, hoveringOverOrDraggingRoom = HoveringOverRoom room } }, Cmd.none )
+                        DraggingRoom { room, initialMousePos, mousePos } ->
+                            ( { model
+                                | rooms =
+                                    model.rooms
+                                        |> List.map
+                                            (\r ->
+                                                if r.id == room then
+                                                    let
+                                                        ( mInitX, mInitY ) =
+                                                            initialMousePos
+
+                                                        ( mX, mY ) =
+                                                            mousePos
+
+                                                        ( x1, y1 ) =
+                                                            r.boundingBox |> Rect.topLeft
+
+                                                        ( newX1, newY1 ) =
+                                                            ( mX - (mInitX - x1)
+                                                            , mY - (mInitY - y1)
+                                                            )
+
+                                                        isOverlappingAnotherRoom : Bool
+                                                        isOverlappingAnotherRoom =
+                                                            model.rooms
+                                                                |> List.filter (\e -> e.id /= room)
+                                                                |> List.filter
+                                                                    (.boundingBox
+                                                                        >> rectanglesOverlap
+                                                                            { x1 = newX1
+                                                                            , y1 = newY1
+                                                                            , width = r.boundingBox.width
+                                                                            , height = r.boundingBox.height
+                                                                            }
+                                                                    )
+                                                                |> List.head
+                                                                |> Maybe.map (always True)
+                                                                |> Maybe.withDefault False
+                                                    in
+                                                    if isOverlappingAnotherRoom then
+                                                        r
+
+                                                    else
+                                                        { r
+                                                            | boundingBox =
+                                                                { x1 = newX1
+                                                                , y1 = newY1
+                                                                , width = r.boundingBox.width
+                                                                , height = r.boundingBox.height
+                                                                }
+                                                        }
+
+                                                else
+                                                    r
+                                            )
+                                , mode = Select { editingRoom = editingRoom, hoveringOverOrDraggingRoom = HoveringOverRoom room }
+                              }
+                            , Cmd.none
+                            )
 
                 Delete ->
                     ( model, Cmd.none )
@@ -887,7 +943,7 @@ view model =
                             NotDrawing ->
                                 rect [] []
 
-                            SelectedStart { position, isOverlappingAnotherRectangle } ->
+                            SelectedStart { position, isOverlappingAnotherRoom } ->
                                 let
                                     { start, end } =
                                         position
@@ -905,7 +961,7 @@ view model =
                                     , SA.width ((x2 - x1) |> toString)
                                     , strokeWidth "2"
                                     , stroke
-                                        (if isOverlappingAnotherRectangle then
+                                        (if isOverlappingAnotherRoom then
                                             "red"
 
                                          else
