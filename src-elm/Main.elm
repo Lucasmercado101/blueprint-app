@@ -871,19 +871,27 @@ update msg model =
                             , Cmd.none
                             )
 
-                        DraggingToSelectMany selectedArea ->
+                        DraggingToSelectMany { start, end } ->
                             let
                                 roomsSelected : List Room
                                 roomsSelected =
                                     model.rooms
                                         |> List.filter
-                                            (.boundingBox
-                                                >> Rect.isInside
-                                                    { x1 = selectedArea.start |> Point.x
-                                                    , y1 = selectedArea.start |> Point.y
-                                                    , width = selectedArea.end |> Point.x
-                                                    , height = selectedArea.end |> Point.y
+                                            (\r ->
+                                                let
+                                                    ( x1, y1 ) =
+                                                        start
+
+                                                    ( x2, y2 ) =
+                                                        end
+                                                in
+                                                Rect.isInside
+                                                    { x1 = x1
+                                                    , y1 = y1
+                                                    , width = x2 - x1
+                                                    , height = y2 - y1
                                                     }
+                                                    r.boundingBox
                                             )
                             in
                             ( { model
