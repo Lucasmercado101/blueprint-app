@@ -1499,3 +1499,8 @@ getIdOfRoomBeingHoveredOrDragged hoveringOverOrDraggingRoom =
 
         DraggingRoom { room } ->
             Just room
+
+
+calcSlope : ( Float, Float ) -> ( Float, Float ) -> Float
+calcSlope ( x1, y1 ) ( x2, y2 ) =
+    (y2 - y1) / (x2 - x1)
