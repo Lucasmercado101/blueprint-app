@@ -757,8 +757,6 @@ update msg model =
                                                 { room = room
                                                 , initialMousePos = initialMousePos
                                                 , mousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
-
-                                                -- TODO:
                                                 , isOverlappingAnotherRoom =
                                                     model.rooms
                                                         |> List.any
