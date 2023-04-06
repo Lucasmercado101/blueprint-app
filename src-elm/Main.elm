@@ -11,7 +11,7 @@ import Point
 import Random
 import Rect exposing (Point, Rectangle)
 import Svg as S exposing (Svg, line, rect, svg)
-import Svg.Attributes as SA exposing (color, cx, cy, fill, fontSize, r, rx, ry, stroke, strokeWidth, version, viewBox, x, x1, x2, y, y1, y2)
+import Svg.Attributes as SA exposing (color, cx, cy, fill, fontSize, r, rx, ry, stroke, strokeWidth, version, viewBox, x1, x2, y1, y2)
 import UUID exposing (UUID)
 
 
@@ -181,6 +181,8 @@ type HoveringOverOrDraggingRoom
 
 type DrawState
     = NotDrawing
+      -- NOTE: "relativeStartingPoint" is there so that
+      -- the rectangle's start is always smaller than its end at the end of the day
     | SelectedStart
         { position : { start : Point, end : Point }
         , relativeStartingPoint : Point
@@ -862,7 +864,7 @@ update msg model =
                             ( { model
                                 | mode =
                                     Select
-                                        { selected = selected
+                                        { selected = NoRoomSelected
                                         , state = NotHoveringOverRoom
                                         }
                               }
@@ -1015,6 +1017,7 @@ view model =
             ([ style "background-color" background
              , style "width" "100vw"
              , style "height" "100vh"
+             , style "position" "relative"
 
              --  TODO: drag by holding middle click and moving mouse
              --  , on "auxclick"
@@ -1059,198 +1062,267 @@ view model =
             )
             -- Drawing order is bottom to top, draw last on top
             [ svg [ version "1.1", SA.width (screenWidth |> String.fromInt), SA.height (screenHeight |> String.fromInt), viewBox "0 0 1900 800" ]
-                ((case model.mode of
-                    Delete ->
-                        rect [] []
+                -- DRAW
+                (let
+                    bgGrid : List (Svg Msg)
+                    bgGrid =
+                        backgroundGrid model.mapPanOffset
 
-                    Pan ->
-                        rect [] []
+                    globalRectToRel : Rectangle -> Rectangle
+                    globalRectToRel { x1, y1, width, height } =
+                        let
+                            rel : Point
+                            rel =
+                                toRelative ( x1, y1 ) model.mapPanOffset
+                        in
+                        { x1 = rel |> Point.x
+                        , y1 = rel |> Point.y
+                        , width = width
+                        , height = height
+                        }
 
-                    Select _ ->
-                        rect [] []
-
-                    Draw state ->
-                        case state of
-                            NotDrawing ->
-                                rect [] []
-
-                            SelectedStart { position, isOverlappingAnotherRoom } ->
-                                let
-                                    { start, end } =
-                                        position
-
-                                    ( x1, y1 ) =
-                                        start
-
-                                    ( x2, y2 ) =
-                                        end
-                                in
-                                rect
-                                    [ x (x1 |> toString)
-                                    , y (y1 |> toString)
-                                    , SA.height ((y2 - y1) |> toString)
-                                    , SA.width ((x2 - x1) |> toString)
-                                    , strokeWidth "2"
-                                    , stroke
-                                        (if isOverlappingAnotherRoom then
-                                            "red"
-
-                                         else
-                                            "white"
-                                        )
-                                    , fill "transparent"
-                                    ]
-                                    []
-                 )
-                    :: backgroundGrid model.mapPanOffset
-                    ++ (case model.mode of
-                            Delete ->
-                                model.rooms |> List.map (drawRectangle model.mapPanOffset False)
-
-                            Pan ->
-                                model.rooms |> List.map (drawRectangle model.mapPanOffset False)
-
-                            Draw _ ->
-                                model.rooms |> List.map (drawRectangle model.mapPanOffset False)
-
-                            Select { selected, state } ->
-                                let
-                                    -- TODO: Refactor
-                                    roomBeingHoveredOverOrDragged : List RoomID
-                                    roomBeingHoveredOverOrDragged =
-                                        getIdOfRoomBeingHoveredOrDragged state
-                                            |> Maybe.map List.singleton
-                                            |> Maybe.withDefault []
-
-                                    roomsBeingHoveredOver : List RoomID
-                                    roomsBeingHoveredOver =
-                                        case selected of
-                                            RoomSelected roomId ->
-                                                roomId :: roomBeingHoveredOverOrDragged
-
-                                            GroupSelected rooms ->
-                                                rooms ++ roomBeingHoveredOverOrDragged
-
-                                            NoRoomSelected ->
-                                                roomBeingHoveredOverOrDragged
-                                in
-                                (model.rooms
-                                    |> (\r ->
-                                            case state of
-                                                DraggingRoom { room } ->
-                                                    r |> List.filter (\{ id } -> id /= room)
-
-                                                _ ->
-                                                    r
-                                       )
-                                    |> List.map
-                                        (\({ id } as room) ->
-                                            drawRectangle model.mapPanOffset
-                                                (List.any (\r -> r == id) roomsBeingHoveredOver)
-                                                room
-                                        )
+                    drawRooms : List Room -> List (Svg Msg)
+                    drawRooms rooms =
+                        rooms
+                            |> List.map
+                                (\{ boundingBox } ->
+                                    drawRect (globalRectToRel boundingBox)
+                                        [ strokeWidth "2"
+                                        , stroke "white"
+                                        , fill "transparent"
+                                        ]
                                 )
-                                    ++ [ case state of
-                                            NotHoveringOverRoom ->
-                                                S.text ""
 
-                                            HoveringOverRoom _ ->
-                                                S.text ""
-
-                                            HoldingClickOnRoom _ ->
-                                                S.text ""
-
-                                            HoldingClickOutsideAnyRooms ->
-                                                S.text ""
-
-                                            DraggingToSelectMany selectArea ->
-                                                rect
-                                                    [ x (toRelative selectArea.start model.mapPanOffset |> Point.x |> toString)
-                                                    , y (toRelative selectArea.start model.mapPanOffset |> Point.y |> toString)
-                                                    , SA.height ((selectArea.end |> Point.y) - (selectArea.start |> Point.y) |> toString)
-                                                    , SA.width ((selectArea.end |> Point.x) - (selectArea.start |> Point.x) |> toString)
-                                                    , strokeWidth "2"
-                                                    , stroke "white"
-                                                    , fill "transparent"
-                                                    ]
-                                                    []
-
-                                            DraggingRoom { initialMousePos, mousePos, room, isOverlappingAnotherRoom } ->
-                                                model.rooms
-                                                    |> List.filter (\{ id } -> id == room)
-                                                    |> List.head
-                                                    |> Maybe.map
-                                                        (\{ boundingBox } ->
-                                                            let
-                                                                { width, height, x1, y1 } =
-                                                                    boundingBox
-
-                                                                ( initialMx1, initialMy1 ) =
-                                                                    initialMousePos
-
-                                                                ( mx1, my1 ) =
-                                                                    mousePos
-
-                                                                ( gx, gy ) =
-                                                                    model.mapPanOffset
-
-                                                                distFromSelectedX =
-                                                                    initialMx1 - mx1
-
-                                                                distFromSelectedY =
-                                                                    initialMy1 - my1
-                                                            in
-                                                            rect
-                                                                [ x ((x1 - distFromSelectedX) - gx |> toString)
-                                                                , y ((y1 - distFromSelectedY) - gy |> toString)
-                                                                , SA.height (height |> toString)
-                                                                , SA.width (width |> toString)
-                                                                , strokeWidth "2"
-                                                                , stroke
-                                                                    (if isOverlappingAnotherRoom then
-                                                                        "red"
-
-                                                                     else
-                                                                        "white"
-                                                                    )
-                                                                , fill
-                                                                    (if isOverlappingAnotherRoom then
-                                                                        "rgba(255,0,0,0.1)"
-
-                                                                     else
-                                                                        "rgba(255,255,255,0.1)"
-                                                                    )
-                                                                ]
-                                                                []
-                                                        )
-                                                    |> Maybe.withDefault (S.text "")
-                                       ]
-                       )
-                    ++ (case model.snappingPointsLine of
-                            Just ( firstP, secondP ) ->
-                                drawSnappingLines model.mapPanOffset firstP secondP
+                    drawSnapLines : List (Svg Msg)
+                    drawSnapLines =
+                        case model.snappingPointsLine of
+                            Just ( first, second ) ->
+                                drawSnappingLines model.mapPanOffset first second
 
                             Nothing ->
                                 []
-                       )
+                 in
+                 -- NOTE: Drawing order is top to bottom, draw on top last
+                 (case model.mode of
+                    Delete ->
+                        bgGrid ++ drawRooms model.rooms
+
+                    Pan ->
+                        bgGrid ++ drawRooms model.rooms
+
+                    Draw state ->
+                        bgGrid
+                            ++ (case state of
+                                    NotDrawing ->
+                                        drawRooms model.rooms
+
+                                    SelectedStart { position, isOverlappingAnotherRoom } ->
+                                        let
+                                            { start, end } =
+                                                position
+
+                                            ( x1, y1 ) =
+                                                start
+
+                                            ( x2, y2 ) =
+                                                end
+                                        in
+                                        drawRooms model.rooms
+                                            ++ [ drawRect
+                                                    { x1 = x1
+                                                    , y1 = y1
+                                                    , height = y2 - y1
+                                                    , width = x2 - x1
+                                                    }
+                                                    [ strokeWidth "2"
+                                                    , stroke
+                                                        (if isOverlappingAnotherRoom then
+                                                            "red"
+
+                                                         else
+                                                            "white"
+                                                        )
+                                                    , fill "transparent"
+                                                    ]
+                                               ]
+                               )
+
+                    Select { selected, state } ->
+                        let
+                            noSelectedRooms : List Room -> List Room
+                            noSelectedRooms initialRooms =
+                                case selected of
+                                    NoRoomSelected ->
+                                        initialRooms
+
+                                    RoomSelected room ->
+                                        initialRooms |> List.filter (\r -> r.id /= room)
+
+                                    GroupSelected rooms ->
+                                        initialRooms
+                                            |> List.filter (\r -> not <| List.member r.id rooms)
+
+                            drawHighlightedRooms : List Room -> List (Svg Msg)
+                            drawHighlightedRooms rooms =
+                                rooms
+                                    |> List.map
+                                        (\{ boundingBox } ->
+                                            drawRect (boundingBox |> globalRectToRel)
+                                                [ strokeWidth "2"
+                                                , stroke "white"
+                                                , fill "rgba(255,255,255,0.1)"
+                                                ]
+                                        )
+
+                            hoveredOverRoom : Maybe RoomID
+                            hoveredOverRoom =
+                                case state of
+                                    HoveringOverRoom room ->
+                                        Just room
+
+                                    HoldingClickOnRoom room ->
+                                        Just room
+
+                                    _ ->
+                                        Nothing
+
+                            noHoveredOverRoom : List Room -> List Room
+                            noHoveredOverRoom initialRooms =
+                                case hoveredOverRoom of
+                                    Just room ->
+                                        initialRooms |> List.filter (\r -> r.id /= room)
+
+                                    Nothing ->
+                                        initialRooms
+
+                            draggingRoom : Maybe RoomID
+                            draggingRoom =
+                                case state of
+                                    DraggingRoom { room } ->
+                                        Just room
+
+                                    _ ->
+                                        Nothing
+
+                            noDraggingRoom : List Room -> List Room
+                            noDraggingRoom initialRooms =
+                                case draggingRoom of
+                                    Just room ->
+                                        initialRooms |> List.filter (\r -> r.id /= room)
+
+                                    Nothing ->
+                                        initialRooms
+
+                            drawRoomBeingDragged : List Room -> Svg Msg
+                            drawRoomBeingDragged rooms =
+                                case state of
+                                    DraggingRoom { room, initialMousePos, mousePos, isOverlappingAnotherRoom } ->
+                                        rooms
+                                            |> List.filter (\{ id } -> id == room)
+                                            |> List.head
+                                            |> Maybe.map
+                                                (\{ boundingBox } ->
+                                                    let
+                                                        { width, height, x1, y1 } =
+                                                            boundingBox
+
+                                                        ( initialMx1, initialMy1 ) =
+                                                            initialMousePos
+
+                                                        ( mx1, my1 ) =
+                                                            mousePos
+
+                                                        ( gx, gy ) =
+                                                            model.mapPanOffset
+
+                                                        distFromSelectedX =
+                                                            initialMx1 - mx1
+
+                                                        distFromSelectedY =
+                                                            initialMy1 - my1
+                                                    in
+                                                    drawRect
+                                                        { x1 = (x1 - distFromSelectedX) - gx
+                                                        , y1 = (y1 - distFromSelectedY) - gy
+                                                        , height = height
+                                                        , width = width
+                                                        }
+                                                        [ strokeWidth "2"
+                                                        , stroke
+                                                            (if isOverlappingAnotherRoom then
+                                                                "red"
+
+                                                             else
+                                                                "white"
+                                                            )
+                                                        , fill
+                                                            (if isOverlappingAnotherRoom then
+                                                                "rgba(255,0,0,0.1)"
+
+                                                             else
+                                                                "rgba(255,255,255,0.1)"
+                                                            )
+                                                        ]
+                                                )
+                                            |> Maybe.withDefault (S.text "")
+
+                                    _ ->
+                                        none
+
+                            drawSelectionArea : List (Svg Msg)
+                            drawSelectionArea =
+                                case state of
+                                    DraggingToSelectMany { start, end } ->
+                                        let
+                                            ( x1, y1 ) =
+                                                start
+
+                                            ( x2, y2 ) =
+                                                end
+                                        in
+                                        [ drawRect
+                                            { x1 = x1
+                                            , y1 = y1
+                                            , height = y2 - y1
+                                            , width = x2 - x1
+                                            }
+                                            [ strokeWidth "2"
+
+                                            -- TODO: colors could be nicer
+                                            , stroke "rgba(87,121,0,0.5)"
+                                            , fill "rgba(36,49,4,0.5)"
+                                            ]
+                                        ]
+
+                                    _ ->
+                                        []
+                        in
+                        bgGrid
+                            ++ drawRooms
+                                (model.rooms
+                                    |> noSelectedRooms
+                                    |> noHoveredOverRoom
+                                    |> noDraggingRoom
+                                )
+                            ++ drawHighlightedRooms
+                                (model.rooms
+                                    |> List.filter
+                                        (\room ->
+                                            not <|
+                                                List.member room.id
+                                                    (model.rooms
+                                                        |> noSelectedRooms
+                                                        |> noHoveredOverRoom
+                                                        |> List.map .id
+                                                    )
+                                        )
+                                    |> noDraggingRoom
+                                )
+                            ++ [ drawRoomBeingDragged model.rooms ]
+                            ++ drawSelectionArea
+                 )
+                    ++ drawSnapLines
                 )
-            ]
-        , div
-            [ style "position" "absolute"
-            , style
-                "left"
-                "50%"
-            , style "bottom" "0"
-            , style "transform" "translate(-50%, 0)"
-            , style "background-color" "white"
-            , style "padding" "15px"
-            , style "display" "flex"
-            , style "gap" "15px"
-            ]
-            [ button [ style "padding" "5px", onClick PanMode ] [ text "Pan" ]
-            , button [ style "padding" "5px", onClick DrawMode ] [ text "Draw" ]
-            , button [ style "padding" "5px", onClick SelectMode ] [ text "Select" ]
-            , button [ style "padding" "5px", onClick DeleteMode ] [ text "Delete" ]
             ]
         , div
             [ style "position" "absolute"
@@ -1299,6 +1371,25 @@ view model =
                         GroupSelected _ ->
                             []
             )
+
+        -- change modes
+        , div
+            [ style "position" "absolute"
+            , style
+                "left"
+                "50%"
+            , style "bottom" "0"
+            , style "transform" "translate(-50%, 0)"
+            , style "background-color" "white"
+            , style "padding" "15px"
+            , style "display" "flex"
+            , style "gap" "15px"
+            ]
+            [ button [ style "padding" "5px", onClick PanMode ] [ text "Pan" ]
+            , button [ style "padding" "5px", onClick DrawMode ] [ text "Draw" ]
+            , button [ style "padding" "5px", onClick SelectMode ] [ text "Select" ]
+            , button [ style "padding" "5px", onClick DeleteMode ] [ text "Delete" ]
+            ]
         ]
 
 
@@ -1365,62 +1456,21 @@ drawX point size attrs =
     ]
 
 
-drawRectangle : Point -> Bool -> Room -> Svg Msg
-drawRectangle globalViewPanOffset beingHoveredOver room =
+drawRect : Rectangle -> List (Attribute Msg) -> Svg Msg
+drawRect rectangle attrs =
     let
-        ( gx, gy ) =
-            globalViewPanOffset
-
         { x1, y1, width, height } =
-            room.boundingBox
-
-        { id } =
-            room.name
+            rectangle
     in
-    S.g []
-        [ rect
-            [ x (x1 - gx |> toString)
-            , y (y1 - gy |> toString)
-            , SA.height (height |> toString)
-            , SA.width (width |> toString)
-            , strokeWidth "2"
-            , stroke "white"
-            , fill
-                (if beingHoveredOver then
-                    "rgba(255,255,255,0.1)"
-
-                 else
-                    "transparent"
-                )
-            ]
-            []
-
-        -- TODO: get bounding box to check for collisions and overflows
-        -- and stuff when text gets too large
-        , S.text_
-            [ x
-                ((x1
-                    + width
-                    // 2
-                    - (case room.name.boundingBox of
-                        Just bbox ->
-                            bbox.width // 2
-
-                        Nothing ->
-                            0
-                      )
-                 )
-                    - gx
-                    |> String.fromInt
-                )
-            , y ((y1 + height // 2) - gy |> String.fromInt)
-            , SA.class "svgText"
-            , SA.fill "white"
-            , SA.id (id |> UUID.toString)
-            ]
-            [ S.text room.name.value
-            ]
-        ]
+    rect
+        ([ SA.x (x1 |> toString)
+         , SA.y (y1 |> toString)
+         , SA.height (height |> toString)
+         , SA.width (width |> toString)
+         ]
+            ++ attrs
+        )
+        []
 
 
 drawRectanglePoint : Point -> Rectangle -> Svg Msg
@@ -1430,8 +1480,8 @@ drawRectanglePoint globalView { x1, y1, width, height } =
             globalView
     in
     S.text_
-        [ x (x1 - gx |> String.fromInt)
-        , y (y1 - gy - 10 |> String.fromInt)
+        [ SA.x (x1 - gx |> String.fromInt)
+        , SA.y (y1 - gy - 10 |> String.fromInt)
         , SA.class "svgText"
         , SA.fill "white"
         ]
@@ -1594,3 +1644,8 @@ getIdOfRoomBeingHoveredOrDragged hoveringOverOrDraggingRoom =
 calcSlope : ( Float, Float ) -> ( Float, Float ) -> Float
 calcSlope ( x1, y1 ) ( x2, y2 ) =
     (y2 - y1) / (x2 - x1)
+
+
+none : Svg msg
+none =
+    S.text ""
