@@ -1340,9 +1340,9 @@ view model =
                             ++ drawRooms
                                 (model.rooms
                                     |> noGroupBeingHighlightedRooms
-                                 -- |> noSelectedRooms
-                                 -- |> noHoveredOverRoom
-                                 -- |> noDraggingRoom
+                                    |> noSelectedRooms
+                                    |> noHoveredOverRoom
+                                    |> noDraggingRoom
                                 )
                             ++ drawHighlightedRooms
                                 (model.rooms
