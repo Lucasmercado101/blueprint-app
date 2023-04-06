@@ -240,4 +240,4 @@ isInside firstRectangle secondRectangle =
         height2 =
             secondRectangle.height
     in
-    y2 >= y1 && y2 + height2 <= y1 + height1 && x2 <= x1 && x2 + width2 >= x1 + width1
+    y2 >= y1 && y2 + height2 <= y1 + height1 && x2 >= x1 && x2 + width2 <= x1 + width1
