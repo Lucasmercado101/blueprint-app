@@ -150,14 +150,25 @@ type Mode
     = Pan
     | Draw DrawState
     | Select
-        { editingRoom : Maybe RoomID
-        , hoveringOverOrDraggingRoom : HoveringOverOrDraggingRoom
+        { selected : SelectedRoom
+        , state : HoveringOverOrDraggingRoom
         }
     | Delete
 
 
+type SelectedRoom
+    = NoRoomSelected
+    | RoomSelected RoomID
+    | GroupSelected (List RoomID)
+
+
 type HoveringOverOrDraggingRoom
     = NotHoveringOverRoom
+    | HoldingClickOutsideAnyRooms
+    | DraggingToSelectMany
+        { start : Point
+        , end : Point
+        }
     | HoveringOverRoom RoomID
     | HoldingClickOnRoom RoomID
     | DraggingRoom
@@ -300,8 +311,8 @@ update msg model =
             ( { model
                 | mode =
                     Select
-                        { editingRoom = Nothing
-                        , hoveringOverOrDraggingRoom = NotHoveringOverRoom
+                        { selected = NoRoomSelected
+                        , state = NotHoveringOverRoom
                         }
                 , relativeView =
                     { start = ( 0, 0 )
@@ -404,7 +415,7 @@ update msg model =
                                 , Cmd.none
                                 )
 
-                Select { editingRoom } ->
+                Select { selected } ->
                     let
                         onARoom : Maybe RoomID
                         onARoom =
@@ -414,10 +425,10 @@ update msg model =
                     in
                     case onARoom of
                         Just room ->
-                            ( { model | mode = Select { editingRoom = editingRoom, hoveringOverOrDraggingRoom = HoldingClickOnRoom room } }, Cmd.none )
+                            ( { model | mode = Select { selected = selected, state = HoldingClickOnRoom room } }, Cmd.none )
 
                         Nothing ->
-                            ( model, Cmd.none )
+                            ( { model | mode = Select { selected = selected, state = HoldingClickOutsideAnyRooms } }, Cmd.none )
 
         MouseMove (( x, y ) as mouseMoveRelCoords) ->
             case model.mode of
@@ -510,7 +521,7 @@ update msg model =
                                     in
                                     List.any
                                         (\rect ->
-                                            Rect.isThereOverlap
+                                            Rect.isThereAnyOverlap
                                                 { x1 = gx
                                                 , y1 = gy
                                                 , width = w1
@@ -705,7 +716,7 @@ update msg model =
                             , Cmd.none
                             )
 
-                Select { editingRoom, hoveringOverOrDraggingRoom } ->
+                Select { selected, state } ->
                     let
                         roomImHoveringOver : Maybe RoomID
                         roomImHoveringOver =
@@ -713,29 +724,61 @@ update msg model =
                                 |> getFirstRoom (\{ boundingBox } -> Rect.isPointOnRectangle (mouseMoveRelCoords |> toGlobal model.mapPanOffset) boundingBox)
                                 |> Maybe.map .id
                     in
-                    case hoveringOverOrDraggingRoom of
+                    case state of
                         NotHoveringOverRoom ->
                             case roomImHoveringOver of
                                 Just room ->
-                                    ( { model | mode = Select { editingRoom = editingRoom, hoveringOverOrDraggingRoom = HoveringOverRoom room } }, Cmd.none )
+                                    ( { model | mode = Select { selected = selected, state = HoveringOverRoom room } }, Cmd.none )
 
                                 Nothing ->
                                     ( model, Cmd.none )
 
+                        ------------------------------------------
+                        HoldingClickOutsideAnyRooms ->
+                            ( { model
+                                | mode =
+                                    Select
+                                        { selected = selected
+                                        , state =
+                                            DraggingToSelectMany
+                                                { start = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                , end = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                }
+                                        }
+                              }
+                            , Cmd.none
+                            )
+
+                        DraggingToSelectMany { start } ->
+                            ( { model
+                                | mode =
+                                    Select
+                                        { selected = selected
+                                        , state =
+                                            DraggingToSelectMany
+                                                { start = start
+                                                , end = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                }
+                                        }
+                              }
+                            , Cmd.none
+                            )
+
+                        ------------------------------------------
                         HoveringOverRoom _ ->
                             case roomImHoveringOver of
                                 Just room ->
-                                    ( { model | mode = Select { editingRoom = editingRoom, hoveringOverOrDraggingRoom = HoveringOverRoom room } }, Cmd.none )
+                                    ( { model | mode = Select { selected = selected, state = HoveringOverRoom room } }, Cmd.none )
 
                                 Nothing ->
-                                    ( { model | mode = Select { editingRoom = editingRoom, hoveringOverOrDraggingRoom = NotHoveringOverRoom } }, Cmd.none )
+                                    ( { model | mode = Select { selected = selected, state = NotHoveringOverRoom } }, Cmd.none )
 
                         HoldingClickOnRoom room ->
                             ( { model
                                 | mode =
                                     Select
-                                        { editingRoom = editingRoom
-                                        , hoveringOverOrDraggingRoom =
+                                        { selected = selected
+                                        , state =
                                             DraggingRoom
                                                 { room = room
                                                 , mousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
@@ -751,8 +794,8 @@ update msg model =
                             ( { model
                                 | mode =
                                     Select
-                                        { editingRoom = editingRoom
-                                        , hoveringOverOrDraggingRoom =
+                                        { selected = selected
+                                        , state =
                                             DraggingRoom
                                                 { room = room
                                                 , initialMousePos = initialMousePos
@@ -783,7 +826,7 @@ update msg model =
                                                                                 |> List.filter (\e -> e.id /= room)
                                                                                 |> List.filter
                                                                                     (.boundingBox
-                                                                                        >> Rect.isThereOverlap
+                                                                                        >> Rect.isThereAnyOverlap
                                                                                             { x1 = newX1
                                                                                             , y1 = newY1
                                                                                             , width = r.boundingBox.width
@@ -810,10 +853,56 @@ update msg model =
                 Pan ->
                     ( { model | holdingLeftMouseDown = False }, Cmd.none )
 
-                Select { editingRoom, hoveringOverOrDraggingRoom } ->
-                    case hoveringOverOrDraggingRoom of
+                Select { selected, state } ->
+                    case state of
                         NotHoveringOverRoom ->
                             ( model, Cmd.none )
+
+                        HoldingClickOutsideAnyRooms ->
+                            ( { model
+                                | mode =
+                                    Select
+                                        { selected = selected
+                                        , state = NotHoveringOverRoom
+                                        }
+                              }
+                            , Cmd.none
+                            )
+
+                        DraggingToSelectMany selectedArea ->
+                            let
+                                roomsSelected : List Room
+                                roomsSelected =
+                                    model.rooms
+                                        |> List.filter
+                                            (.boundingBox
+                                                >> Rect.isInside
+                                                    { x1 = selectedArea.start |> Point.x
+                                                    , y1 = selectedArea.start |> Point.y
+                                                    , width = selectedArea.end |> Point.x
+                                                    , height = selectedArea.end |> Point.y
+                                                    }
+                                            )
+                            in
+                            ( { model
+                                | mode =
+                                    Select
+                                        { selected =
+                                            if List.isEmpty roomsSelected then
+                                                selected
+
+                                            else
+                                                case roomsSelected of
+                                                    [ room ] ->
+                                                        RoomSelected room.id
+
+                                                    _ ->
+                                                        GroupSelected (roomsSelected |> List.map .id)
+                                        , state = NotHoveringOverRoom
+                                        }
+                              }
+                            , Cmd.none
+                            )
 
                         HoveringOverRoom _ ->
                             ( model, Cmd.none )
@@ -822,18 +911,21 @@ update msg model =
                             ( { model
                                 | mode =
                                     Select
-                                        { editingRoom =
-                                            case editingRoom of
-                                                Just roomImEditing ->
+                                        { selected =
+                                            case selected of
+                                                RoomSelected roomImEditing ->
                                                     if roomImEditing == roomId then
-                                                        Nothing
+                                                        NoRoomSelected
 
                                                     else
-                                                        Just roomId
+                                                        RoomSelected roomId
 
-                                                Nothing ->
-                                                    Just roomId
-                                        , hoveringOverOrDraggingRoom = HoveringOverRoom roomId
+                                                GroupSelected _ ->
+                                                    RoomSelected roomId
+
+                                                NoRoomSelected ->
+                                                    RoomSelected roomId
+                                        , state = HoveringOverRoom roomId
                                         }
                               }
                             , Cmd.none
@@ -867,7 +959,7 @@ update msg model =
                                                                 |> List.filter (\e -> e.id /= room)
                                                                 |> List.filter
                                                                     (.boundingBox
-                                                                        >> Rect.isThereOverlap
+                                                                        >> Rect.isThereAnyOverlap
                                                                             { x1 = newX1
                                                                             , y1 = newY1
                                                                             , width = r.boundingBox.width
@@ -894,7 +986,7 @@ update msg model =
                                                 else
                                                     r
                                             )
-                                , mode = Select { editingRoom = editingRoom, hoveringOverOrDraggingRoom = HoveringOverRoom room }
+                                , mode = Select { selected = selected, state = HoveringOverRoom room }
                               }
                             , Cmd.none
                             )
@@ -1021,27 +1113,30 @@ view model =
                             Draw _ ->
                                 model.rooms |> List.map (drawRectangle model.mapPanOffset False)
 
-                            Select { editingRoom, hoveringOverOrDraggingRoom } ->
+                            Select { selected, state } ->
                                 let
                                     -- TODO: Refactor
                                     roomBeingHoveredOverOrDragged : List RoomID
                                     roomBeingHoveredOverOrDragged =
-                                        getIdOfRoomBeingHoveredOrDragged hoveringOverOrDraggingRoom
+                                        getIdOfRoomBeingHoveredOrDragged state
                                             |> Maybe.map List.singleton
                                             |> Maybe.withDefault []
 
                                     roomsBeingHoveredOver : List RoomID
                                     roomsBeingHoveredOver =
-                                        case editingRoom of
-                                            Just roomId ->
+                                        case selected of
+                                            RoomSelected roomId ->
                                                 roomId :: roomBeingHoveredOverOrDragged
 
-                                            Nothing ->
+                                            GroupSelected rooms ->
+                                                rooms ++ roomBeingHoveredOverOrDragged
+
+                                            NoRoomSelected ->
                                                 roomBeingHoveredOverOrDragged
                                 in
                                 (model.rooms
                                     |> (\r ->
-                                            case hoveringOverOrDraggingRoom of
+                                            case state of
                                                 DraggingRoom { room } ->
                                                     r |> List.filter (\{ id } -> id /= room)
 
@@ -1055,7 +1150,7 @@ view model =
                                                 room
                                         )
                                 )
-                                    ++ [ case hoveringOverOrDraggingRoom of
+                                    ++ [ case state of
                                             NotHoveringOverRoom ->
                                                 S.text ""
 
@@ -1064,6 +1159,21 @@ view model =
 
                                             HoldingClickOnRoom _ ->
                                                 S.text ""
+
+                                            HoldingClickOutsideAnyRooms ->
+                                                S.text ""
+
+                                            DraggingToSelectMany selectArea ->
+                                                rect
+                                                    [ x (toRelative selectArea.start model.mapPanOffset |> Point.x |> toString)
+                                                    , y (toRelative selectArea.start model.mapPanOffset |> Point.y |> toString)
+                                                    , SA.height ((selectArea.end |> Point.y) - (selectArea.start |> Point.y) |> toString)
+                                                    , SA.width ((selectArea.end |> Point.x) - (selectArea.start |> Point.x) |> toString)
+                                                    , strokeWidth "2"
+                                                    , stroke "white"
+                                                    , fill "transparent"
+                                                    ]
+                                                    []
 
                                             DraggingRoom { initialMousePos, mousePos, room, isOverlappingAnotherRoom } ->
                                                 model.rooms
@@ -1188,12 +1298,12 @@ view model =
                 Draw _ ->
                     []
 
-                Select { editingRoom } ->
-                    case editingRoom of
-                        Nothing ->
+                Select { selected } ->
+                    case selected of
+                        NoRoomSelected ->
                             []
 
-                        Just roomId ->
+                        RoomSelected roomId ->
                             let
                                 room =
                                     List.filter (\{ id } -> id == roomId) model.rooms
@@ -1214,6 +1324,9 @@ view model =
 
                                 Nothing ->
                                     []
+
+                        GroupSelected _ ->
+                            []
             )
         ]
 
@@ -1499,6 +1612,12 @@ getIdOfRoomBeingHoveredOrDragged hoveringOverOrDraggingRoom =
 
         DraggingRoom { room } ->
             Just room
+
+        HoldingClickOutsideAnyRooms ->
+            Nothing
+
+        DraggingToSelectMany _ ->
+            Nothing
 
 
 calcSlope : ( Float, Float ) -> ( Float, Float ) -> Float

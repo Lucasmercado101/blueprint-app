@@ -163,8 +163,8 @@ bottommostRectangle rects =
             Just bottommost
 
 
-isThereOverlap : Rectangle -> Rectangle -> Bool
-isThereOverlap firstRectangle secondRectangle =
+isThereAnyOverlap : Rectangle -> Rectangle -> Bool
+isThereAnyOverlap firstRectangle secondRectangle =
     let
         x1 =
             firstRectangle.x1
@@ -207,3 +207,37 @@ isThereOverlap firstRectangle secondRectangle =
         || (y2 >= y1 && y2 + height2 <= y1 + height1 && x2 <= x1 && x2 + width2 >= x1 + width1)
         -- rectangle B is inside of rectangle A
         || (y1 >= y2 && y1 + height1 <= y2 + height2 && x1 <= x2 && x1 + width1 >= x2 + width2)
+
+
+
+{- is the second rectangle inside the first? -}
+
+
+isInside : Rectangle -> Rectangle -> Bool
+isInside firstRectangle secondRectangle =
+    let
+        x1 =
+            firstRectangle.x1
+
+        y1 =
+            firstRectangle.y1
+
+        width1 =
+            firstRectangle.width
+
+        height1 =
+            firstRectangle.height
+
+        x2 =
+            secondRectangle.x1
+
+        y2 =
+            secondRectangle.y1
+
+        width2 =
+            secondRectangle.width
+
+        height2 =
+            secondRectangle.height
+    in
+    y2 >= y1 && y2 + height2 <= y1 + height1 && x2 <= x1 && x2 + width2 >= x1 + width1
