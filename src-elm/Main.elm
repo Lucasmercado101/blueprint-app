@@ -1058,7 +1058,7 @@ view model =
                    )
             )
             -- Drawing order is bottom to top, draw last on top
-            ([ svg [ version "1.1", SA.width "1900", SA.height "800", viewBox "0 0 1900 800" ]
+            [ svg [ version "1.1", SA.width (screenWidth |> String.fromInt), SA.height (screenHeight |> String.fromInt), viewBox "0 0 1900 800" ]
                 ((case model.mode of
                     Delete ->
                         rect [] []
@@ -1233,37 +1233,8 @@ view model =
                             Nothing ->
                                 []
                        )
-                 -- debug stuff
-                 -- ++ (model.rooms |> List.map (Tuple.first >> drawRectanglePoint model.mapPanOffset))
                 )
-             , div [ style "color" "white" ] [ text ("Current View: " ++ (model.mapPanOffset |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.mapPanOffset |> (\( x, y ) -> y |> String.fromInt))) ]
-             ]
-                ++ (case model.mode of
-                        Delete ->
-                            []
-
-                        Draw state ->
-                            case state of
-                                NotDrawing ->
-                                    [ div [ style "color" "white" ] [ text "Current State: Not Drawing" ] ]
-
-                                SelectedStart { position } ->
-                                    let
-                                        { start, end } =
-                                            position
-                                    in
-                                    [ div [ style "color" "white" ] [ text "Current State: Selected Start" ]
-                                    , div [ style "color" "white" ] [ text ("Current Start: " ++ (start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (start |> (\( x, y ) -> y |> String.fromInt))) ]
-                                    , div [ style "color" "white" ] [ text ("Current End: " ++ (end |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (end |> (\( x, y ) -> y |> String.fromInt))) ]
-                                    ]
-
-                        Pan ->
-                            [ div [ style "color" "white" ] [ text ("Current Start (relative): " ++ (model.relativeView.start |> (\( x, y ) -> x |> String.fromInt)) ++ ", " ++ (model.relativeView.start |> (\( x, y ) -> y |> String.fromInt))) ] ]
-
-                        Select _ ->
-                            []
-                   )
-            )
+            ]
         , div
             [ style "position" "absolute"
             , style
