@@ -1353,6 +1353,7 @@ view model =
                                                     (model.rooms
                                                         |> noSelectedRooms
                                                         |> noHoveredOverRoom
+                                                        |> noGroupBeingHighlightedRooms
                                                         |> List.map .id
                                                     )
                                         )
