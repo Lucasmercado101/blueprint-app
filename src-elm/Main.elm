@@ -1277,6 +1277,34 @@ view model =
                                     _ ->
                                         none
 
+                            noGroupBeingHighlightedRooms : List Room -> List Room
+                            noGroupBeingHighlightedRooms initialRooms =
+                                case selected of
+                                    GroupSelected rooms ->
+                                        initialRooms |> List.filter (\r -> not <| List.member r.id rooms)
+
+                                    _ ->
+                                        case state of
+                                            DraggingToSelectMany { start, end } ->
+                                                let
+                                                    ( x1, y1 ) =
+                                                        start
+
+                                                    ( x2, y2 ) =
+                                                        end
+
+                                                    draggingArea =
+                                                        { x1 = x1
+                                                        , y1 = y1
+                                                        , width = x2 - x1
+                                                        , height = y2 - y1
+                                                        }
+                                                in
+                                                initialRooms |> List.filter (\r -> not <| Rect.isInside draggingArea r.boundingBox)
+
+                                            _ ->
+                                                initialRooms
+
                             drawSelectionArea : List (Svg Msg)
                             drawSelectionArea =
                                 case state of
@@ -1287,10 +1315,13 @@ view model =
 
                                             ( x2, y2 ) =
                                                 end
+
+                                            ( gx, gy ) =
+                                                model.mapPanOffset
                                         in
                                         [ drawRect
-                                            { x1 = x1
-                                            , y1 = y1
+                                            { x1 = x1 - gx
+                                            , y1 = y1 - gy
                                             , height = y2 - y1
                                             , width = x2 - x1
                                             }
@@ -1308,9 +1339,10 @@ view model =
                         bgGrid
                             ++ drawRooms
                                 (model.rooms
-                                    |> noSelectedRooms
-                                    |> noHoveredOverRoom
-                                    |> noDraggingRoom
+                                    |> noGroupBeingHighlightedRooms
+                                 -- |> noSelectedRooms
+                                 -- |> noHoveredOverRoom
+                                 -- |> noDraggingRoom
                                 )
                             ++ drawHighlightedRooms
                                 (model.rooms
@@ -1326,8 +1358,8 @@ view model =
                                         )
                                     |> noDraggingRoom
                                 )
-                            ++ [ drawRoomBeingDragged model.rooms ]
-                            ++ drawSelectionArea
+                            ++ drawRoomBeingDragged model.rooms
+                            :: drawSelectionArea
                  )
                     ++ drawSnapLines
                 )
