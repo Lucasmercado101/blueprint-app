@@ -167,6 +167,7 @@ type HoveringOverOrDraggingRoom
     | DraggingToSelectMany
         { start : Point
         , end : Point
+        , initialMousePos : Point
         }
     | HoveringOverRoom RoomID
     | HoldingClickOnRoom RoomID
@@ -750,21 +751,40 @@ update msg model =
                                             DraggingToSelectMany
                                                 { start = mouseMoveRelCoords |> toGlobal model.mapPanOffset
                                                 , end = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                , initialMousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
                                                 }
                                         }
                               }
                             , Cmd.none
                             )
 
-                        DraggingToSelectMany { start } ->
+                        DraggingToSelectMany { start, end, initialMousePos } ->
+                            let
+                                ( xStart, yStart ) =
+                                    initialMousePos
+
+                                position =
+                                    if x <= xStart && y <= yStart then
+                                        { start = ( x, y ), end = initialMousePos }
+
+                                    else if y <= yStart then
+                                        { start = ( xStart, y ), end = ( x, yStart ) }
+
+                                    else if x <= xStart then
+                                        { start = ( x, yStart ), end = ( xStart, y ) }
+
+                                    else
+                                        { start = initialMousePos, end = ( x, y ) }
+                            in
                             ( { model
                                 | mode =
                                     Select
                                         { selected = selected
                                         , state =
                                             DraggingToSelectMany
-                                                { start = start
-                                                , end = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                { start = position.start |> toGlobal model.mapPanOffset
+                                                , end = position.end |> toGlobal model.mapPanOffset
+                                                , initialMousePos = initialMousePos
                                                 }
                                         }
                               }
