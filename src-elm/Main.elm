@@ -167,7 +167,7 @@ type HoveringOverOrDraggingRoom
     | DraggingToSelectMany
         { start : Point
         , end : Point
-        , initialMousePos : Point
+        , initialRelativeMousePos : Point
         }
     | HoveringOverRoom RoomID
     | HoldingClickOnRoom RoomID
@@ -751,21 +751,21 @@ update msg model =
                                             DraggingToSelectMany
                                                 { start = mouseMoveRelCoords |> toGlobal model.mapPanOffset
                                                 , end = mouseMoveRelCoords |> toGlobal model.mapPanOffset
-                                                , initialMousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                , initialRelativeMousePos = mouseMoveRelCoords
                                                 }
                                         }
                               }
                             , Cmd.none
                             )
 
-                        DraggingToSelectMany { start, end, initialMousePos } ->
+                        DraggingToSelectMany { initialRelativeMousePos } ->
                             let
                                 ( xStart, yStart ) =
-                                    initialMousePos
+                                    initialRelativeMousePos
 
                                 position =
                                     if x <= xStart && y <= yStart then
-                                        { start = ( x, y ), end = initialMousePos }
+                                        { start = ( x, y ), end = initialRelativeMousePos }
 
                                     else if y <= yStart then
                                         { start = ( xStart, y ), end = ( x, yStart ) }
@@ -774,7 +774,7 @@ update msg model =
                                         { start = ( x, yStart ), end = ( xStart, y ) }
 
                                     else
-                                        { start = initialMousePos, end = ( x, y ) }
+                                        { start = initialRelativeMousePos, end = ( x, y ) }
                             in
                             ( { model
                                 | mode =
@@ -784,7 +784,7 @@ update msg model =
                                             DraggingToSelectMany
                                                 { start = position.start |> toGlobal model.mapPanOffset
                                                 , end = position.end |> toGlobal model.mapPanOffset
-                                                , initialMousePos = initialMousePos
+                                                , initialRelativeMousePos = initialRelativeMousePos
                                                 }
                                         }
                               }
