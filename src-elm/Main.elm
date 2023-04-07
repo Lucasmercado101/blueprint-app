@@ -1,17 +1,16 @@
 port module Main exposing (..)
 
 import Browser
-import Browser.Events exposing (onMouseMove)
 import Debug exposing (toString)
 import Html exposing (..)
 import Html.Attributes exposing (style, value)
-import Html.Events exposing (on, onClick, onInput, onMouseDown, onMouseUp)
+import Html.Events exposing (on, onClick, onInput)
 import Json.Decode as JD exposing (Decoder)
 import Point
 import Random
 import Rect exposing (Point, Rectangle)
 import Svg as S exposing (Svg, line, rect, svg)
-import Svg.Attributes as SA exposing (color, cx, cy, fill, fontSize, r, rx, ry, stroke, strokeWidth, version, viewBox, x1, x2, y1, y2)
+import Svg.Attributes as SA exposing (fill, r, stroke, strokeWidth, version, viewBox, x1, x2, y1, y2)
 import UUID exposing (UUID)
 
 
