@@ -231,3 +231,85 @@ isInside firstRectangle secondRectangle =
             secondRectangle.height
     in
     y2 >= y1 && y2 + height2 <= y1 + height1 && x2 >= x1 && x2 + width2 <= x1 + width1
+
+
+closestRectangleX : Rectangle -> List Rectangle -> Maybe Rectangle
+closestRectangleX rect rects =
+    let
+        centerX =
+            rect.x1 + (rect.width // 2)
+    in
+    case rects of
+        [] ->
+            Nothing
+
+        [ onlyRect ] ->
+            Just onlyRect
+
+        x :: xs ->
+            Just
+                (List.foldl
+                    (\next current ->
+                        let
+                            centerXCurrent =
+                                current.x1 + (current.width // 2)
+
+                            centerXNext =
+                                next.x1 + (next.width // 2)
+
+                            dNext =
+                                abs (centerX - centerXNext)
+
+                            dCurr =
+                                abs (centerX - centerXCurrent)
+                        in
+                        if dNext < dCurr then
+                            next
+
+                        else
+                            current
+                    )
+                    x
+                    xs
+                )
+
+
+closestRectangleY : Rectangle -> List Rectangle -> Maybe Rectangle
+closestRectangleY rect rects =
+    let
+        centerY =
+            rect.y1 + (rect.height // 2)
+    in
+    case rects of
+        [] ->
+            Nothing
+
+        [ onlyRect ] ->
+            Just onlyRect
+
+        x :: xs ->
+            Just
+                (List.foldl
+                    (\next current ->
+                        let
+                            centerYCurrent =
+                                current.y1 + (current.height // 2)
+
+                            centerYNext =
+                                next.y1 + (next.height // 2)
+
+                            dNext =
+                                abs (centerY - centerYNext)
+
+                            dCurr =
+                                abs (centerY - centerYCurrent)
+                        in
+                        if dNext < dCurr then
+                            next
+
+                        else
+                            current
+                    )
+                    x
+                    xs
+                )
