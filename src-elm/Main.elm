@@ -197,8 +197,7 @@ type DrawState
 
 
 type Msg
-    = NoOp
-    | MouseMove Point
+    = MouseMove Point
     | MouseDown Point
     | MouseUp Point
     | DrawMode
@@ -212,9 +211,6 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoOp ->
-            ( model, Cmd.none )
-
         DeleteMode ->
             ( { model
                 | mode = Delete
