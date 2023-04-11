@@ -38,3 +38,13 @@ distance ( x1, y1 ) ( x2, y2 ) =
             y2 - y1
     in
     sqrt (dx * dx + dy * dy)
+
+
+distanceX : ( number, number ) -> ( number, number ) -> number
+distanceX ( x1, _ ) ( x2, _ ) =
+    x2 - x1
+
+
+distanceY : ( number, number ) -> ( number, number ) -> number
+distanceY ( _, y1 ) ( _, y2 ) =
+    y2 - y1
