@@ -39,18 +39,8 @@ bottomY rect =
     rect.y1 + rect.height
 
 
-x : Point -> Int
-x p =
-    Tuple.first p
-
-
-y : Point -> Int
-y p =
-    Tuple.second p
-
-
 isPointOnRectangle : Point -> Rectangle -> Bool
-isPointOnRectangle p rect =
+isPointOnRectangle ( x, y ) rect =
     let
         ( x1, y1 ) =
             topLeft rect
@@ -58,7 +48,7 @@ isPointOnRectangle p rect =
         ( x2, y2 ) =
             bottomRight rect
     in
-    x p >= x1 && x p <= x2 && y p >= y1 && y p <= y2
+    x >= x1 && x <= x2 && y >= y1 && y <= y2
 
 
 rectanglesPointIsOn : Point -> List Rectangle -> List Rectangle
