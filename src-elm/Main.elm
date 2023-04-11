@@ -333,16 +333,7 @@ update msg model =
         MouseDown mouseDownRelCoords ->
             case model.mode of
                 Delete ->
-                    let
-                        globalMouseCoords =
-                            mouseDownRelCoords |> toGlobal model.mapPanOffset
-                    in
-                    ( { model
-                        | rooms =
-                            model.rooms |> List.filter ((Rect.isPointOnRectangle globalMouseCoords << .boundingBox) >> not)
-                      }
-                    , Cmd.none
-                    )
+                    ( model, Cmd.none )
 
                 Pan ->
                     ( { model
@@ -1243,7 +1234,16 @@ update msg model =
                             )
 
                 Delete ->
-                    ( model, Cmd.none )
+                    let
+                        globalMouseUpCoords =
+                            mouseUpRelCoords |> toGlobal model.mapPanOffset
+                    in
+                    ( { model
+                        | rooms =
+                            model.rooms |> List.filter (globalMouseUpCoords |> isNotOnRoom)
+                      }
+                    , Cmd.none
+                    )
 
                 Draw _ ->
                     ( model, Cmd.none )
@@ -1274,7 +1274,7 @@ view model =
                 ++ (case model.mode of
                         -- TODO: add highlight on hover on delete mode
                         Delete ->
-                            [ on "click" (mouseMoveDecoder |> JD.map MouseDown)
+                            [ on "mouseup" (mouseMoveDecoder |> JD.map MouseUp)
                             ]
 
                         Pan ->
