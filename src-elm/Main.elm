@@ -1133,10 +1133,13 @@ update msg model =
 
                         DraggingRooms { rooms, initialMousePos, mousePos } ->
                             let
+                                globalMouseUpCoords =
+                                    mouseUpRelCoords
+
                                 roomImHoveringOver : Maybe RoomID
                                 roomImHoveringOver =
                                     model.rooms
-                                        |> getFirstRoom (\{ boundingBox } -> Rect.isPointOnRectangle (mouseUpRelCoords |> toGlobal model.mapPanOffset) boundingBox)
+                                        |> getFirstRoom (globalMouseUpCoords |> isOnRoom)
                                         |> Maybe.map .id
 
                                 anySelectedRoomIsOverlappingARoom : Bool
