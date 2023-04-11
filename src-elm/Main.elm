@@ -330,7 +330,7 @@ update msg model =
             , Cmd.none
             )
 
-        MouseDown (( x, y ) as mouseDownRelCoords) ->
+        MouseDown mouseDownRelCoords ->
             case model.mode of
                 Delete ->
                     let
@@ -348,7 +348,7 @@ update msg model =
                     ( { model
                         | holdingLeftMouseDown = True
                         , relativeView =
-                            { start = ( x, y )
+                            { start = mouseDownRelCoords
                             , originalView = model.mapPanOffset
                             }
                       }
@@ -362,9 +362,9 @@ update msg model =
                                 | mode =
                                     Draw
                                         (SelectedStart
-                                            { position = { start = ( x, y ), end = ( x, y ) }
+                                            { position = { start = mouseDownRelCoords, end = mouseDownRelCoords }
                                             , isOverlappingAnotherRoom = False
-                                            , relativeStartingPoint = ( x, y )
+                                            , relativeStartingPoint = mouseDownRelCoords
                                             }
                                         )
                                 , snappingPointsLine = Nothing
