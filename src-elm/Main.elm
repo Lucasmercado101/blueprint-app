@@ -2009,3 +2009,8 @@ none =
 isOnRoom : Point -> Room -> Bool
 isOnRoom point room =
     Rect.isPointOnRectangle point room.boundingBox
+
+
+isNotOnRoom : Point -> Room -> Bool
+isNotOnRoom point room =
+    not <| isOnRoom point room
