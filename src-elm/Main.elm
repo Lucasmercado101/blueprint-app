@@ -333,10 +333,13 @@ update msg model =
         MouseDown (( x, y ) as mouseDownRelCoords) ->
             case model.mode of
                 Delete ->
+                    let
+                        globalMouseCoords =
+                            mouseDownRelCoords |> toGlobal model.mapPanOffset
+                    in
                     ( { model
                         | rooms =
-                            model.rooms
-                                |> List.filter ((\{ boundingBox } -> Rect.isPointOnRectangle (mouseDownRelCoords |> toGlobal model.mapPanOffset) boundingBox) >> not)
+                            model.rooms |> List.filter ((Rect.isPointOnRectangle globalMouseCoords << .boundingBox) >> not)
                       }
                     , Cmd.none
                     )
