@@ -428,13 +428,13 @@ update msg model =
 
                 Select { selected } ->
                     let
-                        globalMouseCoords =
+                        globalMouseDownCoords =
                             mouseDownRelCoords |> toGlobal model.mapPanOffset
 
                         onARoom : Maybe RoomID
                         onARoom =
                             model.rooms
-                                |> getFirstRoom (globalMouseCoords |> isOnRoom)
+                                |> getFirstRoom (globalMouseDownCoords |> isOnRoom)
                                 |> Maybe.map .id
                     in
                     case onARoom of
