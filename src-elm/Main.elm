@@ -428,10 +428,13 @@ update msg model =
 
                 Select { selected } ->
                     let
+                        globalMouseCoords =
+                            mouseDownRelCoords |> toGlobal model.mapPanOffset
+
                         onARoom : Maybe RoomID
                         onARoom =
                             model.rooms
-                                |> getFirstRoom (\{ boundingBox } -> Rect.isPointOnRectangle (mouseDownRelCoords |> toGlobal model.mapPanOffset) boundingBox)
+                                |> getFirstRoom (globalMouseCoords |> isOnRoom)
                                 |> Maybe.map .id
                     in
                     case onARoom of
@@ -1946,8 +1949,20 @@ nbsp =
 getFirstRoom : (Room -> Bool) -> List Room -> Maybe Room
 getFirstRoom predicate rooms =
     rooms
-        |> List.filter predicate
-        |> List.head
+        |> List.foldl
+            (\room acc ->
+                case acc of
+                    Just _ ->
+                        acc
+
+                    Nothing ->
+                        if predicate room then
+                            Just room
+
+                        else
+                            Nothing
+            )
+            Nothing
 
 
 getIdOfRoomBeingHoveredOrDragged : HoveringOverOrDraggingRoom -> Maybe RoomID
@@ -1983,3 +1998,8 @@ calcSlope ( x1, y1 ) ( x2, y2 ) =
 none : Svg msg
 none =
     S.text ""
+
+
+isOnRoom : Point -> Room -> Bool
+isOnRoom point room =
+    Rect.isPointOnRectangle point room.boundingBox
