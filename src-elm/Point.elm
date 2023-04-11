@@ -28,6 +28,7 @@ scale factor ( x1, y1 ) =
 
 distance : ( Float, Float ) -> ( Float, Float ) -> Float
 distance ( x1, y1 ) ( x2, y2 ) =
+    -- Pythagorean theorem
     -- # Math: \sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2}
     let
         dx =
