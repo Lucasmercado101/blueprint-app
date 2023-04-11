@@ -732,10 +732,13 @@ update msg model =
 
                 Select { selected, state } ->
                     let
+                        mouseMoveGlobalCoords =
+                            mouseMoveRelCoords |> toGlobal model.mapPanOffset
+
                         roomImHoveringOver : Maybe RoomID
                         roomImHoveringOver =
                             model.rooms
-                                |> getFirstRoom (\{ boundingBox } -> Rect.isPointOnRectangle (mouseMoveRelCoords |> toGlobal model.mapPanOffset) boundingBox)
+                                |> getFirstRoom (mouseMoveGlobalCoords |> isOnRoom)
                                 |> Maybe.map .id
                     in
                     case state of
