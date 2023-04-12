@@ -190,8 +190,8 @@ type DrawState
       -- NOTE: "relativeStartingPoint" is there so that
       -- the rectangle's start is always smaller than its end at the end of the day
     | SelectedStart
-        { position : { start : Point, end : Point }
-        , relativeStartingPoint : Point
+        { start : Point
+        , end : Point
         , isOverlappingAnotherRoom : Bool
         }
 
@@ -349,9 +349,9 @@ update msg model =
                                 | mode =
                                     Draw
                                         (SelectedStart
-                                            { position = { start = mouseDownRelCoords, end = mouseDownRelCoords }
+                                            { start = mouseDownRelCoords
+                                            , end = mouseDownRelCoords
                                             , isOverlappingAnotherRoom = False
-                                            , relativeStartingPoint = mouseDownRelCoords
                                             }
                                         )
                                 , snappingPointsLine = Nothing
@@ -359,7 +359,7 @@ update msg model =
                             , Cmd.none
                             )
 
-                        SelectedStart { position, isOverlappingAnotherRoom } ->
+                        SelectedStart { start, end, isOverlappingAnotherRoom } ->
                             if isOverlappingAnotherRoom then
                                 ( { model
                                     | mode = Draw NotDrawing
@@ -370,9 +370,6 @@ update msg model =
 
                             else
                                 let
-                                    { start, end } =
-                                        position
-
                                     ( x1, y1 ) =
                                         start
 
@@ -385,20 +382,19 @@ update msg model =
                                     nameId =
                                         Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 54321))
                                             |> Tuple.first
+
+                                    rectId =
+                                        Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 12345))
+                                            |> Tuple.first
                                 in
                                 ( { model
                                     | rooms =
                                         { boundingBox =
-                                            { x1 = x1 + ox
-                                            , y1 = y1 + oy
-                                            , width = x2 - x1
-                                            , height = y2 - y1
-                                            }
+                                            pointsToRectangle start end
+                                                |> rectToGlobal model.mapPanOffset
 
                                         --   TODO: change to use random, have it be a command
-                                        , id =
-                                            Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 12345))
-                                                |> Tuple.first
+                                        , id = rectId
                                         , name =
                                             { id = nameId
                                             , value = ""
@@ -493,68 +489,24 @@ update msg model =
                         NotDrawing ->
                             ( model, Cmd.none )
 
-                        SelectedStart ({ relativeStartingPoint } as selectedStart) ->
+                        SelectedStart { start, end } ->
                             let
-                                ( xStart, yStart ) =
-                                    relativeStartingPoint
-
-                                position =
-                                    if x <= xStart && y <= yStart then
-                                        { start = ( x, y ), end = relativeStartingPoint }
-
-                                    else if y <= yStart then
-                                        { start = ( xStart, y ), end = ( x, yStart ) }
-
-                                    else if x <= xStart then
-                                        { start = ( x, yStart ), end = ( xStart, y ) }
-
-                                    else
-                                        { start = relativeStartingPoint, end = ( x, y ) }
+                                drawingRect =
+                                    pointsToRectangle start end
+                                        |> rectToGlobal model.mapPanOffset
 
                                 isOverlappingAnotherRoom : Bool
                                 isOverlappingAnotherRoom =
-                                    let
-                                        ( gx, gy ) =
-                                            toGlobal position.start model.mapPanOffset
-
-                                        ( w1, h1 ) =
-                                            toGlobal position.end model.mapPanOffset |> (\( x1, y1 ) -> ( x1 - gx, y1 - gy ))
-                                    in
-                                    List.any
-                                        (\rect ->
-                                            Rect.isThereAnyOverlap
-                                                { x1 = gx
-                                                , y1 = gy
-                                                , width = w1
-                                                , height = h1
-                                                }
-                                                rect
-                                        )
-                                        (List.map .boundingBox model.rooms)
+                                    model.rooms
+                                        |> List.map .boundingBox
+                                        |> List.any (Rect.isThereAnyOverlap drawingRect)
 
                                 bottomSideIsAlignedToAnotherRectangle : Maybe ( Line, Line )
                                 bottomSideIsAlignedToAnotherRectangle =
-                                    let
-                                        -- top left
-                                        ( tlx, tly ) =
-                                            toGlobal position.start model.mapPanOffset
-
-                                        -- bottom right
-                                        ( brx, bry ) =
-                                            toGlobal position.end model.mapPanOffset
-
-                                        currDrawRect : Rectangle
-                                        currDrawRect =
-                                            { x1 = tlx
-                                            , y1 = tly
-                                            , width = brx - tlx
-                                            , height = bry - tly
-                                            }
-                                    in
                                     model.rooms
                                         |> List.map .boundingBox
-                                        |> List.filter (\rect -> numWithinRange (rect |> Rect.bottomY) bry 10)
-                                        |> Rect.closestRectangleX currDrawRect
+                                        |> List.filter (\rect -> numWithinRange (rect |> Rect.bottomY) (drawingRect |> Rect.bottomY) 10)
+                                        |> Rect.closestRectangleX drawingRect
                                         |> Maybe.andThen
                                             (\rect ->
                                                 let
@@ -563,6 +515,12 @@ update msg model =
 
                                                     br =
                                                         rect |> Rect.bottomRight |> Point.x
+
+                                                    tlx =
+                                                        drawingRect |> Rect.topLeft |> Point.x
+
+                                                    brx =
+                                                        drawingRect |> Rect.bottomRight |> Point.x
 
                                                     leftDist =
                                                         abs tlx - abs br
@@ -583,8 +541,8 @@ update msg model =
                                                 if isOnTheRight then
                                                     if rightDist <= minDistBeforeSnapping then
                                                         Just
-                                                            ( ( currDrawRect |> Rect.bottomLeft |> Tuple.mapSecond (always (rect |> Rect.bottomY))
-                                                              , currDrawRect |> Rect.bottomRight |> Tuple.mapSecond (always (rect |> Rect.bottomY))
+                                                            ( ( drawingRect |> Rect.bottomLeft |> Tuple.mapSecond (always (rect |> Rect.bottomY))
+                                                              , drawingRect |> Rect.bottomRight |> Tuple.mapSecond (always (rect |> Rect.bottomY))
                                                               )
                                                             , rect |> Rect.bottomSide
                                                             )
@@ -595,8 +553,8 @@ update msg model =
                                                 else if leftDist <= minDistBeforeSnapping then
                                                     Just
                                                         ( rect |> Rect.bottomSide
-                                                        , ( currDrawRect |> Rect.bottomLeft |> Tuple.mapSecond (always (rect |> Rect.bottomY))
-                                                          , currDrawRect |> Rect.bottomRight |> Tuple.mapSecond (always (rect |> Rect.bottomY))
+                                                        , ( drawingRect |> Rect.bottomLeft |> Tuple.mapSecond (always (rect |> Rect.bottomY))
+                                                          , drawingRect |> Rect.bottomRight |> Tuple.mapSecond (always (rect |> Rect.bottomY))
                                                           )
                                                         )
 
@@ -613,8 +571,8 @@ update msg model =
                                             )
                                         |> Maybe.map
                                             (\e ->
-                                                { start = position.start
-                                                , end = position.end |> Tuple.mapSecond (always e)
+                                                { start = start
+                                                , end = end |> Tuple.mapSecond (always e)
                                                 }
                                             )
                             in
@@ -622,10 +580,26 @@ update msg model =
                                 | mode =
                                     Draw
                                         (SelectedStart
-                                            { selectedStart
-                                                | position = snapBottomPosition |> Maybe.withDefault position
-                                                , isOverlappingAnotherRoom = isOverlappingAnotherRoom
-                                            }
+                                            (case snapBottomPosition of
+                                                Just p ->
+                                                    let
+                                                        ( x1, _ ) =
+                                                            mouseMoveRelCoords
+
+                                                        ( _, y2 ) =
+                                                            p.end
+                                                    in
+                                                    { start = p.start
+                                                    , end = ( x1, y2 )
+                                                    , isOverlappingAnotherRoom = isOverlappingAnotherRoom
+                                                    }
+
+                                                Nothing ->
+                                                    { start = start
+                                                    , end = mouseMoveRelCoords
+                                                    , isOverlappingAnotherRoom = isOverlappingAnotherRoom
+                                                    }
+                                            )
                                         )
                                 , snappingPointsLine = bottomSideIsAlignedToAnotherRectangle
                               }
@@ -1276,11 +1250,8 @@ view model =
                                     NotDrawing ->
                                         drawRooms model.rooms
 
-                                    SelectedStart { position, isOverlappingAnotherRoom } ->
+                                    SelectedStart { start, end, isOverlappingAnotherRoom } ->
                                         let
-                                            { start, end } =
-                                                position
-
                                             ( x1, y1 ) =
                                                 start
 
@@ -1707,6 +1678,12 @@ drawX point size attrs =
     ]
 
 
+
+{-
+   Drawing relative to the viewport
+-}
+
+
 drawRect : Rectangle -> List (Attribute Msg) -> Svg Msg
 drawRect rectangle attrs =
     let
@@ -1925,3 +1902,38 @@ isOnRoom point room =
 isNotOnRoom : Point -> Room -> Bool
 isNotOnRoom point room =
     not <| isOnRoom point room
+
+
+pointsToRectangle : Point -> Point -> Rectangle
+pointsToRectangle ( x1, y1 ) ( x2, y2 ) =
+    let
+        xStart =
+            min x1 x2
+
+        yStart =
+            min y1 y2
+
+        xEnd =
+            max x1 x2
+
+        yEnd =
+            max y1 y2
+    in
+    { x1 = xStart
+    , y1 = yStart
+    , width = xEnd - xStart
+    , height = yEnd - yStart
+    }
+
+
+rectToGlobal : Point -> Rectangle -> Rectangle
+rectToGlobal globalView { x1, y1, width, height } =
+    let
+        ( gx, gy ) =
+            globalView
+    in
+    { x1 = x1 + gx
+    , y1 = y1 + gy
+    , width = width
+    , height = height
+    }
