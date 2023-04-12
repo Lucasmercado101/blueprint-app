@@ -1251,20 +1251,8 @@ view model =
                                         drawRooms model.rooms
 
                                     SelectedStart { start, end, isOverlappingAnotherRoom } ->
-                                        let
-                                            ( x1, y1 ) =
-                                                start
-
-                                            ( x2, y2 ) =
-                                                end
-                                        in
                                         drawRooms model.rooms
-                                            ++ [ drawRect
-                                                    { x1 = x1
-                                                    , y1 = y1
-                                                    , height = y2 - y1
-                                                    , width = x2 - x1
-                                                    }
+                                            ++ [ drawRect (pointsToRectangle start end)
                                                     [ strokeWidth "2"
                                                     , stroke
                                                         (if isOverlappingAnotherRoom then
