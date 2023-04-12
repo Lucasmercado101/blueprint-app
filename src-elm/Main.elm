@@ -492,7 +492,7 @@ update msg model =
                         SelectedStart { start, end } ->
                             let
                                 drawingRect =
-                                    pointsToRectangle start end
+                                    pointsToRectangle start mouseMoveRelCoords
                                         |> rectToGlobal model.mapPanOffset
 
                                 isOverlappingAnotherRoom : Bool
