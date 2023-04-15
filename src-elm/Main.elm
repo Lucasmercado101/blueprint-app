@@ -179,8 +179,8 @@ type HoveringOverOrDraggingRoom
         }
     | DraggingRooms
         { rooms : List RoomID
-        , mousePos : Point
-        , initialMousePos : Point
+        , dragOrigin : Point
+        , dragEnd : Point
         , isOverlappingAnotherRoom : Bool
         }
 
@@ -676,7 +676,7 @@ update msg model =
                             , Cmd.none
                             )
 
-                        DraggingRooms { rooms, initialMousePos, mousePos } ->
+                        DraggingRooms { rooms, dragOrigin, dragEnd } ->
                             let
                                 excludingCurrentlySelectedRooms initialRooms =
                                     List.filter (\r -> not <| List.any (\e -> e == r.id) rooms) initialRooms
@@ -688,8 +688,8 @@ update msg model =
                                         , state =
                                             DraggingRooms
                                                 { rooms = rooms
-                                                , initialMousePos = initialMousePos
-                                                , mousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                , dragOrigin = dragOrigin
+                                                , dragEnd = mouseMoveRelCoords |> toGlobal model.mapPanOffset
                                                 , isOverlappingAnotherRoom =
                                                     model.rooms
                                                         |> List.any
@@ -699,10 +699,10 @@ update msg model =
                                                                         if r.id == e then
                                                                             let
                                                                                 ( mInitX, mInitY ) =
-                                                                                    initialMousePos
+                                                                                    dragOrigin
 
                                                                                 ( mX, mY ) =
-                                                                                    mousePos
+                                                                                    dragEnd
 
                                                                                 ( x1, y1 ) =
                                                                                     r.boundingBox |> Rect.topLeft
@@ -780,8 +780,8 @@ update msg model =
                                                     , state =
                                                         DraggingRooms
                                                             { rooms = rooms
-                                                            , mousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
-                                                            , initialMousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                            , dragEnd = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                            , dragOrigin = mouseMoveRelCoords |> toGlobal model.mapPanOffset
                                                             , isOverlappingAnotherRoom = False
                                                             }
                                                     }
@@ -1007,7 +1007,7 @@ update msg model =
                             , Cmd.none
                             )
 
-                        DraggingRooms { rooms, initialMousePos, mousePos } ->
+                        DraggingRooms { rooms, dragOrigin, dragEnd } ->
                             let
                                 globalMouseUpCoords =
                                     mouseUpRelCoords
@@ -1026,10 +1026,10 @@ update msg model =
                                                 if List.any (\e -> r.id == e) rooms then
                                                     let
                                                         ( mInitX, mInitY ) =
-                                                            initialMousePos
+                                                            dragOrigin
 
                                                         ( mX, mY ) =
-                                                            mousePos
+                                                            dragEnd
 
                                                         ( x1, y1 ) =
                                                             r.boundingBox |> Rect.topLeft
@@ -1078,10 +1078,10 @@ update msg model =
                                                     if List.any (\e -> r.id == e) rooms then
                                                         let
                                                             ( mInitX, mInitY ) =
-                                                                initialMousePos
+                                                                dragOrigin
 
                                                             ( mX, mY ) =
-                                                                mousePos
+                                                                dragEnd
 
                                                             ( x1, y1 ) =
                                                                 r.boundingBox |> Rect.topLeft
@@ -1382,7 +1382,7 @@ view model =
                             drawRoomsBeingDragged : List Room -> List (Svg Msg)
                             drawRoomsBeingDragged initialRooms =
                                 case state of
-                                    DraggingRooms { rooms, initialMousePos, mousePos, isOverlappingAnotherRoom } ->
+                                    DraggingRooms { rooms, dragOrigin, dragEnd, isOverlappingAnotherRoom } ->
                                         initialRooms
                                             |> List.filter (\{ id } -> List.member id rooms)
                                             |> List.map
@@ -1392,10 +1392,10 @@ view model =
                                                             boundingBox
 
                                                         ( initialMx1, initialMy1 ) =
-                                                            initialMousePos
+                                                            dragOrigin
 
                                                         ( mx1, my1 ) =
-                                                            mousePos
+                                                            dragEnd
 
                                                         ( gx, gy ) =
                                                             model.mapPanOffset
