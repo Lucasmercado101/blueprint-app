@@ -106,7 +106,7 @@ type alias Room =
 
 
 type alias Model =
-    { mapPanOffset : Point
+    { viewport : Point
 
     -- TODO: move this to Drag
     , relativeView :
@@ -115,8 +115,7 @@ type alias Model =
         }
     , mode : Mode
     , holdingLeftMouseDown : Bool
-    , rooms :
-        List Room
+    , rooms : List Room
     , snappingPointsLine : Maybe ( Line, Line )
     }
 
@@ -127,7 +126,7 @@ type alias Model =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { mapPanOffset = ( 0, 0 )
+    ( { viewport = ( 0, 0 )
       , relativeView =
             { start = ( 0, 0 )
             , originalView = ( 0, 0 )
@@ -336,7 +335,7 @@ update msg model =
                         | holdingLeftMouseDown = True
                         , relativeView =
                             { start = mouseDownRelCoords
-                            , originalView = model.mapPanOffset
+                            , originalView = model.viewport
                             }
                       }
                     , Cmd.none
@@ -377,7 +376,7 @@ update msg model =
                                         end
 
                                     ( ox, oy ) =
-                                        model.mapPanOffset
+                                        model.viewport
 
                                     nameId =
                                         Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 54321))
@@ -391,7 +390,7 @@ update msg model =
                                     | rooms =
                                         { boundingBox =
                                             pointsToRectangle start end
-                                                |> rectToGlobal model.mapPanOffset
+                                                |> rectToGlobal model.viewport
 
                                         --   TODO: change to use random, have it be a command
                                         , id = rectId
@@ -412,7 +411,7 @@ update msg model =
                 Select { selected } ->
                     let
                         globalMouseDownCoords =
-                            mouseDownRelCoords |> toGlobal model.mapPanOffset
+                            mouseDownRelCoords |> toGlobal model.viewport
 
                         onARoom : Maybe RoomID
                         onARoom =
@@ -479,7 +478,7 @@ update msg model =
                                     ox + dx
                     in
                     ( { model
-                        | mapPanOffset = ( newX, newY )
+                        | viewport = ( newX, newY )
                       }
                     , Cmd.none
                     )
@@ -493,7 +492,7 @@ update msg model =
                             let
                                 drawingRect =
                                     pointsToRectangle start mouseMoveRelCoords
-                                        |> rectToGlobal model.mapPanOffset
+                                        |> rectToGlobal model.viewport
 
                                 isOverlappingAnotherRoom : Bool
                                 isOverlappingAnotherRoom =
@@ -567,7 +566,7 @@ update msg model =
                                     bottomSideIsAlignedToAnotherRectangle
                                         |> Maybe.map
                                             (\( ( l, _ ), _ ) ->
-                                                toRelative l model.mapPanOffset |> Point.y
+                                                toRelative l model.viewport |> Point.y
                                             )
                                         |> Maybe.map
                                             (\e ->
@@ -609,7 +608,7 @@ update msg model =
                 Select { selected, state } ->
                     let
                         mouseMoveGlobalCoords =
-                            mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                            mouseMoveRelCoords |> toGlobal model.viewport
 
                         roomImHoveringOver : Maybe RoomID
                         roomImHoveringOver =
@@ -634,8 +633,8 @@ update msg model =
                                         { selected = selected
                                         , state =
                                             DraggingToSelectMany
-                                                { start = mouseMoveRelCoords |> toGlobal model.mapPanOffset
-                                                , end = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                { start = mouseMoveRelCoords |> toGlobal model.viewport
+                                                , end = mouseMoveRelCoords |> toGlobal model.viewport
                                                 , initialRelativeMousePos = mouseMoveRelCoords
                                                 }
                                         }
@@ -667,8 +666,8 @@ update msg model =
                                         { selected = selected
                                         , state =
                                             DraggingToSelectMany
-                                                { start = position.start |> toGlobal model.mapPanOffset
-                                                , end = position.end |> toGlobal model.mapPanOffset
+                                                { start = position.start |> toGlobal model.viewport
+                                                , end = position.end |> toGlobal model.viewport
                                                 , initialRelativeMousePos = initialRelativeMousePos
                                                 }
                                         }
@@ -689,7 +688,7 @@ update msg model =
                                             DraggingRooms
                                                 { rooms = rooms
                                                 , dragOrigin = dragOrigin
-                                                , dragEnd = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                , dragEnd = mouseMoveRelCoords |> toGlobal model.viewport
                                                 , isOverlappingAnotherRoom =
                                                     model.rooms
                                                         |> List.any
@@ -761,8 +760,8 @@ update msg model =
                                                 , state =
                                                     DraggingRoom
                                                         { room = room
-                                                        , dragOrigin = mouseMoveRelCoords |> toGlobal model.mapPanOffset
-                                                        , dragEnd = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                        , dragOrigin = mouseMoveRelCoords |> toGlobal model.viewport
+                                                        , dragEnd = mouseMoveRelCoords |> toGlobal model.viewport
                                                         , isOverlappingAnotherRoom = False
                                                         }
                                                 }
@@ -780,8 +779,8 @@ update msg model =
                                                     , state =
                                                         DraggingRooms
                                                             { rooms = rooms
-                                                            , dragEnd = mouseMoveRelCoords |> toGlobal model.mapPanOffset
-                                                            , dragOrigin = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                            , dragEnd = mouseMoveRelCoords |> toGlobal model.viewport
+                                                            , dragOrigin = mouseMoveRelCoords |> toGlobal model.viewport
                                                             , isOverlappingAnotherRoom = False
                                                             }
                                                     }
@@ -807,7 +806,7 @@ update msg model =
                                             DraggingRoom
                                                 { room = room
                                                 , dragOrigin = dragOrigin
-                                                , dragEnd = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                , dragEnd = mouseMoveRelCoords |> toGlobal model.viewport
                                                 , isOverlappingAnotherRoom =
                                                     model.rooms
                                                         |> List.any
@@ -1121,7 +1120,7 @@ update msg model =
                 Delete ->
                     let
                         globalMouseUpCoords =
-                            mouseUpRelCoords |> toGlobal model.mapPanOffset
+                            mouseUpRelCoords |> toGlobal model.viewport
                     in
                     ( { model
                         | rooms =
@@ -1200,14 +1199,14 @@ view model =
                 (let
                     bgGrid : List (Svg Msg)
                     bgGrid =
-                        backgroundGrid model.mapPanOffset
+                        backgroundGrid model.viewport
 
                     globalRectToRel : Rectangle -> Rectangle
                     globalRectToRel { x1, y1, width, height } =
                         let
                             rel : Point
                             rel =
-                                toRelative ( x1, y1 ) model.mapPanOffset
+                                toRelative ( x1, y1 ) model.viewport
                         in
                         { x1 = rel |> Point.x
                         , y1 = rel |> Point.y
@@ -1231,7 +1230,7 @@ view model =
                     drawSnapLines =
                         case model.snappingPointsLine of
                             Just ( first, second ) ->
-                                drawSnappingLines model.mapPanOffset first second
+                                drawSnappingLines model.viewport first second
 
                             Nothing ->
                                 []
@@ -1343,7 +1342,7 @@ view model =
                                                             dragEnd
 
                                                         ( gx, gy ) =
-                                                            model.mapPanOffset
+                                                            model.viewport
 
                                                         distFromSelectedX =
                                                             initialMx1 - mx1
@@ -1398,7 +1397,7 @@ view model =
                                                             dragEnd
 
                                                         ( gx, gy ) =
-                                                            model.mapPanOffset
+                                                            model.viewport
 
                                                         distFromSelectedX =
                                                             initialMx1 - mx1
@@ -1473,7 +1472,7 @@ view model =
                                                 end
 
                                             ( gx, gy ) =
-                                                model.mapPanOffset
+                                                model.viewport
                                         in
                                         [ drawRect
                                             { x1 = x1 - gx
