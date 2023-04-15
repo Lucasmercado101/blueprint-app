@@ -173,8 +173,8 @@ type HoveringOverOrDraggingRoom
     | HoldingClickOnRoom RoomID
     | DraggingRoom
         { room : RoomID
-        , mousePos : Point
-        , initialMousePos : Point
+        , dragOrigin : Point
+        , dragEnd : Point
         , isOverlappingAnotherRoom : Bool
         }
     | DraggingRooms
@@ -761,8 +761,8 @@ update msg model =
                                                 , state =
                                                     DraggingRoom
                                                         { room = room
-                                                        , mousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
-                                                        , initialMousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                        , dragOrigin = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                        , dragEnd = mouseMoveRelCoords |> toGlobal model.mapPanOffset
                                                         , isOverlappingAnotherRoom = False
                                                         }
                                                 }
@@ -798,7 +798,7 @@ update msg model =
                                 NoRoomSelected ->
                                     draggingSingleRoom
 
-                        DraggingRoom { room, initialMousePos, mousePos } ->
+                        DraggingRoom { room, dragOrigin, dragEnd } ->
                             ( { model
                                 | mode =
                                     Select
@@ -806,8 +806,8 @@ update msg model =
                                         , state =
                                             DraggingRoom
                                                 { room = room
-                                                , initialMousePos = initialMousePos
-                                                , mousePos = mouseMoveRelCoords |> toGlobal model.mapPanOffset
+                                                , dragOrigin = dragOrigin
+                                                , dragEnd = mouseMoveRelCoords |> toGlobal model.mapPanOffset
                                                 , isOverlappingAnotherRoom =
                                                     model.rooms
                                                         |> List.any
@@ -815,10 +815,10 @@ update msg model =
                                                                 if r.id == room then
                                                                     let
                                                                         ( mInitX, mInitY ) =
-                                                                            initialMousePos
+                                                                            dragOrigin
 
                                                                         ( mX, mY ) =
-                                                                            mousePos
+                                                                            dragEnd
 
                                                                         ( x1, y1 ) =
                                                                             r.boundingBox |> Rect.topLeft
@@ -947,7 +947,7 @@ update msg model =
                             , Cmd.none
                             )
 
-                        DraggingRoom { room, initialMousePos, mousePos } ->
+                        DraggingRoom { room, dragOrigin, dragEnd } ->
                             ( { model
                                 | rooms =
                                     model.rooms
@@ -956,10 +956,10 @@ update msg model =
                                                 if r.id == room then
                                                     let
                                                         ( mInitX, mInitY ) =
-                                                            initialMousePos
+                                                            dragOrigin
 
                                                         ( mX, mY ) =
-                                                            mousePos
+                                                            dragEnd
 
                                                         ( x1, y1 ) =
                                                             r.boundingBox |> Rect.topLeft
@@ -1326,7 +1326,7 @@ view model =
                             drawRoomBeingDragged : List Room -> Svg Msg
                             drawRoomBeingDragged rooms =
                                 case state of
-                                    DraggingRoom { room, initialMousePos, mousePos, isOverlappingAnotherRoom } ->
+                                    DraggingRoom { room, dragOrigin, dragEnd, isOverlappingAnotherRoom } ->
                                         rooms
                                             |> List.filter (\{ id } -> id == room)
                                             |> List.head
@@ -1337,10 +1337,10 @@ view model =
                                                             boundingBox
 
                                                         ( initialMx1, initialMy1 ) =
-                                                            initialMousePos
+                                                            dragOrigin
 
                                                         ( mx1, my1 ) =
-                                                            mousePos
+                                                            dragEnd
 
                                                         ( gx, gy ) =
                                                             model.mapPanOffset
