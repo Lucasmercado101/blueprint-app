@@ -888,6 +888,9 @@ update msg model =
 
                         DraggingRooms { rooms, dragOrigin, dragEnd } ->
                             let
+                                deltaDrag =
+                                    Point.subtract dragEnd dragOrigin
+
                                 globalMouseUpCoords =
                                     mouseUpRelCoords |> toGlobal model.viewport
 
@@ -904,9 +907,6 @@ update msg model =
                                             (\r ->
                                                 if List.any (\e -> r.id == e) rooms then
                                                     let
-                                                        deltaDrag =
-                                                            Point.subtract dragEnd dragOrigin
-
                                                         rectPos : Point
                                                         rectPos =
                                                             r.boundingBox |> Rect.topLeft
@@ -950,28 +950,22 @@ update msg model =
                                                 (\r ->
                                                     if List.any (\e -> r.id == e) rooms then
                                                         let
-                                                            ( mInitX, mInitY ) =
-                                                                dragOrigin
-
-                                                            ( mX, mY ) =
-                                                                dragEnd
-
-                                                            ( x1, y1 ) =
+                                                            rectPos : Point
+                                                            rectPos =
                                                                 r.boundingBox |> Rect.topLeft
 
-                                                            ( newX1, newY1 ) =
-                                                                ( mX - (mInitX - x1)
-                                                                , mY - (mInitY - y1)
-                                                                )
-                                                        in
-                                                        { r
-                                                            | boundingBox =
-                                                                { x1 = newX1
-                                                                , y1 = newY1
+                                                            ( newX, newY ) =
+                                                                Point.add rectPos deltaDrag
+
+                                                            newRectangle : Rectangle
+                                                            newRectangle =
+                                                                { x1 = newX
+                                                                , y1 = newY
                                                                 , width = r.boundingBox.width
                                                                 , height = r.boundingBox.height
                                                                 }
-                                                        }
+                                                        in
+                                                        { r | boundingBox = newRectangle }
 
                                                     else
                                                         r
