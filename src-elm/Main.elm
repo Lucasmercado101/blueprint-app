@@ -892,19 +892,15 @@ update msg model =
                                             (\r ->
                                                 if r.id == room then
                                                     let
-                                                        ( mInitX, mInitY ) =
-                                                            dragOrigin
+                                                        deltaDrag =
+                                                            Point.subtract dragEnd dragOrigin
 
-                                                        ( mX, mY ) =
-                                                            dragEnd
-
-                                                        ( x1, y1 ) =
+                                                        rectPos : Point
+                                                        rectPos =
                                                             r.boundingBox |> Rect.topLeft
 
-                                                        ( newX1, newY1 ) =
-                                                            ( mX - (mInitX - x1)
-                                                            , mY - (mInitY - y1)
-                                                            )
+                                                        ( newX, newY ) =
+                                                            Point.add rectPos deltaDrag
 
                                                         isOverlappingAnotherRoom : Bool
                                                         isOverlappingAnotherRoom =
@@ -913,8 +909,8 @@ update msg model =
                                                                 |> List.filter
                                                                     (.boundingBox
                                                                         >> Rect.isThereAnyOverlap
-                                                                            { x1 = newX1
-                                                                            , y1 = newY1
+                                                                            { x1 = newX
+                                                                            , y1 = newY
                                                                             , width = r.boundingBox.width
                                                                             , height = r.boundingBox.height
                                                                             }
@@ -929,8 +925,8 @@ update msg model =
                                                     else
                                                         { r
                                                             | boundingBox =
-                                                                { x1 = newX1
-                                                                , y1 = newY1
+                                                                { x1 = newX
+                                                                , y1 = newY
                                                                 , width = r.boundingBox.width
                                                                 , height = r.boundingBox.height
                                                                 }
