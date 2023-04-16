@@ -915,9 +915,7 @@ update msg model =
                                                             model.rooms
                                                                 |> List.filter (\e -> e.id /= room)
                                                                 |> List.filter (.boundingBox >> Rect.isThereAnyOverlap newRectangle)
-                                                                |> List.head
-                                                                |> Maybe.map (always True)
-                                                                |> Maybe.withDefault False
+                                                                |> (not << List.isEmpty)
                                                     in
                                                     if isOverlappingAnotherRoom then
                                                         r
