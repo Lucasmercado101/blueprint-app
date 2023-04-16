@@ -314,3 +314,8 @@ closestRectangleY rect rects =
                     x
                     xs
                 )
+
+
+changePosition : Rectangle -> Point -> Rectangle
+changePosition rect ( x, y ) =
+    { rect | x1 = x, y1 = y }
