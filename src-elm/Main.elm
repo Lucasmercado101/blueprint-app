@@ -902,19 +902,19 @@ update msg model =
                                                         ( newX, newY ) =
                                                             Point.add rectPos deltaDrag
 
+                                                        newRectangle : Rectangle
+                                                        newRectangle =
+                                                            { x1 = newX
+                                                            , y1 = newY
+                                                            , width = r.boundingBox.width
+                                                            , height = r.boundingBox.height
+                                                            }
+
                                                         isOverlappingAnotherRoom : Bool
                                                         isOverlappingAnotherRoom =
                                                             model.rooms
                                                                 |> List.filter (\e -> e.id /= room)
-                                                                |> List.filter
-                                                                    (.boundingBox
-                                                                        >> Rect.isThereAnyOverlap
-                                                                            { x1 = newX
-                                                                            , y1 = newY
-                                                                            , width = r.boundingBox.width
-                                                                            , height = r.boundingBox.height
-                                                                            }
-                                                                    )
+                                                                |> List.filter (.boundingBox >> Rect.isThereAnyOverlap newRectangle)
                                                                 |> List.head
                                                                 |> Maybe.map (always True)
                                                                 |> Maybe.withDefault False
@@ -923,14 +923,7 @@ update msg model =
                                                         r
 
                                                     else
-                                                        { r
-                                                            | boundingBox =
-                                                                { x1 = newX
-                                                                , y1 = newY
-                                                                , width = r.boundingBox.width
-                                                                , height = r.boundingBox.height
-                                                                }
-                                                        }
+                                                        { r | boundingBox = newRectangle }
 
                                                 else
                                                     r
