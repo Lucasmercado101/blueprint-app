@@ -158,11 +158,10 @@ type SelectedRoom
 
 type HoveringOverOrDraggingRoom
     = NotHoveringOverRoom
-    | HoldingClickOutsideAnyRooms
+    | HoldingClickOutsideAnyRooms {- `origin` and `end` are relative to viewport -}
     | DraggingToSelectMany
-        { start : Point
+        { origin : Point
         , end : Point
-        , initialRelativeMousePos : Point
         }
     | HoveringOverRoom RoomID
     | HoldingClickOnRoom RoomID
@@ -557,29 +556,23 @@ update msg model =
                                         { selected = selected
                                         , state =
                                             DraggingToSelectMany
-                                                { start = mouseMoveRelCoords |> toGlobal model.viewport
-                                                , end = mouseMoveRelCoords |> toGlobal model.viewport
-                                                , initialRelativeMousePos = mouseMoveRelCoords
+                                                { origin = mouseMoveRelCoords
+                                                , end = mouseMoveRelCoords
                                                 }
                                         }
                               }
                             , Cmd.none
                             )
 
-                        DraggingToSelectMany { initialRelativeMousePos } ->
-                            let
-                                position =
-                                    pointsToRectangle initialRelativeMousePos mouseMoveRelCoords
-                            in
+                        DraggingToSelectMany { origin } ->
                             ( { model
                                 | mode =
                                     Select
                                         { selected = selected
                                         , state =
                                             DraggingToSelectMany
-                                                { start = Rect.topLeft position |> toGlobal model.viewport
-                                                , end = Rect.bottomRight position |> toGlobal model.viewport
-                                                , initialRelativeMousePos = initialRelativeMousePos
+                                                { origin = origin
+                                                , end = mouseMoveRelCoords
                                                 }
                                         }
                               }
@@ -795,28 +788,16 @@ update msg model =
                             , Cmd.none
                             )
 
-                        DraggingToSelectMany { start, end } ->
+                        DraggingToSelectMany { origin, end } ->
                             let
+                                selectArea : Rectangle
+                                selectArea =
+                                    pointsToRectangle (origin |> toGlobal model.viewport) (end |> toGlobal model.viewport)
+
                                 roomsSelected : List Room
                                 roomsSelected =
                                     model.rooms
-                                        |> List.filter
-                                            (\r ->
-                                                let
-                                                    ( x1, y1 ) =
-                                                        start
-
-                                                    ( x2, y2 ) =
-                                                        end
-                                                in
-                                                Rect.isInside
-                                                    { x1 = x1
-                                                    , y1 = y1
-                                                    , width = x2 - x1
-                                                    , height = y2 - y1
-                                                    }
-                                                    r.boundingBox
-                                            )
+                                        |> List.filter (.boundingBox >> Rect.isInside selectArea)
                             in
                             ( { model
                                 | mode =
@@ -1366,20 +1347,10 @@ view model =
 
                                     _ ->
                                         case state of
-                                            DraggingToSelectMany { start, end } ->
+                                            DraggingToSelectMany { origin, end } ->
                                                 let
-                                                    ( x1, y1 ) =
-                                                        start
-
-                                                    ( x2, y2 ) =
-                                                        end
-
                                                     draggingArea =
-                                                        { x1 = x1
-                                                        , y1 = y1
-                                                        , width = x2 - x1
-                                                        , height = y2 - y1
-                                                        }
+                                                        pointsToRectangle (origin |> toGlobal viewport) (end |> toGlobal viewport)
                                                 in
                                                 initialRooms |> List.filter (\r -> not <| Rect.isInside draggingArea r.boundingBox)
 
@@ -1389,23 +1360,9 @@ view model =
                             drawSelectionArea : List (Svg Msg)
                             drawSelectionArea =
                                 case state of
-                                    DraggingToSelectMany { start, end } ->
-                                        let
-                                            ( x1, y1 ) =
-                                                start
-
-                                            ( x2, y2 ) =
-                                                end
-
-                                            ( gx, gy ) =
-                                                model.viewport
-                                        in
+                                    DraggingToSelectMany { origin, end } ->
                                         [ drawRect
-                                            { x1 = x1 - gx
-                                            , y1 = y1 - gy
-                                            , height = y2 - y1
-                                            , width = x2 - x1
-                                            }
+                                            (pointsToRectangle origin end)
                                             [ strokeWidth "2"
 
                                             -- TODO: colors could be nicer
