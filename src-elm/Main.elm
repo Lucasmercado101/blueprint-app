@@ -568,21 +568,8 @@ update msg model =
 
                         DraggingToSelectMany { initialRelativeMousePos } ->
                             let
-                                ( xStart, yStart ) =
-                                    initialRelativeMousePos
-
                                 position =
-                                    if x <= xStart && y <= yStart then
-                                        { start = ( x, y ), end = initialRelativeMousePos }
-
-                                    else if y <= yStart then
-                                        { start = ( xStart, y ), end = ( x, yStart ) }
-
-                                    else if x <= xStart then
-                                        { start = ( x, yStart ), end = ( xStart, y ) }
-
-                                    else
-                                        { start = initialRelativeMousePos, end = ( x, y ) }
+                                    pointsToRectangle initialRelativeMousePos mouseMoveRelCoords
                             in
                             ( { model
                                 | mode =
@@ -590,8 +577,8 @@ update msg model =
                                         { selected = selected
                                         , state =
                                             DraggingToSelectMany
-                                                { start = position.start |> toGlobal model.viewport
-                                                , end = position.end |> toGlobal model.viewport
+                                                { start = Rect.topLeft position |> toGlobal model.viewport
+                                                , end = Rect.bottomRight position |> toGlobal model.viewport
                                                 , initialRelativeMousePos = initialRelativeMousePos
                                                 }
                                         }
