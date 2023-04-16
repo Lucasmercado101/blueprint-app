@@ -394,7 +394,7 @@ update msg model =
                         Nothing ->
                             ( { model | mode = Select { selected = selected, state = HoldingClickOutsideAnyRooms } }, Cmd.none )
 
-        MouseMove (( x, y ) as mouseMoveRelCoords) ->
+        MouseMove mouseMoveRelCoords ->
             case model.mode of
                 Delete ->
                     ( model, Cmd.none )
