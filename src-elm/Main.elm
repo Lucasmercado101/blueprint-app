@@ -82,7 +82,7 @@ bboxDecoder =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    receiveGotSvgBoundingBox ReceivedSvgBoundingBox
+    Sub.none
 
 
 mouseMoveDecoder : Decoder ( Int, Int )
@@ -107,11 +107,6 @@ type alias Line =
 type alias Room =
     { id : RoomID
     , boundingBox : Rectangle
-    , name :
-        { id : RoomID
-        , value : String
-        , boundingBox : Maybe Rectangle
-        }
     }
 
 
@@ -210,8 +205,6 @@ type Msg
     | PanMode
     | DeleteMode
     | SelectMode
-    | OnChangeRectangleName ( RoomID, String )
-    | ReceivedSvgBoundingBox JD.Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -222,77 +215,6 @@ update msg model =
                 | mode = Delete
               }
             , Cmd.none
-            )
-
-        ReceivedSvgBoundingBox value ->
-            case JD.decodeValue receiveGotSvgBoundingBoxDecoder value of
-                Ok ( idStr, boundingBox ) ->
-                    case UUID.fromString idStr of
-                        Ok textId ->
-                            ( { model
-                                | rooms =
-                                    model.rooms
-                                        |> List.map
-                                            (\rect ->
-                                                if rect.name.id == textId then
-                                                    let
-                                                        name =
-                                                            rect.name
-                                                    in
-                                                    { rect
-                                                        | name =
-                                                            { name
-                                                                | boundingBox = Just boundingBox
-                                                            }
-                                                    }
-
-                                                else
-                                                    rect
-                                            )
-                              }
-                            , Cmd.none
-                            )
-
-                        Err err ->
-                            ( model, Cmd.none )
-
-                Err err ->
-                    ( model, Cmd.none )
-
-        OnChangeRectangleName ( rectId, newName ) ->
-            let
-                textId =
-                    List.filter (\rect -> rect.id == rectId) model.rooms
-                        |> List.head
-                        |> Maybe.map (.name >> .id)
-            in
-            ( { model
-                | rooms =
-                    model.rooms
-                        |> List.map
-                            (\rect ->
-                                if rect.id == rectId then
-                                    let
-                                        name =
-                                            rect.name
-                                    in
-                                    { rect
-                                        | name =
-                                            { name
-                                                | value = newName
-                                            }
-                                    }
-
-                                else
-                                    rect
-                            )
-              }
-            , case textId of
-                Just id ->
-                    requestGetSvgBoundingBox (id |> UUID.toString)
-
-                Nothing ->
-                    Cmd.none
             )
 
         DrawMode ->
@@ -357,10 +279,6 @@ update msg model =
                                     ( ox, oy ) =
                                         model.viewport
 
-                                    nameId =
-                                        Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 54321))
-                                            |> Tuple.first
-
                                     rectId =
                                         Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 12345))
                                             |> Tuple.first
@@ -373,11 +291,6 @@ update msg model =
 
                                         --   TODO: change to use random, have it be a command
                                         , id = rectId
-                                        , name =
-                                            { id = nameId
-                                            , value = ""
-                                            , boundingBox = Nothing
-                                            }
                                         }
                                             :: model.rooms
                                     , mode = Draw NotDrawing
@@ -1477,53 +1390,6 @@ view model =
                     ++ drawSnapLines
                 )
             ]
-        , div
-            [ style "position" "absolute"
-            , style "top" "50%"
-            , style "bottom" "50%"
-            , style "right" "0"
-            , style "transform" "translate(0, -50%)"
-            ]
-            (case model.mode of
-                Delete ->
-                    []
-
-                Pan _ ->
-                    []
-
-                Draw _ ->
-                    []
-
-                Select { selected } ->
-                    case selected of
-                        NoRoomSelected ->
-                            []
-
-                        RoomSelected roomId ->
-                            let
-                                room =
-                                    List.filter (\{ id } -> id == roomId) model.rooms
-                                        |> List.head
-                            in
-                            case room of
-                                Just { name } ->
-                                    [ div
-                                        [ style "background-color" "white"
-                                        , style "padding" "15px"
-                                        , style "display" "flex"
-                                        , style "flex-direction" "column"
-                                        ]
-                                        [ div [] [ text "Name:", text nbsp, text name.value ]
-                                        , input [ value name.value, onInput (\l -> OnChangeRectangleName ( roomId, l )) ] []
-                                        ]
-                                    ]
-
-                                Nothing ->
-                                    []
-
-                        GroupSelected _ ->
-                            []
-            )
 
         -- change modes
         , div
