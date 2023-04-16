@@ -889,7 +889,7 @@ update msg model =
                         DraggingRooms { rooms, dragOrigin, dragEnd } ->
                             let
                                 globalMouseUpCoords =
-                                    mouseUpRelCoords
+                                    mouseUpRelCoords |> toGlobal model.viewport
 
                                 roomImHoveringOver : Maybe RoomID
                                 roomImHoveringOver =
@@ -904,36 +904,30 @@ update msg model =
                                             (\r ->
                                                 if List.any (\e -> r.id == e) rooms then
                                                     let
-                                                        ( mInitX, mInitY ) =
-                                                            dragOrigin
+                                                        deltaDrag =
+                                                            Point.subtract dragEnd dragOrigin
 
-                                                        ( mX, mY ) =
-                                                            dragEnd
-
-                                                        ( x1, y1 ) =
+                                                        rectPos : Point
+                                                        rectPos =
                                                             r.boundingBox |> Rect.topLeft
 
-                                                        ( newX1, newY1 ) =
-                                                            ( mX - (mInitX - x1)
-                                                            , mY - (mInitY - y1)
-                                                            )
+                                                        ( newX, newY ) =
+                                                            Point.add rectPos deltaDrag
+
+                                                        newRectangle : Rectangle
+                                                        newRectangle =
+                                                            { x1 = newX
+                                                            , y1 = newY
+                                                            , width = r.boundingBox.width
+                                                            , height = r.boundingBox.height
+                                                            }
 
                                                         isOverlappingAnotherRoom : Bool
                                                         isOverlappingAnotherRoom =
                                                             model.rooms
                                                                 |> List.filter (\e -> not <| List.any (\l -> e.id == l) rooms)
-                                                                |> List.filter
-                                                                    (.boundingBox
-                                                                        >> Rect.isThereAnyOverlap
-                                                                            { x1 = newX1
-                                                                            , y1 = newY1
-                                                                            , width = r.boundingBox.width
-                                                                            , height = r.boundingBox.height
-                                                                            }
-                                                                    )
-                                                                |> List.head
-                                                                |> Maybe.map (always True)
-                                                                |> Maybe.withDefault False
+                                                                |> List.filter (.boundingBox >> Rect.isThereAnyOverlap newRectangle)
+                                                                |> (not << List.isEmpty)
                                                     in
                                                     if isOverlappingAnotherRoom then
                                                         True
