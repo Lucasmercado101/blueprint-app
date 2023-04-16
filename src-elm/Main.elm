@@ -424,6 +424,7 @@ update msg model =
                             ( model, Cmd.none )
 
                         SelectedStart { start, end } ->
+                            -- TODO: fix weird bug where it stays snapped after starting to draw near a bottomY of another rectangle
                             let
                                 drawingRect =
                                     pointsToRectangle start mouseMoveRelCoords
