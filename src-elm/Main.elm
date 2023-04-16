@@ -107,14 +107,7 @@ type alias Room =
 
 type alias Model =
     { viewport : Point
-
-    -- TODO: move this to Drag
-    , relativeView :
-        { start : Point
-        , originalView : Point
-        }
     , mode : Mode
-    , holdingLeftMouseDown : Bool
     , rooms : List Room
     , snappingPointsLine : Maybe ( Line, Line )
     }
@@ -127,12 +120,7 @@ type alias Model =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { viewport = ( 0, 0 )
-      , relativeView =
-            { start = ( 0, 0 )
-            , originalView = ( 0, 0 )
-            }
-      , mode = Pan
-      , holdingLeftMouseDown = False
+      , mode = Pan NotPanning
       , rooms = []
       , snappingPointsLine = Nothing
       }
@@ -145,13 +133,21 @@ init _ =
 
 
 type Mode
-    = Pan
+    = Pan PanState
     | Draw DrawState
     | Select
         { selected : SelectedRoom
         , state : HoveringOverOrDraggingRoom
         }
     | Delete
+
+
+type PanState
+    = NotPanning
+    | Panning
+        { panOrigin : Point
+        , panEnd : Point
+        }
 
 
 type SelectedRoom
@@ -289,26 +285,10 @@ update msg model =
             )
 
         DrawMode ->
-            ( { model
-                | mode = Draw NotDrawing
-                , relativeView =
-                    { start = ( 0, 0 )
-                    , originalView = ( 0, 0 )
-                    }
-              }
-            , Cmd.none
-            )
+            ( { model | mode = Draw NotDrawing }, Cmd.none )
 
         PanMode ->
-            ( { model
-                | mode = Pan
-                , relativeView =
-                    { start = ( 0, 0 )
-                    , originalView = ( 0, 0 )
-                    }
-              }
-            , Cmd.none
-            )
+            ( { model | mode = Pan NotPanning }, Cmd.none )
 
         SelectMode ->
             ( { model
@@ -317,10 +297,6 @@ update msg model =
                         { selected = NoRoomSelected
                         , state = NotHoveringOverRoom
                         }
-                , relativeView =
-                    { start = ( 0, 0 )
-                    , originalView = ( 0, 0 )
-                    }
               }
             , Cmd.none
             )
@@ -330,16 +306,8 @@ update msg model =
                 Delete ->
                     ( model, Cmd.none )
 
-                Pan ->
-                    ( { model
-                        | holdingLeftMouseDown = True
-                        , relativeView =
-                            { start = mouseDownRelCoords
-                            , originalView = model.viewport
-                            }
-                      }
-                    , Cmd.none
-                    )
+                Pan _ ->
+                    ( { model | mode = Pan (Panning { panOrigin = mouseDownRelCoords, panEnd = mouseDownRelCoords }) }, Cmd.none )
 
                 Draw state ->
                     case state of
@@ -431,57 +399,53 @@ update msg model =
                 Delete ->
                     ( model, Cmd.none )
 
-                Pan ->
-                    let
-                        ( sx, sy ) =
-                            model.relativeView.start
+                Pan state ->
+                    case state of
+                        NotPanning ->
+                            ( model, Cmd.none )
 
-                        ( ox, oy ) =
-                            model.relativeView.originalView
+                        Panning { panOrigin } ->
+                            let
+                                maxTopPan : Maybe Rectangle
+                                maxTopPan =
+                                    List.map .boundingBox model.rooms |> Rect.topmostRectangle
 
-                        ( dx, dy ) =
-                            ( sx - x, sy - y )
+                                maxBottomPan : Maybe Rectangle
+                                maxBottomPan =
+                                    List.map .boundingBox model.rooms |> Rect.bottommostRectangle
 
-                        maxTopPan : Maybe Rectangle
-                        maxTopPan =
-                            List.map .boundingBox model.rooms |> Rect.topmostRectangle
+                                maxLeftPan : Maybe Rectangle
+                                maxLeftPan =
+                                    List.map .boundingBox model.rooms |> Rect.leftmostRectangle
 
-                        maxBottomPan : Maybe Rectangle
-                        maxBottomPan =
-                            List.map .boundingBox model.rooms |> Rect.bottommostRectangle
+                                maxRightPan : Maybe Rectangle
+                                maxRightPan =
+                                    List.map .boundingBox model.rooms |> Rect.rightmostRectangle
 
-                        maxLeftPan : Maybe Rectangle
-                        maxLeftPan =
-                            List.map .boundingBox model.rooms |> Rect.leftmostRectangle
+                                -- NOTE:
+                                -- these are in charge of clamping the pan
+                                -- just use the 'else' case if i want to undo it
+                                newY =
+                                    case ( maxTopPan, maxBottomPan ) of
+                                        ( Just maxY, Just minY ) ->
+                                            clamp (maxY.y1 - screenHeight - 50) (minY.y1 + minY.height + 50) (mouseMoveRelCoords |> Point.y)
 
-                        maxRightPan : Maybe Rectangle
-                        maxRightPan =
-                            List.map .boundingBox model.rooms |> Rect.rightmostRectangle
+                                        _ ->
+                                            mouseMoveRelCoords |> Point.y
 
-                        -- NOTE:
-                        -- these are in charge of clamping the pan
-                        -- just use the 'else' case if i want to undo it
-                        newY =
-                            case ( maxTopPan, maxBottomPan ) of
-                                ( Just maxY, Just minY ) ->
-                                    clamp (maxY.y1 - screenHeight - 50) (minY.y1 + minY.height + 50) (oy + dy)
+                                newX =
+                                    case ( maxLeftPan, maxRightPan ) of
+                                        ( Just maxX, Just minX ) ->
+                                            clamp (maxX.x1 - screenWidth - 50) (minX.x1 + minX.width + 50) (mouseMoveRelCoords |> Point.x)
 
-                                _ ->
-                                    oy + dy
-
-                        newX =
-                            case ( maxLeftPan, maxRightPan ) of
-                                ( Just maxX, Just minX ) ->
-                                    clamp (maxX.x1 - screenWidth - 50) (minX.x1 + minX.width + 50) (ox + dx)
-
-                                _ ->
-                                    ox + dx
-                    in
-                    ( { model
-                        | viewport = ( newX, newY )
-                      }
-                    , Cmd.none
-                    )
+                                        _ ->
+                                            mouseMoveRelCoords |> Point.x
+                            in
+                            ( { model
+                                | mode = Pan (Panning { panOrigin = panOrigin, panEnd = ( newX, newY ) })
+                              }
+                            , Cmd.none
+                            )
 
                 Draw state ->
                     case state of
@@ -857,8 +821,22 @@ update msg model =
 
         MouseUp mouseUpRelCoords ->
             case model.mode of
-                Pan ->
-                    ( { model | holdingLeftMouseDown = False }, Cmd.none )
+                Pan state ->
+                    case state of
+                        NotPanning ->
+                            ( model, Cmd.none )
+
+                        Panning { panOrigin, panEnd } ->
+                            let
+                                panDist =
+                                    Point.subtract panOrigin panEnd
+                            in
+                            ( { model
+                                | viewport = model.viewport |> Point.add panDist
+                                , mode = Pan NotPanning
+                              }
+                            , Cmd.none
+                            )
 
                 Select { selected, state } ->
                     case state of
@@ -1161,14 +1139,23 @@ view model =
                             [ on "mouseup" (mouseMoveDecoder |> JD.map MouseUp)
                             ]
 
-                        Pan ->
+                        Pan _ ->
+                            let
+                                isPanning =
+                                    case model.mode of
+                                        Pan _ ->
+                                            True
+
+                                        _ ->
+                                            False
+                            in
                             [ on "mouseup" (mouseMoveDecoder |> JD.map MouseUp)
-                            , if model.holdingLeftMouseDown then
+                            , if isPanning then
                                 on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
 
                               else
                                 style "" ""
-                            , if model.holdingLeftMouseDown then
+                            , if isPanning then
                                 style "cursor" "grabbing"
 
                               else
@@ -1197,16 +1184,34 @@ view model =
             [ svg [ version "1.1", SA.width (screenWidth |> String.fromInt), SA.height (screenHeight |> String.fromInt), viewBox "0 0 1900 800" ]
                 -- DRAW
                 (let
+                    viewport : Point
+                    viewport =
+                        case model.mode of
+                            Pan state ->
+                                case state of
+                                    NotPanning ->
+                                        model.viewport
+
+                                    Panning { panOrigin, panEnd } ->
+                                        let
+                                            panDist =
+                                                Point.subtract panOrigin panEnd
+                                        in
+                                        model.viewport |> Point.add panDist
+
+                            _ ->
+                                model.viewport
+
                     bgGrid : List (Svg Msg)
                     bgGrid =
-                        backgroundGrid model.viewport
+                        backgroundGrid viewport
 
                     globalRectToRel : Rectangle -> Rectangle
                     globalRectToRel { x1, y1, width, height } =
                         let
                             rel : Point
                             rel =
-                                toRelative ( x1, y1 ) model.viewport
+                                toRelative ( x1, y1 ) viewport
                         in
                         { x1 = rel |> Point.x
                         , y1 = rel |> Point.y
@@ -1240,7 +1245,7 @@ view model =
                     Delete ->
                         bgGrid ++ drawRooms model.rooms
 
-                    Pan ->
+                    Pan state ->
                         bgGrid ++ drawRooms model.rooms
 
                     Draw state ->
@@ -1544,7 +1549,7 @@ view model =
                 Delete ->
                     []
 
-                Pan ->
+                Pan _ ->
                     []
 
                 Draw _ ->
