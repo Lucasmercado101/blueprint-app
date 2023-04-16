@@ -405,47 +405,7 @@ update msg model =
                             ( model, Cmd.none )
 
                         Panning { panOrigin } ->
-                            let
-                                maxTopPan : Maybe Rectangle
-                                maxTopPan =
-                                    List.map .boundingBox model.rooms |> Rect.topmostRectangle
-
-                                maxBottomPan : Maybe Rectangle
-                                maxBottomPan =
-                                    List.map .boundingBox model.rooms |> Rect.bottommostRectangle
-
-                                maxLeftPan : Maybe Rectangle
-                                maxLeftPan =
-                                    List.map .boundingBox model.rooms |> Rect.leftmostRectangle
-
-                                maxRightPan : Maybe Rectangle
-                                maxRightPan =
-                                    List.map .boundingBox model.rooms |> Rect.rightmostRectangle
-
-                                -- NOTE:
-                                -- these are in charge of clamping the pan
-                                -- just use the 'else' case if i want to undo it
-                                newY =
-                                    case ( maxTopPan, maxBottomPan ) of
-                                        ( Just maxY, Just minY ) ->
-                                            clamp (maxY.y1 - screenHeight - 50) (minY.y1 + minY.height + 50) (mouseMoveRelCoords |> Point.y)
-
-                                        _ ->
-                                            mouseMoveRelCoords |> Point.y
-
-                                newX =
-                                    case ( maxLeftPan, maxRightPan ) of
-                                        ( Just maxX, Just minX ) ->
-                                            clamp (maxX.x1 - screenWidth - 50) (minX.x1 + minX.width + 50) (mouseMoveRelCoords |> Point.x)
-
-                                        _ ->
-                                            mouseMoveRelCoords |> Point.x
-                            in
-                            ( { model
-                                | mode = Pan (Panning { panOrigin = panOrigin, panEnd = ( newX, newY ) })
-                              }
-                            , Cmd.none
-                            )
+                            ( { model | mode = Pan (Panning { panOrigin = panOrigin, panEnd = mouseMoveRelCoords }) }, Cmd.none )
 
                 Draw state ->
                     case state of
@@ -1245,7 +1205,7 @@ view model =
                     Delete ->
                         bgGrid ++ drawRooms model.rooms
 
-                    Pan state ->
+                    Pan _ ->
                         bgGrid ++ drawRooms model.rooms
 
                     Draw state ->
