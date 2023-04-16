@@ -14,6 +14,16 @@ import Svg.Attributes as SA exposing (fill, r, stroke, strokeWidth, version, vie
 import UUID exposing (UUID)
 
 
+snapDistanceRange : Int
+snapDistanceRange =
+    20
+
+
+snapMinValidDistance : Int
+snapMinValidDistance =
+    200
+
+
 
 -- TODO: get dynamically
 
@@ -170,6 +180,8 @@ type HoveringOverOrDraggingRoom
         , dragOrigin : Point
         , dragEnd : Point
         , isOverlappingAnotherRoom : Bool
+        , sidesSnapping :
+            { bottom : Maybe Room }
         }
     | DraggingRooms
         { rooms : List RoomID
@@ -427,7 +439,7 @@ update msg model =
                                 bottomSideIsAlignedToAnotherRectangle =
                                     model.rooms
                                         |> List.map .boundingBox
-                                        |> List.filter (\rect -> numWithinRange (rect |> Rect.bottomY) (drawingRect |> Rect.bottomY) 10)
+                                        |> List.filter (\rect -> numWithinRange (rect |> Rect.bottomY) (drawingRect |> Rect.bottomY) snapDistanceRange)
                                         |> Rect.closestRectangleX drawingRect
                                         |> Maybe.andThen
                                             (\rect ->
@@ -458,7 +470,7 @@ update msg model =
                                                             False
 
                                                     minDistBeforeSnapping =
-                                                        150
+                                                        snapMinValidDistance
                                                 in
                                                 if isOnTheRight then
                                                     if rightDist <= minDistBeforeSnapping then
@@ -667,6 +679,7 @@ update msg model =
                                                         , dragOrigin = mouseMoveRelCoords |> toGlobal model.viewport
                                                         , dragEnd = mouseMoveRelCoords |> toGlobal model.viewport
                                                         , isOverlappingAnotherRoom = False
+                                                        , sidesSnapping = { bottom = Nothing }
                                                         }
                                                 }
                                       }
@@ -702,56 +715,102 @@ update msg model =
                                     draggingSingleRoom
 
                         DraggingRoom { room, dragOrigin, dragEnd } ->
-                            ( { model
-                                | mode =
-                                    Select
-                                        { selected = selected
-                                        , state =
-                                            DraggingRoom
-                                                { room = room
-                                                , dragOrigin = dragOrigin
-                                                , dragEnd = mouseMoveRelCoords |> toGlobal model.viewport
-                                                , isOverlappingAnotherRoom =
-                                                    model.rooms
-                                                        |> List.any
-                                                            (\r ->
-                                                                if r.id == room then
-                                                                    let
-                                                                        deltaDrag =
-                                                                            Point.subtract dragEnd dragOrigin
+                            case
+                                model.rooms
+                                    |> getFirstRoom (\r -> r.id == room)
+                            of
+                                Just roomImDraggingAround ->
+                                    let
+                                        deltaDrag : Point
+                                        deltaDrag =
+                                            Point.subtract dragEnd dragOrigin
 
-                                                                        rectPos : Point
-                                                                        rectPos =
-                                                                            r.boundingBox |> Rect.topLeft
+                                        draggingRectPos : Point
+                                        draggingRectPos =
+                                            roomImDraggingAround.boundingBox |> Rect.topLeft
 
-                                                                        ( newX, newY ) =
-                                                                            Point.add rectPos deltaDrag
+                                        draggingRoomCurrentPosition : Rectangle
+                                        draggingRoomCurrentPosition =
+                                            Point.add draggingRectPos deltaDrag
+                                                |> Rect.changePosition roomImDraggingAround.boundingBox
 
-                                                                        newRectangle : Rectangle
-                                                                        newRectangle =
-                                                                            { x1 = newX
-                                                                            , y1 = newY
-                                                                            , width = r.boundingBox.width
-                                                                            , height = r.boundingBox.height
-                                                                            }
+                                        bottomSideSnappingToAnotherRectangle : Maybe Room
+                                        bottomSideSnappingToAnotherRectangle =
+                                            model.rooms
+                                                |> List.filter (\r -> r.id /= room)
+                                                |> List.filter
+                                                    (\rect ->
+                                                        numWithinRange
+                                                            (Rect.bottomY draggingRoomCurrentPosition)
+                                                            (Rect.bottomY rect.boundingBox)
+                                                            snapDistanceRange
+                                                    )
+                                                |> closestRoomX { roomImDraggingAround | boundingBox = draggingRoomCurrentPosition }
+                                                |> Maybe.andThen
+                                                    (\roomToSnapTo ->
+                                                        if
+                                                            numWithinRange
+                                                                (Rect.center draggingRoomCurrentPosition |> Point.x)
+                                                                (Rect.center roomToSnapTo.boundingBox |> Point.x)
+                                                                snapMinValidDistance
+                                                        then
+                                                            Just roomToSnapTo
 
-                                                                        isOverlappingAnotherRoom : Bool
-                                                                        isOverlappingAnotherRoom =
-                                                                            model.rooms
-                                                                                |> List.filter (\e -> e.id /= room)
-                                                                                |> List.filter (.boundingBox >> Rect.isThereAnyOverlap newRectangle)
-                                                                                |> (not << List.isEmpty)
-                                                                    in
-                                                                    isOverlappingAnotherRoom
+                                                        else
+                                                            Nothing
+                                                    )
+                                    in
+                                    ( { model
+                                        | mode =
+                                            Select
+                                                { selected = selected
+                                                , state =
+                                                    DraggingRoom
+                                                        { room = room
+                                                        , dragOrigin = dragOrigin
+                                                        , dragEnd = mouseMoveRelCoords |> toGlobal model.viewport
+                                                        , sidesSnapping = { bottom = bottomSideSnappingToAnotherRectangle }
+                                                        , isOverlappingAnotherRoom =
+                                                            model.rooms
+                                                                |> List.any
+                                                                    (\r ->
+                                                                        if r.id == room then
+                                                                            let
+                                                                                rectPos : Point
+                                                                                rectPos =
+                                                                                    r.boundingBox |> Rect.topLeft
 
-                                                                else
-                                                                    False
-                                                            )
+                                                                                ( newX, newY ) =
+                                                                                    Point.add rectPos deltaDrag
+
+                                                                                newRectangle : Rectangle
+                                                                                newRectangle =
+                                                                                    { x1 = newX
+                                                                                    , y1 = newY
+                                                                                    , width = r.boundingBox.width
+                                                                                    , height = r.boundingBox.height
+                                                                                    }
+
+                                                                                isOverlappingAnotherRoom : Bool
+                                                                                isOverlappingAnotherRoom =
+                                                                                    model.rooms
+                                                                                        |> List.filter (\e -> e.id /= room)
+                                                                                        |> List.filter (.boundingBox >> Rect.isThereAnyOverlap newRectangle)
+                                                                                        |> (not << List.isEmpty)
+                                                                            in
+                                                                            isOverlappingAnotherRoom
+
+                                                                        else
+                                                                            False
+                                                                    )
+                                                        }
                                                 }
-                                        }
-                              }
-                            , Cmd.none
-                            )
+                                      }
+                                    , Cmd.none
+                                    )
+
+                                Nothing ->
+                                    ( model, Cmd.none )
 
         MouseUp mouseUpRelCoords ->
             case model.mode of
@@ -846,7 +905,7 @@ update msg model =
                             , Cmd.none
                             )
 
-                        DraggingRoom { room, dragOrigin, dragEnd, isOverlappingAnotherRoom } ->
+                        DraggingRoom { room, dragOrigin, dragEnd, isOverlappingAnotherRoom, sidesSnapping } ->
                             ( { model
                                 | rooms =
                                     if isOverlappingAnotherRoom then
@@ -871,7 +930,14 @@ update msg model =
                                                             newRectangle : Rectangle
                                                             newRectangle =
                                                                 { x1 = newX
-                                                                , y1 = newY
+                                                                , y1 =
+                                                                    case sidesSnapping.bottom of
+                                                                        Just snappingBottomRoom ->
+                                                                            -- same bottom y as the room we are snapping to
+                                                                            (snappingBottomRoom.boundingBox.y1 + snappingBottomRoom.boundingBox.height) - r.boundingBox.height
+
+                                                                        Nothing ->
+                                                                            newY
                                                                 , width = r.boundingBox.width
                                                                 , height = r.boundingBox.height
                                                                 }
@@ -1220,10 +1286,9 @@ view model =
                             drawRoomBeingDragged : List Room -> Svg Msg
                             drawRoomBeingDragged rooms =
                                 case state of
-                                    DraggingRoom { room, dragOrigin, dragEnd, isOverlappingAnotherRoom } ->
+                                    DraggingRoom { room, dragOrigin, dragEnd, isOverlappingAnotherRoom, sidesSnapping } ->
                                         rooms
-                                            |> List.filter (\{ id } -> id == room)
-                                            |> List.head
+                                            |> getFirstRoom (\{ id } -> id == room)
                                             |> Maybe.map
                                                 (\{ boundingBox } ->
                                                     let
@@ -1247,7 +1312,14 @@ view model =
                                                     in
                                                     drawRect
                                                         { x1 = (x1 - distFromSelectedX) - gx
-                                                        , y1 = (y1 - distFromSelectedY) - gy
+                                                        , y1 =
+                                                            case sidesSnapping.bottom of
+                                                                Just snappingBottomRoom ->
+                                                                    -- same bottom y as the room we are snapping to
+                                                                    (snappingBottomRoom.boundingBox.y1 + snappingBottomRoom.boundingBox.height) - boundingBox.height
+
+                                                                Nothing ->
+                                                                    (y1 - distFromSelectedY) - gy
                                                         , height = height
                                                         , width = width
                                                         }
@@ -1795,3 +1867,44 @@ rectToGlobal globalView { x1, y1, width, height } =
     , width = width
     , height = height
     }
+
+
+closestRoomX : Room -> List Room -> Maybe Room
+closestRoomX room rooms =
+    let
+        centerX =
+            room.boundingBox.x1 + (room.boundingBox.height // 2)
+    in
+    case rooms of
+        [] ->
+            Nothing
+
+        [ onlyRoom ] ->
+            Just onlyRoom
+
+        x :: xs ->
+            Just
+                (List.foldl
+                    (\next current ->
+                        let
+                            centerXCurrent =
+                                current.boundingBox.x1 + (current.boundingBox.height // 2)
+
+                            centerXNext =
+                                next.boundingBox.x1 + (next.boundingBox.height // 2)
+
+                            dNext =
+                                abs (centerX - centerXNext)
+
+                            dCurr =
+                                abs (centerX - centerXCurrent)
+                        in
+                        if dNext < dCurr then
+                            next
+
+                        else
+                            current
+                    )
+                    x
+                    xs
+                )
