@@ -2091,3 +2091,8 @@ getSnappingRooms room allRooms =
                     )
     in
     ( horizontal, vertical )
+
+
+inRange : Int -> Int -> Int -> Bool
+inRange min max number =
+    min <= number && number <= max
