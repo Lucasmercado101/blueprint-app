@@ -1775,3 +1775,229 @@ closestRoomX room rooms =
                     x
                     xs
                 )
+
+
+type RoomPossibleSnappingX
+    = SnappingXTop
+    | SnappingXMiddle
+    | SnappingXBottom
+
+
+type RoomPossibleSnappingY
+    = SnappingYLeft
+    | SnappingYMiddle
+    | SnappingYRight
+
+
+getSnappingRooms :
+    Room
+    -> List Room
+    ->
+        ( Maybe
+            { currentRect : RoomPossibleSnappingX
+            , room : Room
+            , snappingOn : RoomPossibleSnappingX
+            }
+        , Maybe
+            { currentRect : RoomPossibleSnappingY
+            , room : Room
+            , snappingOn : RoomPossibleSnappingY
+            }
+        )
+getSnappingRooms room allRooms =
+    let
+        horizontal :
+            Maybe
+                { currentRect : RoomPossibleSnappingX
+                , room : Room
+                , snappingOn : RoomPossibleSnappingX
+                }
+        horizontal =
+            allRooms
+                |> closestRoomX room
+                |> Maybe.andThen
+                    (\currRoom ->
+                        let
+                            topY =
+                                currRoom.boundingBox.y1
+
+                            centerY =
+                                currRoom.boundingBox |> Rect.center |> Point.y
+
+                            bottomY =
+                                currRoom.boundingBox |> Rect.bottomY
+
+                            bottomYWithinRangeOf number =
+                                numWithinRange number (room.boundingBox |> Rect.bottomY) snapDistanceRange
+
+                            middleYWithinRangeOf number =
+                                numWithinRange number (room.boundingBox |> Rect.center |> Point.y) snapDistanceRange
+
+                            topYWithinRangeOf number =
+                                numWithinRange number room.boundingBox.y1 snapDistanceRange
+                        in
+                        if bottomYWithinRangeOf topY then
+                            Just
+                                { currentRect = SnappingXBottom
+                                , room = currRoom
+                                , snappingOn = SnappingXTop
+                                }
+
+                        else if bottomYWithinRangeOf centerY then
+                            Just
+                                { currentRect = SnappingXBottom
+                                , snappingOn = SnappingXMiddle
+                                , room = currRoom
+                                }
+
+                        else if bottomYWithinRangeOf bottomY then
+                            Just
+                                { currentRect = SnappingXBottom
+                                , snappingOn = SnappingXBottom
+                                , room = currRoom
+                                }
+
+                        else if middleYWithinRangeOf topY then
+                            Just
+                                { currentRect = SnappingXMiddle
+                                , snappingOn = SnappingXTop
+                                , room = currRoom
+                                }
+
+                        else if middleYWithinRangeOf centerY then
+                            Just
+                                { currentRect = SnappingXMiddle
+                                , snappingOn = SnappingXMiddle
+                                , room = currRoom
+                                }
+
+                        else if middleYWithinRangeOf bottomY then
+                            Just
+                                { currentRect = SnappingXMiddle
+                                , snappingOn = SnappingXBottom
+                                , room = currRoom
+                                }
+
+                        else if topYWithinRangeOf topY then
+                            Just
+                                { currentRect = SnappingXTop
+                                , snappingOn = SnappingXTop
+                                , room = currRoom
+                                }
+
+                        else if topYWithinRangeOf centerY then
+                            Just
+                                { currentRect = SnappingXTop
+                                , snappingOn = SnappingXMiddle
+                                , room = currRoom
+                                }
+
+                        else if topYWithinRangeOf bottomY then
+                            Just
+                                { currentRect = SnappingXTop
+                                , snappingOn = SnappingXBottom
+                                , room = currRoom
+                                }
+
+                        else
+                            Nothing
+                    )
+
+        vertical :
+            Maybe
+                { currentRect : RoomPossibleSnappingY
+                , snappingOn : RoomPossibleSnappingY
+                , room : Room
+                }
+        vertical =
+            allRooms
+                |> closestRoomX room
+                |> Maybe.andThen
+                    (\currRoom ->
+                        let
+                            leftX =
+                                currRoom.boundingBox.x1
+
+                            centerX =
+                                currRoom.boundingBox |> Rect.center |> Point.x
+
+                            rightX =
+                                currRoom.boundingBox |> Rect.rightX
+
+                            rightXWithinRangeOf number =
+                                numWithinRange number (room.boundingBox |> Rect.rightX) snapDistanceRange
+
+                            centerXWithinRangeOf number =
+                                numWithinRange number (room.boundingBox |> Rect.center |> Point.x) snapDistanceRange
+
+                            leftXWithinRangeOf number =
+                                numWithinRange number room.boundingBox.x1 snapDistanceRange
+                        in
+                        if rightXWithinRangeOf leftX then
+                            Just
+                                { currentRect = SnappingYRight
+                                , snappingOn = SnappingYLeft
+                                , room = currRoom
+                                }
+
+                        else if rightXWithinRangeOf centerX then
+                            Just
+                                { currentRect = SnappingYRight
+                                , snappingOn = SnappingYMiddle
+                                , room = currRoom
+                                }
+
+                        else if rightXWithinRangeOf rightX then
+                            Just
+                                { currentRect = SnappingYRight
+                                , snappingOn = SnappingYRight
+                                , room = currRoom
+                                }
+
+                        else if centerXWithinRangeOf leftX then
+                            Just
+                                { currentRect = SnappingYMiddle
+                                , snappingOn = SnappingYLeft
+                                , room = currRoom
+                                }
+
+                        else if centerXWithinRangeOf centerX then
+                            Just
+                                { currentRect = SnappingYMiddle
+                                , snappingOn = SnappingYMiddle
+                                , room = currRoom
+                                }
+
+                        else if centerXWithinRangeOf rightX then
+                            Just
+                                { currentRect = SnappingYMiddle
+                                , snappingOn = SnappingYRight
+                                , room = currRoom
+                                }
+
+                        else if leftXWithinRangeOf leftX then
+                            Just
+                                { currentRect = SnappingYLeft
+                                , snappingOn = SnappingYLeft
+                                , room = currRoom
+                                }
+
+                        else if leftXWithinRangeOf centerX then
+                            Just
+                                { currentRect = SnappingYLeft
+                                , snappingOn = SnappingYMiddle
+                                , room = currRoom
+                                }
+
+                        else if leftXWithinRangeOf rightX then
+                            Just
+                                { currentRect = SnappingYLeft
+                                , snappingOn = SnappingYRight
+                                , room = currRoom
+                                }
+
+                        else
+                            Nothing
+                    )
+    in
+    ( horizontal, vertical )
