@@ -2237,3 +2237,59 @@ whereToSnapHorizontally room roomImChecking =
 
     else
         Nothing
+
+
+whereToSnapVertically : Room -> Room -> Maybe ( RoomPossibleSnappingY, RoomPossibleSnappingY )
+whereToSnapVertically room roomImChecking =
+    let
+        leftX =
+            room.boundingBox.x1
+
+        centerX =
+            Rect.centerX room.boundingBox
+
+        rightX =
+            Rect.rightX room.boundingBox
+
+        isInsideLeftSnappableArea : Int -> Bool
+        isInsideLeftSnappableArea number =
+            inRange (number - snapDistanceRange) (number + snapDistanceRange) roomImChecking.boundingBox.x1
+
+        isInsideMiddleSnappableArea : Int -> Bool
+        isInsideMiddleSnappableArea number =
+            inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.centerX roomImChecking.boundingBox)
+
+        isInsideRightSnappableArea : Int -> Bool
+        isInsideRightSnappableArea number =
+            inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.rightX roomImChecking.boundingBox)
+    in
+    -- NOTE: some of these could be skipped depending on the position of roomToBeSnapped, refactor later?
+    if leftX |> isInsideRightSnappableArea then
+        Just ( SnappingYLeft, SnappingYRight )
+
+    else if centerX |> isInsideRightSnappableArea then
+        Just ( SnappingYMiddle, SnappingYRight )
+
+    else if rightX |> isInsideRightSnappableArea then
+        Just ( SnappingYRight, SnappingYRight )
+
+    else if leftX |> isInsideMiddleSnappableArea then
+        Just ( SnappingYLeft, SnappingYMiddle )
+
+    else if centerX |> isInsideMiddleSnappableArea then
+        Just ( SnappingYMiddle, SnappingYMiddle )
+
+    else if rightX |> isInsideMiddleSnappableArea then
+        Just ( SnappingYRight, SnappingYMiddle )
+
+    else if leftX |> isInsideLeftSnappableArea then
+        Just ( SnappingYLeft, SnappingYLeft )
+
+    else if centerX |> isInsideLeftSnappableArea then
+        Just ( SnappingYMiddle, SnappingYLeft )
+
+    else if rightX |> isInsideLeftSnappableArea then
+        Just ( SnappingYRight, SnappingYLeft )
+
+    else
+        Nothing
