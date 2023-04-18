@@ -2102,57 +2102,79 @@ inRange min max number =
 -- WIP:
 
 
-handleSnapping : Room -> List Room -> ( Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX ), Maybe ( RoomPossibleSnappingY, RoomPossibleSnappingY ) )
+handleSnapping : Room -> List Room -> ( Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX, RoomID ), Maybe ( RoomPossibleSnappingY, RoomPossibleSnappingY, RoomID ) )
 handleSnapping roomToSnap allRooms =
-    case allRooms of
-        [] ->
-            ( Nothing, Nothing )
-
-        [ onlyRoom ] ->
+    let
+        isHorizontallyNear : Room -> Room -> Bool
+        isHorizontallyNear a b =
             let
-                isVerticallyNearMe =
-                    let
-                        a1 =
-                            roomToSnap.boundingBox.x1
+                a1 =
+                    a.boundingBox.y1
 
-                        a2 =
-                            roomToSnap.boundingBox.x1 + roomToSnap.boundingBox.width
+                a2 =
+                    a.boundingBox.y1 + a.boundingBox.height
 
-                        b1 =
-                            onlyRoom.boundingBox.x1 - snapDistanceRange
+                b1 =
+                    b.boundingBox.y1 - snapDistanceRange
 
-                        b2 =
-                            onlyRoom.boundingBox.x1 + onlyRoom.boundingBox.width + snapDistanceRange
-                    in
-                    overlap1DLines ( a1, a2 ) ( b1, b2 )
-
-                isHorizontallyNearMe =
-                    let
-                        a1 =
-                            roomToSnap.boundingBox.y1
-
-                        a2 =
-                            roomToSnap.boundingBox.y1 + roomToSnap.boundingBox.height
-
-                        b1 =
-                            onlyRoom.boundingBox.y1 - snapDistanceRange
-
-                        b2 =
-                            onlyRoom.boundingBox.y1 + onlyRoom.boundingBox.height + snapDistanceRange
-                    in
-                    overlap1DLines ( a1, a2 ) ( b1, b2 )
+                b2 =
+                    b.boundingBox.y1 + b.boundingBox.height + snapDistanceRange
             in
-            if isVerticallyNearMe then
-                ( Nothing, whereToSnapVertically roomToSnap onlyRoom )
+            overlap1DLines ( a1, a2 ) ( b1, b2 )
 
-            else if isHorizontallyNearMe then
-                ( whereToSnapHorizontally roomToSnap onlyRoom, Nothing )
+        isVerticallyNear : Room -> Room -> Bool
+        isVerticallyNear a b =
+            let
+                a1 =
+                    a.boundingBox.x1
 
-            else
-                ( Nothing, Nothing )
+                a2 =
+                    a.boundingBox.x1 + a.boundingBox.width
 
-        x :: xs ->
-            ( Nothing, Nothing )
+                b1 =
+                    b.boundingBox.x1 - snapDistanceRange
+
+                b2 =
+                    b.boundingBox.x1 + b.boundingBox.width + snapDistanceRange
+            in
+            overlap1DLines ( a1, a2 ) ( b1, b2 )
+
+        addRoomId : { a | id : b } -> Maybe ( c, d ) -> Maybe ( c, d, b )
+        addRoomId r e =
+            Maybe.map (\( f, s ) -> ( f, s, r.id )) e
+    in
+    List.foldl
+        (\currRoom acc ->
+            case acc of
+                ( Nothing, Nothing ) ->
+                    if currRoom |> isVerticallyNear roomToSnap then
+                        ( Nothing, whereToSnapVertically roomToSnap currRoom |> addRoomId currRoom )
+
+                    else if currRoom |> isHorizontallyNear roomToSnap then
+                        ( whereToSnapHorizontally roomToSnap currRoom |> addRoomId currRoom, Nothing )
+
+                    else
+                        ( Nothing, Nothing )
+
+                ( Just horizontalMatch, Nothing ) ->
+                    if currRoom |> isVerticallyNear roomToSnap then
+                        ( Just horizontalMatch, whereToSnapVertically roomToSnap currRoom |> addRoomId currRoom )
+
+                    else
+                        ( Just horizontalMatch, Nothing )
+
+                ( Nothing, Just verticalMatch ) ->
+                    if currRoom |> isHorizontallyNear roomToSnap then
+                        ( whereToSnapHorizontally roomToSnap currRoom |> addRoomId currRoom, Just verticalMatch )
+
+                    else
+                        ( Nothing, Just verticalMatch )
+
+                ( Just horizontalMatch, Just verticalMatch ) ->
+                    ( Just horizontalMatch, Just verticalMatch )
+        )
+        ( Nothing, Nothing )
+        allRooms
 
 
 whereToSnapHorizontally : Room -> Room -> Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX )
