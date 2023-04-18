@@ -2105,6 +2105,9 @@ inRange min max number =
 -- then re-get a matching room, ignoring the side that i already snapped to, and then do it again
 -- to get the possible remaining snapped sides/center.
 -- should be as simple as just adding an "if" on the -whereToSnap functions
+-- TODO: refactor so that the valid area for snapping is just a rectangle
+-- instead of two lines that validate x and y separately
+-- as visually they end up as a rectangle anyways, might be easier to code/read/reason about
 
 
 handleSnapping : Room -> List Room -> ( Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX, RoomID ), Maybe ( RoomPossibleSnappingY, RoomPossibleSnappingY, RoomID ) )
