@@ -2293,3 +2293,8 @@ whereToSnapVertically room roomImChecking =
 
     else
         Nothing
+
+
+overlap1DLines : ( Int, Int ) -> ( Int, Int ) -> Bool
+overlap1DLines ( x1, x2 ) ( y1, y2 ) =
+    inRange x1 x2 y1 || inRange x1 x2 y2 || inRange y1 y2 x1 || inRange y1 y2 x2
