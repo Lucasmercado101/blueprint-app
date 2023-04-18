@@ -1777,6 +1777,47 @@ closestRoomX room rooms =
                 )
 
 
+closestRoomY : Room -> List Room -> Maybe Room
+closestRoomY room rooms =
+    let
+        centerY =
+            room.boundingBox.y1 + (room.boundingBox.width // 2)
+    in
+    case rooms of
+        [] ->
+            Nothing
+
+        [ onlyRoom ] ->
+            Just onlyRoom
+
+        x :: xs ->
+            Just
+                (List.foldl
+                    (\next current ->
+                        let
+                            centerYCurrent =
+                                current.boundingBox.y1 + (current.boundingBox.width // 2)
+
+                            centerYNext =
+                                next.boundingBox.y1 + (next.boundingBox.width // 2)
+
+                            dNext =
+                                abs (centerY - centerYNext)
+
+                            dCurr =
+                                abs (centerY - centerYCurrent)
+                        in
+                        if dNext < dCurr then
+                            next
+
+                        else
+                            current
+                    )
+                    x
+                    xs
+                )
+
+
 type RoomPossibleSnappingX
     = SnappingXTop
     | SnappingXMiddle
@@ -1814,6 +1855,30 @@ getSnappingRooms room allRooms =
                 }
         horizontal =
             allRooms
+                |> List.filter (\r -> r.id /= room.id)
+                |> List.filter
+                    (\r ->
+                        -- if rectangle y is withing range for snapping
+                        let
+                            y1 =
+                                room.boundingBox.y1
+
+                            y2 =
+                                room.boundingBox.y1 + room.boundingBox.height
+
+                            y3 =
+                                r.boundingBox.y1 - snapDistanceRange
+
+                            y4 =
+                                r.boundingBox.y1 + r.boundingBox.height + snapDistanceRange
+                        in
+                        -- is inside
+                        (y3 <= y1 && y2 <= y4)
+                            -- any bottom portion is inside
+                            || (y4 <= y2 && y4 >= y1)
+                            -- any top portion is inside
+                            || (y3 >= y1 && y3 <= y2)
+                    )
                 |> closestRoomX room
                 |> Maybe.andThen
                     (\currRoom ->
@@ -1828,13 +1893,13 @@ getSnappingRooms room allRooms =
                                 currRoom.boundingBox |> Rect.bottomY
 
                             bottomYWithinRangeOf number =
-                                numWithinRange number (room.boundingBox |> Rect.bottomY) snapDistanceRange
+                                numWithinRange (room.boundingBox |> Rect.bottomY) number snapDistanceRange
 
                             middleYWithinRangeOf number =
-                                numWithinRange number (room.boundingBox |> Rect.center |> Point.y) snapDistanceRange
+                                numWithinRange (room.boundingBox |> Rect.center |> Point.y) number snapDistanceRange
 
                             topYWithinRangeOf number =
-                                numWithinRange number room.boundingBox.y1 snapDistanceRange
+                                numWithinRange room.boundingBox.y1 number snapDistanceRange
                         in
                         if bottomYWithinRangeOf topY then
                             Just
@@ -1911,7 +1976,31 @@ getSnappingRooms room allRooms =
                 }
         vertical =
             allRooms
-                |> closestRoomX room
+                |> List.filter (\r -> r.id /= room.id)
+                |> List.filter
+                    (\r ->
+                        -- if rectangle x is withing range for snapping
+                        let
+                            x1 =
+                                room.boundingBox.x1
+
+                            x2 =
+                                room.boundingBox.x1 + room.boundingBox.width
+
+                            x3 =
+                                r.boundingBox.x1 - snapDistanceRange
+
+                            x4 =
+                                r.boundingBox.x1 + r.boundingBox.width + snapDistanceRange
+                        in
+                        -- is inside
+                        (x3 <= x1 && x2 <= x4)
+                            -- any right portion is inside
+                            || (x4 <= x2 && x4 >= x1)
+                            -- any left portion is inside
+                            || (x3 >= x1 && x3 <= x2)
+                    )
+                |> closestRoomY room
                 |> Maybe.andThen
                     (\currRoom ->
                         let
@@ -1925,13 +2014,13 @@ getSnappingRooms room allRooms =
                                 currRoom.boundingBox |> Rect.rightX
 
                             rightXWithinRangeOf number =
-                                numWithinRange number (room.boundingBox |> Rect.rightX) snapDistanceRange
+                                numWithinRange (room.boundingBox |> Rect.rightX) number snapDistanceRange
 
                             centerXWithinRangeOf number =
-                                numWithinRange number (room.boundingBox |> Rect.center |> Point.x) snapDistanceRange
+                                numWithinRange (room.boundingBox |> Rect.center |> Point.x) number snapDistanceRange
 
                             leftXWithinRangeOf number =
-                                numWithinRange number room.boundingBox.x1 snapDistanceRange
+                                numWithinRange room.boundingBox.x1 number snapDistanceRange
                         in
                         if rightXWithinRangeOf leftX then
                             Just
