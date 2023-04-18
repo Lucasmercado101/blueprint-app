@@ -2122,6 +2122,23 @@ handleSnapping roomToSnap allRooms =
             in
             overlap1DLines ( a1, a2 ) ( b1, b2 )
 
+        isValidXDistanceClose : Room -> Room -> Bool
+        isValidXDistanceClose a b =
+            let
+                a1 =
+                    a.boundingBox.x1
+
+                a2 =
+                    a.boundingBox.x1 + a.boundingBox.width
+
+                b1 =
+                    b.boundingBox.x1 - snapMinValidDistance
+
+                b2 =
+                    b.boundingBox.x1 + b.boundingBox.width + snapMinValidDistance
+            in
+            overlap1DLines ( a1, a2 ) ( b1, b2 )
+
         isOnValidSnappableXRange : Room -> Room -> Bool
         isOnValidSnappableXRange a b =
             let
@@ -2139,6 +2156,23 @@ handleSnapping roomToSnap allRooms =
             in
             overlap1DLines ( a1, a2 ) ( b1, b2 )
 
+        isValidYDistanceClose : Room -> Room -> Bool
+        isValidYDistanceClose a b =
+            let
+                a1 =
+                    a.boundingBox.y1
+
+                a2 =
+                    a.boundingBox.y1 + a.boundingBox.height
+
+                b1 =
+                    b.boundingBox.y1 - snapMinValidDistance
+
+                b2 =
+                    b.boundingBox.y1 + b.boundingBox.height + snapMinValidDistance
+            in
+            overlap1DLines ( a1, a2 ) ( b1, b2 )
+
         addRoomId : { a | id : b } -> Maybe ( c, d ) -> Maybe ( c, d, b )
         addRoomId r e =
             Maybe.map (\( f, s ) -> ( f, s, r.id )) e
@@ -2147,24 +2181,24 @@ handleSnapping roomToSnap allRooms =
         (\currRoom acc ->
             case acc of
                 ( Nothing, Nothing ) ->
-                    if currRoom |> isOnValidSnappableXRange roomToSnap then
+                    if (currRoom |> isOnValidSnappableXRange roomToSnap) && (currRoom |> isValidYDistanceClose roomToSnap) then
                         ( Nothing, whereToSnapVertically roomToSnap currRoom |> addRoomId currRoom )
 
-                    else if currRoom |> isOnValidSnappableYRange roomToSnap then
+                    else if (currRoom |> isOnValidSnappableYRange roomToSnap) && (currRoom |> isValidXDistanceClose roomToSnap) then
                         ( whereToSnapHorizontally roomToSnap currRoom |> addRoomId currRoom, Nothing )
 
                     else
                         ( Nothing, Nothing )
 
                 ( Just horizontalMatch, Nothing ) ->
-                    if currRoom |> isOnValidSnappableXRange roomToSnap then
+                    if (currRoom |> isOnValidSnappableXRange roomToSnap) && (currRoom |> isValidYDistanceClose roomToSnap) then
                         ( Just horizontalMatch, whereToSnapVertically roomToSnap currRoom |> addRoomId currRoom )
 
                     else
                         ( Just horizontalMatch, Nothing )
 
                 ( Nothing, Just verticalMatch ) ->
-                    if currRoom |> isOnValidSnappableYRange roomToSnap then
+                    if (currRoom |> isOnValidSnappableYRange roomToSnap) && (currRoom |> isValidXDistanceClose roomToSnap) then
                         ( whereToSnapHorizontally roomToSnap currRoom |> addRoomId currRoom, Just verticalMatch )
 
                     else
