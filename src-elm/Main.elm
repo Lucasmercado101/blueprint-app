@@ -2096,3 +2096,144 @@ getSnappingRooms room allRooms =
 inRange : Int -> Int -> Int -> Bool
 inRange min max number =
     min <= number && number <= max
+
+
+
+-- WIP:
+
+
+handleSnapping : Room -> List Room -> Maybe Int
+handleSnapping roomToSnap allRooms =
+    case allRooms of
+        [] ->
+            Nothing
+
+        [ onlyRoom ] ->
+            let
+                isVerticallyNearMe =
+                    let
+                        x1 =
+                            roomToSnap.boundingBox.x1
+
+                        x2 =
+                            roomToSnap.boundingBox.x1 + roomToSnap.boundingBox.width
+
+                        x3 =
+                            onlyRoom.boundingBox.x1 - snapDistanceRange
+
+                        x4 =
+                            onlyRoom.boundingBox.x1 + onlyRoom.boundingBox.width + snapDistanceRange
+                    in
+                    -- is inside
+                    (x3 <= x1 && x2 <= x4)
+                        -- any right portion is inside
+                        || (x4 <= x2 && x4 >= x1)
+                        -- any left portion is inside
+                        || (x3 >= x1 && x3 <= x2)
+
+                isHorizontallyNearMe =
+                    let
+                        y1 =
+                            roomToSnap.boundingBox.y1
+
+                        y2 =
+                            roomToSnap.boundingBox.y1 + roomToSnap.boundingBox.height
+
+                        y3 =
+                            onlyRoom.boundingBox.y1 - snapDistanceRange
+
+                        y4 =
+                            onlyRoom.boundingBox.y1 + onlyRoom.boundingBox.height + snapDistanceRange
+                    in
+                    -- is inside
+                    (y3 <= y1 && y2 <= y4)
+                        -- any right portion is inside
+                        || (y4 <= y2 && y4 >= y1)
+                        -- any left portion is inside
+                        || (y3 >= y1 && y3 <= y2)
+            in
+            if isVerticallyNearMe then
+                if
+                    numWithinRange
+                        (Rect.center roomToSnap.boundingBox |> Point.y)
+                        (Rect.center onlyRoom.boundingBox |> Point.y)
+                        snapMinValidDistance
+                then
+                    Just 1
+
+                else
+                    Nothing
+
+            else if isHorizontallyNearMe then
+                if
+                    numWithinRange
+                        (Rect.center roomToSnap.boundingBox |> Point.x)
+                        (Rect.center onlyRoom.boundingBox |> Point.x)
+                        snapMinValidDistance
+                then
+                    Just 1
+
+                else
+                    Nothing
+
+            else
+                Nothing
+
+        x :: xs ->
+            Just 1
+
+
+whereToSnap : Room -> Room -> Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX )
+whereToSnap room roomImChecking =
+    let
+        topY =
+            room.boundingBox.y1
+
+        centerY =
+            Rect.centerY room.boundingBox
+
+        bottomY =
+            Rect.bottomY room.boundingBox
+
+        isInsideTopSnappableArea : Int -> Bool
+        isInsideTopSnappableArea number =
+            inRange (number - snapDistanceRange) (number + snapDistanceRange) roomImChecking.boundingBox.y1
+
+        isInsideMiddleSnappableArea : Int -> Bool
+        isInsideMiddleSnappableArea number =
+            inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.centerY roomImChecking.boundingBox)
+
+        isInsideBottomSnappableArea : Int -> Bool
+        isInsideBottomSnappableArea number =
+            inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.bottomY roomImChecking.boundingBox)
+    in
+    -- NOTE: some of these could be skipped depending on the position of roomToBeSnapped, refactor later?
+    if topY |> isInsideBottomSnappableArea then
+        Just ( SnappingXTop, SnappingXBottom )
+
+    else if centerY |> isInsideBottomSnappableArea then
+        Just ( SnappingXMiddle, SnappingXBottom )
+
+    else if bottomY |> isInsideBottomSnappableArea then
+        Just ( SnappingXBottom, SnappingXBottom )
+
+    else if topY |> isInsideMiddleSnappableArea then
+        Just ( SnappingXTop, SnappingXMiddle )
+
+    else if centerY |> isInsideMiddleSnappableArea then
+        Just ( SnappingXMiddle, SnappingXMiddle )
+
+    else if bottomY |> isInsideMiddleSnappableArea then
+        Just ( SnappingXBottom, SnappingXMiddle )
+
+    else if topY |> isInsideTopSnappableArea then
+        Just ( SnappingXTop, SnappingXTop )
+
+    else if centerY |> isInsideTopSnappableArea then
+        Just ( SnappingXMiddle, SnappingXTop )
+
+    else if bottomY |> isInsideTopSnappableArea then
+        Just ( SnappingXBottom, SnappingXTop )
+
+    else
+        Nothing
