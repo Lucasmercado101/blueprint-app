@@ -2098,6 +2098,15 @@ inRange min max number =
     min <= number && number <= max
 
 
+
+-- TODO: refactor to allow reuse
+-- i want to get other sides that it snaps to
+-- so, after snapping, get new position after translating it to the new snapped position
+-- then re-get a matching room, ignoring the side that i already snapped to, and then do it again
+-- to get the possible remaining snapped sides/center.
+-- should be as simple as just adding an "if" on the -whereToSnap functions
+
+
 handleSnapping : Room -> List Room -> ( Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX, RoomID ), Maybe ( RoomPossibleSnappingY, RoomPossibleSnappingY, RoomID ) )
 handleSnapping roomToSnap allRooms =
     let
