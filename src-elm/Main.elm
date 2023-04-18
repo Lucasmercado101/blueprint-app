@@ -2102,85 +2102,57 @@ inRange min max number =
 -- WIP:
 
 
-handleSnapping : Room -> List Room -> Maybe Int
+handleSnapping : Room -> List Room -> ( Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX ), Maybe ( RoomPossibleSnappingY, RoomPossibleSnappingY ) )
 handleSnapping roomToSnap allRooms =
     case allRooms of
         [] ->
-            Nothing
+            ( Nothing, Nothing )
 
         [ onlyRoom ] ->
             let
                 isVerticallyNearMe =
                     let
-                        x1 =
+                        a1 =
                             roomToSnap.boundingBox.x1
 
-                        x2 =
+                        a2 =
                             roomToSnap.boundingBox.x1 + roomToSnap.boundingBox.width
 
-                        x3 =
+                        b1 =
                             onlyRoom.boundingBox.x1 - snapDistanceRange
 
-                        x4 =
+                        b2 =
                             onlyRoom.boundingBox.x1 + onlyRoom.boundingBox.width + snapDistanceRange
                     in
-                    -- is inside
-                    (x3 <= x1 && x2 <= x4)
-                        -- any right portion is inside
-                        || (x4 <= x2 && x4 >= x1)
-                        -- any left portion is inside
-                        || (x3 >= x1 && x3 <= x2)
+                    overlap1DLines ( a1, a2 ) ( b1, b2 )
 
                 isHorizontallyNearMe =
                     let
-                        y1 =
+                        a1 =
                             roomToSnap.boundingBox.y1
 
-                        y2 =
+                        a2 =
                             roomToSnap.boundingBox.y1 + roomToSnap.boundingBox.height
 
-                        y3 =
+                        b1 =
                             onlyRoom.boundingBox.y1 - snapDistanceRange
 
-                        y4 =
+                        b2 =
                             onlyRoom.boundingBox.y1 + onlyRoom.boundingBox.height + snapDistanceRange
                     in
-                    -- is inside
-                    (y3 <= y1 && y2 <= y4)
-                        -- any right portion is inside
-                        || (y4 <= y2 && y4 >= y1)
-                        -- any left portion is inside
-                        || (y3 >= y1 && y3 <= y2)
+                    overlap1DLines ( a1, a2 ) ( b1, b2 )
             in
             if isVerticallyNearMe then
-                if
-                    numWithinRange
-                        (Rect.center roomToSnap.boundingBox |> Point.y)
-                        (Rect.center onlyRoom.boundingBox |> Point.y)
-                        snapMinValidDistance
-                then
-                    Just 1
-
-                else
-                    Nothing
+                ( Nothing, whereToSnapVertically roomToSnap onlyRoom )
 
             else if isHorizontallyNearMe then
-                if
-                    numWithinRange
-                        (Rect.center roomToSnap.boundingBox |> Point.x)
-                        (Rect.center onlyRoom.boundingBox |> Point.x)
-                        snapMinValidDistance
-                then
-                    Just 1
-
-                else
-                    Nothing
+                ( whereToSnapHorizontally roomToSnap onlyRoom, Nothing )
 
             else
-                Nothing
+                ( Nothing, Nothing )
 
         x :: xs ->
-            Just 1
+            ( Nothing, Nothing )
 
 
 whereToSnapHorizontally : Room -> Room -> Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX )
