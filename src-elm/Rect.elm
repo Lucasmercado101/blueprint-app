@@ -66,6 +66,11 @@ center rect =
     ( rect.x1 + rect.width // 2, rect.y1 + rect.height // 2 )
 
 
+centerY : Rectangle -> Int
+centerY rect =
+    rect.y1 + (rect.height // 2)
+
+
 leftmostRectangle : List Rectangle -> Maybe Rectangle
 leftmostRectangle rects =
     case rects of
@@ -282,10 +287,6 @@ closestRectangleX rect rects =
 
 closestRectangleY : Rectangle -> List Rectangle -> Maybe Rectangle
 closestRectangleY rect rects =
-    let
-        centerY =
-            rect.y1 + (rect.height // 2)
-    in
     case rects of
         [] ->
             Nothing
@@ -305,10 +306,10 @@ closestRectangleY rect rects =
                                 next.y1 + (next.height // 2)
 
                             dNext =
-                                abs (centerY - centerYNext)
+                                abs (centerY rect - centerYNext)
 
                             dCurr =
-                                abs (centerY - centerYCurrent)
+                                abs (centerY rect - centerYCurrent)
                         in
                         if dNext < dCurr then
                             next
