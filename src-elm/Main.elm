@@ -2098,10 +2098,6 @@ inRange min max number =
     min <= number && number <= max
 
 
-
--- WIP:
-
-
 handleSnapping : Room -> List Room -> ( Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX, RoomID ), Maybe ( RoomPossibleSnappingY, RoomPossibleSnappingY, RoomID ) )
 handleSnapping roomToSnap allRooms =
     let
@@ -2173,42 +2169,132 @@ handleSnapping roomToSnap allRooms =
             in
             overlap1DLines ( a1, a2 ) ( b1, b2 )
 
-        addRoomId : { a | id : b } -> Maybe ( c, d ) -> Maybe ( c, d, b )
-        addRoomId r e =
-            Maybe.map (\( f, s ) -> ( f, s, r.id )) e
+        addRoom r e =
+            Maybe.map (\( f, s ) -> ( f, s, r )) e
     in
     List.foldl
         (\currRoom acc ->
+            let
+                currentRoomIsSnappingVertically =
+                    if (currRoom |> isOnValidSnappableXRange roomToSnap) && (currRoom |> isValidYDistanceClose roomToSnap) then
+                        whereToSnapVertically roomToSnap currRoom |> addRoom currRoom
+
+                    else
+                        Nothing
+
+                currentRoomIsSnappingHorizontally =
+                    if (currRoom |> isOnValidSnappableYRange roomToSnap) && (currRoom |> isValidXDistanceClose roomToSnap) then
+                        whereToSnapHorizontally roomToSnap currRoom |> addRoom currRoom
+
+                    else
+                        Nothing
+
+                getClosestXRoom : Room -> Room
+                getClosestXRoom currentlyMatched =
+                    let
+                        centerX =
+                            roomToSnap.boundingBox |> Rect.centerX
+
+                        currentCenterX =
+                            currentlyMatched.boundingBox |> Rect.centerX
+
+                        centerXNext =
+                            currRoom.boundingBox |> Rect.centerX
+
+                        dNext =
+                            abs (centerX - centerXNext)
+
+                        dCurr =
+                            abs (centerX - currentCenterX)
+                    in
+                    if dNext < dCurr then
+                        currRoom
+
+                    else
+                        currentlyMatched
+
+                getClosestYRoom : Room -> Room
+                getClosestYRoom currentlyMatched =
+                    let
+                        centerY =
+                            roomToSnap.boundingBox |> Rect.centerY
+
+                        currentCenterY =
+                            currentlyMatched.boundingBox |> Rect.centerY
+
+                        centerYNext =
+                            currRoom.boundingBox |> Rect.centerY
+
+                        dNext =
+                            abs (centerY - centerYNext)
+
+                        dCurr =
+                            abs (centerY - currentCenterY)
+                    in
+                    if dNext < dCurr then
+                        currRoom
+
+                    else
+                        currentlyMatched
+            in
             case acc of
                 ( Nothing, Nothing ) ->
-                    if (currRoom |> isOnValidSnappableXRange roomToSnap) && (currRoom |> isValidYDistanceClose roomToSnap) then
-                        ( Nothing, whereToSnapVertically roomToSnap currRoom |> addRoomId currRoom )
+                    ( currentRoomIsSnappingHorizontally
+                    , currentRoomIsSnappingVertically
+                    )
 
-                    else if (currRoom |> isOnValidSnappableYRange roomToSnap) && (currRoom |> isValidXDistanceClose roomToSnap) then
-                        ( whereToSnapHorizontally roomToSnap currRoom |> addRoomId currRoom, Nothing )
+                ( Just (( a, b, previousRoomMatched ) as previousHorizontalMatch), Nothing ) ->
+                    ( case currentRoomIsSnappingHorizontally of
+                        Just _ ->
+                            Just ( a, b, getClosestXRoom previousRoomMatched )
 
-                    else
-                        ( Nothing, Nothing )
+                        Nothing ->
+                            Just previousHorizontalMatch
+                    , currentRoomIsSnappingVertically
+                    )
 
-                ( Just horizontalMatch, Nothing ) ->
-                    if (currRoom |> isOnValidSnappableXRange roomToSnap) && (currRoom |> isValidYDistanceClose roomToSnap) then
-                        ( Just horizontalMatch, whereToSnapVertically roomToSnap currRoom |> addRoomId currRoom )
+                ( Nothing, Just (( a, b, previousRoomMatched ) as previousVerticalMatch) ) ->
+                    ( currentRoomIsSnappingHorizontally
+                    , case currentRoomIsSnappingVertically of
+                        Just _ ->
+                            Just ( a, b, getClosestYRoom previousRoomMatched )
 
-                    else
-                        ( Just horizontalMatch, Nothing )
+                        Nothing ->
+                            Just previousVerticalMatch
+                    )
 
-                ( Nothing, Just verticalMatch ) ->
-                    if (currRoom |> isOnValidSnappableYRange roomToSnap) && (currRoom |> isValidXDistanceClose roomToSnap) then
-                        ( whereToSnapHorizontally roomToSnap currRoom |> addRoomId currRoom, Just verticalMatch )
+                ( Just (( a, b, previousHRoomMatched ) as previousHorizontalMatch), Just (( c, d, previousVRoomMatched ) as previousVerticalMatch) ) ->
+                    ( case currentRoomIsSnappingHorizontally of
+                        Just _ ->
+                            Just ( a, b, getClosestXRoom previousHRoomMatched )
 
-                    else
-                        ( Nothing, Just verticalMatch )
+                        Nothing ->
+                            Just previousHorizontalMatch
+                    , case currentRoomIsSnappingVertically of
+                        Just _ ->
+                            Just ( c, d, getClosestYRoom previousVRoomMatched )
 
-                ( Just horizontalMatch, Just verticalMatch ) ->
-                    ( Just horizontalMatch, Just verticalMatch )
+                        Nothing ->
+                            Just previousVerticalMatch
+                    )
         )
         ( Nothing, Nothing )
         allRooms
+        |> (\l ->
+                -- just change the room to room.id
+                case l of
+                    ( Nothing, Nothing ) ->
+                        ( Nothing, Nothing )
+
+                    ( Just ( f, s, room ), Nothing ) ->
+                        ( Just ( f, s, room.id ), Nothing )
+
+                    ( Nothing, Just ( f, s, room ) ) ->
+                        ( Nothing, Just ( f, s, room.id ) )
+
+                    ( Just ( f, s, e ), Just ( a, b, room ) ) ->
+                        ( Just ( f, s, e.id ), Just ( a, b, room.id ) )
+           )
 
 
 whereToSnapHorizontally : Room -> Room -> Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX )
