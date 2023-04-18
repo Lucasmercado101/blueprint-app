@@ -2183,8 +2183,8 @@ handleSnapping roomToSnap allRooms =
             Just 1
 
 
-whereToSnap : Room -> Room -> Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX )
-whereToSnap room roomImChecking =
+whereToSnapHorizontally : Room -> Room -> Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX )
+whereToSnapHorizontally room roomImChecking =
     let
         topY =
             room.boundingBox.y1
