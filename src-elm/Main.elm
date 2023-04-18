@@ -1901,6 +1901,7 @@ getSnappingRooms room allRooms =
                             topYWithinRangeOf number =
                                 numWithinRange room.boundingBox.y1 number snapDistanceRange
                         in
+                        -- NOTE: some of these could be skipped depending on the position of currRoom, refactor later?
                         if bottomYWithinRangeOf topY then
                             Just
                                 { currentRect = SnappingXBottom
