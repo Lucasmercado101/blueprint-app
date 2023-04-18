@@ -39,6 +39,11 @@ bottomY rect =
     rect.y1 + rect.height
 
 
+rightX : Rectangle -> Int
+rightX rect =
+    rect.x1 + rect.width
+
+
 isPointOnRectangle : Point -> Rectangle -> Bool
 isPointOnRectangle ( x, y ) rect =
     let
