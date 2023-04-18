@@ -2236,14 +2236,14 @@ whereToSnapHorizontally room roomImChecking =
             inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.bottomY roomImChecking.boundingBox)
     in
     -- NOTE: some of these could be skipped depending on the position of roomToBeSnapped, refactor later?
-    if topY |> isInsideBottomSnappableArea then
-        Just ( SnappingXTop, SnappingXBottom )
+    if topY |> isInsideTopSnappableArea then
+        Just ( SnappingXTop, SnappingXTop )
 
-    else if centerY |> isInsideBottomSnappableArea then
-        Just ( SnappingXMiddle, SnappingXBottom )
+    else if centerY |> isInsideTopSnappableArea then
+        Just ( SnappingXMiddle, SnappingXTop )
 
-    else if bottomY |> isInsideBottomSnappableArea then
-        Just ( SnappingXBottom, SnappingXBottom )
+    else if bottomY |> isInsideTopSnappableArea then
+        Just ( SnappingXBottom, SnappingXTop )
 
     else if topY |> isInsideMiddleSnappableArea then
         Just ( SnappingXTop, SnappingXMiddle )
@@ -2254,14 +2254,14 @@ whereToSnapHorizontally room roomImChecking =
     else if bottomY |> isInsideMiddleSnappableArea then
         Just ( SnappingXBottom, SnappingXMiddle )
 
-    else if topY |> isInsideTopSnappableArea then
-        Just ( SnappingXTop, SnappingXTop )
+    else if topY |> isInsideBottomSnappableArea then
+        Just ( SnappingXTop, SnappingXBottom )
 
-    else if centerY |> isInsideTopSnappableArea then
-        Just ( SnappingXMiddle, SnappingXTop )
+    else if centerY |> isInsideBottomSnappableArea then
+        Just ( SnappingXMiddle, SnappingXBottom )
 
-    else if bottomY |> isInsideTopSnappableArea then
-        Just ( SnappingXBottom, SnappingXTop )
+    else if bottomY |> isInsideBottomSnappableArea then
+        Just ( SnappingXBottom, SnappingXBottom )
 
     else
         Nothing
@@ -2292,14 +2292,14 @@ whereToSnapVertically room roomImChecking =
             inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.rightX roomImChecking.boundingBox)
     in
     -- NOTE: some of these could be skipped depending on the position of roomToBeSnapped, refactor later?
-    if leftX |> isInsideRightSnappableArea then
-        Just ( SnappingYLeft, SnappingYRight )
+    if leftX |> isInsideLeftSnappableArea then
+        Just ( SnappingYLeft, SnappingYLeft )
 
-    else if centerX |> isInsideRightSnappableArea then
-        Just ( SnappingYMiddle, SnappingYRight )
+    else if centerX |> isInsideLeftSnappableArea then
+        Just ( SnappingYMiddle, SnappingYLeft )
 
-    else if rightX |> isInsideRightSnappableArea then
-        Just ( SnappingYRight, SnappingYRight )
+    else if rightX |> isInsideLeftSnappableArea then
+        Just ( SnappingYRight, SnappingYLeft )
 
     else if leftX |> isInsideMiddleSnappableArea then
         Just ( SnappingYLeft, SnappingYMiddle )
@@ -2310,14 +2310,14 @@ whereToSnapVertically room roomImChecking =
     else if rightX |> isInsideMiddleSnappableArea then
         Just ( SnappingYRight, SnappingYMiddle )
 
-    else if leftX |> isInsideLeftSnappableArea then
-        Just ( SnappingYLeft, SnappingYLeft )
+    else if leftX |> isInsideRightSnappableArea then
+        Just ( SnappingYLeft, SnappingYRight )
 
-    else if centerX |> isInsideLeftSnappableArea then
-        Just ( SnappingYMiddle, SnappingYLeft )
+    else if centerX |> isInsideRightSnappableArea then
+        Just ( SnappingYMiddle, SnappingYRight )
 
-    else if rightX |> isInsideLeftSnappableArea then
-        Just ( SnappingYRight, SnappingYLeft )
+    else if rightX |> isInsideRightSnappableArea then
+        Just ( SnappingYRight, SnappingYRight )
 
     else
         Nothing
