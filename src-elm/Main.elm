@@ -2027,11 +2027,6 @@ handleSnapping roomToSnap allRooms =
         allRooms
 
 
-
--- TODO: check which one i snapped to closer
--- i may have snapped left with left but i was closer to snapping center with center
-
-
 whereToSnapHorizontally : Room -> Room -> Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX )
 whereToSnapHorizontally room roomImChecking =
     let
@@ -2048,44 +2043,110 @@ whereToSnapHorizontally room roomImChecking =
         isInsideTopSnappableArea number =
             inRange (number - snapDistanceRange) (number + snapDistanceRange) roomImChecking.boundingBox.y1
 
+        insideTopDistance : Int -> Int
+        insideTopDistance number =
+            abs (number - roomImChecking.boundingBox.y1)
+
         isInsideMiddleSnappableArea : Int -> Bool
         isInsideMiddleSnappableArea number =
             inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.centerY roomImChecking.boundingBox)
 
+        insideMiddleDistance : Int -> Int
+        insideMiddleDistance number =
+            abs (number - Rect.centerY roomImChecking.boundingBox)
+
         isInsideBottomSnappableArea : Int -> Bool
         isInsideBottomSnappableArea number =
             inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.bottomY roomImChecking.boundingBox)
+
+        insideBottomDistance : Int -> Int
+        insideBottomDistance number =
+            abs (number - Rect.bottomY roomImChecking.boundingBox)
+
+        tt =
+            if topY |> isInsideTopSnappableArea then
+                Just ( SnappingXTop, SnappingXTop, insideTopDistance topY )
+
+            else
+                Nothing
+
+        mt =
+            if centerY |> isInsideTopSnappableArea then
+                Just ( SnappingXMiddle, SnappingXTop, insideTopDistance centerY )
+
+            else
+                Nothing
+
+        bt =
+            if bottomY |> isInsideTopSnappableArea then
+                Just ( SnappingXBottom, SnappingXTop, insideTopDistance bottomY )
+
+            else
+                Nothing
+
+        tm =
+            if topY |> isInsideMiddleSnappableArea then
+                Just ( SnappingXTop, SnappingXMiddle, insideMiddleDistance topY )
+
+            else
+                Nothing
+
+        mm =
+            if centerY |> isInsideMiddleSnappableArea then
+                Just ( SnappingXMiddle, SnappingXMiddle, insideMiddleDistance centerY )
+
+            else
+                Nothing
+
+        bm =
+            if bottomY |> isInsideMiddleSnappableArea then
+                Just ( SnappingXBottom, SnappingXMiddle, insideMiddleDistance bottomY )
+
+            else
+                Nothing
+
+        tb =
+            if topY |> isInsideBottomSnappableArea then
+                Just ( SnappingXTop, SnappingXBottom, insideBottomDistance topY )
+
+            else
+                Nothing
+
+        mb =
+            if centerY |> isInsideBottomSnappableArea then
+                Just ( SnappingXMiddle, SnappingXBottom, insideBottomDistance centerY )
+
+            else
+                Nothing
+
+        bb =
+            if bottomY |> isInsideBottomSnappableArea then
+                Just ( SnappingXBottom, SnappingXBottom, insideBottomDistance bottomY )
+
+            else
+                Nothing
     in
-    -- NOTE: some of these could be skipped depending on the position of roomToBeSnapped, refactor later?
-    if topY |> isInsideTopSnappableArea then
-        Just ( SnappingXTop, SnappingXTop )
+    List.foldl
+        (\next acc ->
+            case acc of
+                Just (( _, _, dist ) as snappingPairCurr) ->
+                    case next of
+                        Just (( _, _, distNext ) as snappingPairNext) ->
+                            if distNext < dist then
+                                Just snappingPairNext
 
-    else if centerY |> isInsideTopSnappableArea then
-        Just ( SnappingXMiddle, SnappingXTop )
+                            else
+                                Just snappingPairCurr
 
-    else if bottomY |> isInsideTopSnappableArea then
-        Just ( SnappingXBottom, SnappingXTop )
+                        Nothing ->
+                            acc
 
-    else if topY |> isInsideMiddleSnappableArea then
-        Just ( SnappingXTop, SnappingXMiddle )
-
-    else if centerY |> isInsideMiddleSnappableArea then
-        Just ( SnappingXMiddle, SnappingXMiddle )
-
-    else if bottomY |> isInsideMiddleSnappableArea then
-        Just ( SnappingXBottom, SnappingXMiddle )
-
-    else if topY |> isInsideBottomSnappableArea then
-        Just ( SnappingXTop, SnappingXBottom )
-
-    else if centerY |> isInsideBottomSnappableArea then
-        Just ( SnappingXMiddle, SnappingXBottom )
-
-    else if bottomY |> isInsideBottomSnappableArea then
-        Just ( SnappingXBottom, SnappingXBottom )
-
-    else
+                Nothing ->
+                    next
+        )
         Nothing
+        [ tt, mt, bt, tm, mm, bm, tb, mb, bb ]
+        |> Maybe.map (\( a, b, _ ) -> ( a, b ))
 
 
 whereToSnapVertically : Room -> Room -> Maybe ( RoomPossibleSnappingY, RoomPossibleSnappingY )
@@ -2104,44 +2165,110 @@ whereToSnapVertically room roomImChecking =
         isInsideLeftSnappableArea number =
             inRange (number - snapDistanceRange) (number + snapDistanceRange) roomImChecking.boundingBox.x1
 
+        insideLeftDistance : Int -> Int
+        insideLeftDistance number =
+            abs (number - roomImChecking.boundingBox.x1)
+
         isInsideMiddleSnappableArea : Int -> Bool
         isInsideMiddleSnappableArea number =
             inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.centerX roomImChecking.boundingBox)
 
+        insideMiddleDistance : Int -> Int
+        insideMiddleDistance number =
+            abs (number - Rect.centerX roomImChecking.boundingBox)
+
         isInsideRightSnappableArea : Int -> Bool
         isInsideRightSnappableArea number =
             inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.rightX roomImChecking.boundingBox)
+
+        insideRightDistance : Int -> Int
+        insideRightDistance number =
+            abs (number - Rect.rightX roomImChecking.boundingBox)
+
+        lr =
+            if leftX |> isInsideRightSnappableArea then
+                Just ( SnappingYLeft, SnappingYRight, insideRightDistance leftX )
+
+            else
+                Nothing
+
+        mr =
+            if centerX |> isInsideRightSnappableArea then
+                Just ( SnappingYMiddle, SnappingYRight, insideRightDistance centerX )
+
+            else
+                Nothing
+
+        rr =
+            if rightX |> isInsideRightSnappableArea then
+                Just ( SnappingYRight, SnappingYRight, insideRightDistance rightX )
+
+            else
+                Nothing
+
+        lm =
+            if leftX |> isInsideMiddleSnappableArea then
+                Just ( SnappingYLeft, SnappingYMiddle, insideMiddleDistance leftX )
+
+            else
+                Nothing
+
+        mm =
+            if centerX |> isInsideMiddleSnappableArea then
+                Just ( SnappingYMiddle, SnappingYMiddle, insideMiddleDistance centerX )
+
+            else
+                Nothing
+
+        rm =
+            if rightX |> isInsideMiddleSnappableArea then
+                Just ( SnappingYRight, SnappingYMiddle, insideMiddleDistance rightX )
+
+            else
+                Nothing
+
+        ll =
+            if leftX |> isInsideLeftSnappableArea then
+                Just ( SnappingYLeft, SnappingYLeft, insideLeftDistance leftX )
+
+            else
+                Nothing
+
+        ml =
+            if centerX |> isInsideLeftSnappableArea then
+                Just ( SnappingYMiddle, SnappingYLeft, insideLeftDistance centerX )
+
+            else
+                Nothing
+
+        rl =
+            if rightX |> isInsideLeftSnappableArea then
+                Just ( SnappingYRight, SnappingYLeft, insideLeftDistance rightX )
+
+            else
+                Nothing
     in
-    -- NOTE: some of these could be skipped depending on the position of roomToBeSnapped, refactor later?
-    if leftX |> isInsideRightSnappableArea then
-        Just ( SnappingYLeft, SnappingYRight )
+    List.foldl
+        (\next acc ->
+            case acc of
+                Just (( _, _, dist ) as snappingPairCurr) ->
+                    case next of
+                        Just (( _, _, distNext ) as snappingPairNext) ->
+                            if distNext < dist then
+                                Just snappingPairNext
 
-    else if centerX |> isInsideRightSnappableArea then
-        Just ( SnappingYMiddle, SnappingYRight )
+                            else
+                                Just snappingPairCurr
 
-    else if rightX |> isInsideRightSnappableArea then
-        Just ( SnappingYRight, SnappingYRight )
+                        Nothing ->
+                            acc
 
-    else if leftX |> isInsideMiddleSnappableArea then
-        Just ( SnappingYLeft, SnappingYMiddle )
-
-    else if centerX |> isInsideMiddleSnappableArea then
-        Just ( SnappingYMiddle, SnappingYMiddle )
-
-    else if rightX |> isInsideMiddleSnappableArea then
-        Just ( SnappingYRight, SnappingYMiddle )
-
-    else if leftX |> isInsideLeftSnappableArea then
-        Just ( SnappingYLeft, SnappingYLeft )
-
-    else if centerX |> isInsideLeftSnappableArea then
-        Just ( SnappingYMiddle, SnappingYLeft )
-
-    else if rightX |> isInsideLeftSnappableArea then
-        Just ( SnappingYRight, SnappingYLeft )
-
-    else
+                Nothing ->
+                    next
+        )
         Nothing
+        [ lr, mr, rr, lm, mm, rm, ll, ml, rl ]
+        |> Maybe.map (\( a, b, _ ) -> ( a, b ))
 
 
 overlap1DLines : ( Int, Int ) -> ( Int, Int ) -> Bool
