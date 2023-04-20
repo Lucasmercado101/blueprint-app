@@ -1564,19 +1564,49 @@ view model =
                                                                         ++ drawX ( draggedRoomAfterSnapping.x1 + draggedRoomAfterSnapping.width, draggedRoomAfterSnapping.y1 + (draggedRoomAfterSnapping.height // 2) ) 5 [ stroke "orange", strokeWidth "2" ]
 
                                                                 ( SnappingXMiddle, SnappingXBottom ) ->
-                                                                    line
-                                                                        [ SA.x1 (roomSnapped.boundingBox.x1 |> toString)
-                                                                        , SA.y1 (roomSnapped.boundingBox.y1 + roomSnapped.boundingBox.height |> toString)
-                                                                        , SA.x2 (draggedRoomAfterSnapping.x1 + draggedRoomAfterSnapping.width |> toString)
-                                                                        , SA.y2 (draggedRoomAfterSnapping.y1 |> toString)
-                                                                        , stroke "orange"
-                                                                        , strokeWidth "2"
-                                                                        ]
-                                                                        []
+                                                                    (if
+                                                                        (roomSnapped.boundingBox.x1 <= draggedRoomAfterSnapping.x1)
+                                                                            && (draggedRoomAfterSnapping.x1 + draggedRoomAfterSnapping.width <= roomSnapped.boundingBox.x1 + roomSnapped.boundingBox.width)
+                                                                     then
+                                                                        -- is inside
+                                                                        line
+                                                                            [ SA.x1 (roomSnapped.boundingBox.x1 |> toString)
+                                                                            , SA.y1 (roomSnapped.boundingBox.y1 + roomSnapped.boundingBox.height |> toString)
+                                                                            , SA.x2 (roomSnapped.boundingBox.x1 + roomSnapped.boundingBox.width |> toString)
+                                                                            , SA.y2 (roomSnapped.boundingBox.y1 + roomSnapped.boundingBox.height |> toString)
+                                                                            , stroke "orange"
+                                                                            , strokeWidth "2"
+                                                                            ]
+                                                                            []
+
+                                                                     else if roomSnapped.boundingBox.x1 <= draggedRoomAfterSnapping.x1 then
+                                                                        -- is on the right
+                                                                        line
+                                                                            [ SA.x1 (roomSnapped.boundingBox.x1 |> toString)
+                                                                            , SA.y1 (roomSnapped.boundingBox.y1 + roomSnapped.boundingBox.height |> toString)
+                                                                            , SA.x2 (draggedRoomAfterSnapping.x1 + draggedRoomAfterSnapping.width |> toString)
+                                                                            , SA.y2 (draggedRoomAfterSnapping.y1 + (draggedRoomAfterSnapping.height // 2) |> toString)
+                                                                            , stroke "orange"
+                                                                            , strokeWidth "2"
+                                                                            ]
+                                                                            []
+
+                                                                     else
+                                                                        -- is on the left
+                                                                        line
+                                                                            [ SA.x1 (draggedRoomAfterSnapping.x1 |> toString)
+                                                                            , SA.y1 (draggedRoomAfterSnapping.y1 + (draggedRoomAfterSnapping.height // 2) |> toString)
+                                                                            , SA.x2 (roomSnapped.boundingBox.x1 + roomSnapped.boundingBox.width |> toString)
+                                                                            , SA.y2 (roomSnapped.boundingBox.y1 + roomSnapped.boundingBox.height |> toString)
+                                                                            , stroke "orange"
+                                                                            , strokeWidth "2"
+                                                                            ]
+                                                                            []
+                                                                    )
                                                                         :: drawX ( roomSnapped.boundingBox.x1, roomSnapped.boundingBox.y1 + roomSnapped.boundingBox.height ) 5 [ stroke "orange", strokeWidth "2" ]
                                                                         ++ drawX ( roomSnapped.boundingBox.x1 + roomSnapped.boundingBox.width, roomSnapped.boundingBox.y1 + roomSnapped.boundingBox.height ) 5 [ stroke "orange", strokeWidth "2" ]
-                                                                        ++ drawX ( draggedRoomAfterSnapping.x1, draggedRoomAfterSnapping.y1 ) 5 [ stroke "orange", strokeWidth "2" ]
-                                                                        ++ drawX ( draggedRoomAfterSnapping.x1 + draggedRoomAfterSnapping.width, draggedRoomAfterSnapping.y1 ) 5 [ stroke "orange", strokeWidth "2" ]
+                                                                        ++ drawX ( draggedRoomAfterSnapping.x1, draggedRoomAfterSnapping.y1 + (draggedRoomAfterSnapping.height // 2) ) 5 [ stroke "orange", strokeWidth "2" ]
+                                                                        ++ drawX ( draggedRoomAfterSnapping.x1 + draggedRoomAfterSnapping.width, draggedRoomAfterSnapping.y1 + (draggedRoomAfterSnapping.height // 2) ) 5 [ stroke "orange", strokeWidth "2" ]
 
                                                                 ( SnappingXBottom, SnappingXTop ) ->
                                                                     line
