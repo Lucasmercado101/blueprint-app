@@ -825,20 +825,7 @@ update msg model =
                                                             draggedRoomAfterSnapping : Room
                                                             draggedRoomAfterSnapping =
                                                                 handleSnapping newDraggedRoom (model.rooms |> List.filter (\l -> l.id /= room))
-                                                                    |> (\l ->
-                                                                            case l of
-                                                                                ( Just xSnap, Just ySnap ) ->
-                                                                                    translateRoomToSnappedPosition (Just xSnap) (Just ySnap) newDraggedRoom
-
-                                                                                ( Nothing, Just ySnap ) ->
-                                                                                    translateRoomToSnappedPosition Nothing (Just ySnap) newDraggedRoom
-
-                                                                                ( Just xSnap, Nothing ) ->
-                                                                                    translateRoomToSnappedPosition (Just xSnap) Nothing newDraggedRoom
-
-                                                                                ( Nothing, Nothing ) ->
-                                                                                    newDraggedRoom
-                                                                       )
+                                                                    |> handleTranslateRoomToSnappedPosition newDraggedRoom
                                                         in
                                                         draggedRoomAfterSnapping
 
@@ -3242,6 +3229,22 @@ translateRoomToSnappedPosition horizontalSnap verticalSnap roomToTranslate =
                     Nothing ->
                         horizontallySnappedRoom
            )
+
+
+handleTranslateRoomToSnappedPosition : Room -> ( Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX, Room ), Maybe ( RoomPossibleSnappingY, RoomPossibleSnappingY, Room ) ) -> Room
+handleTranslateRoomToSnappedPosition roomToTranslate snapKinds =
+    case snapKinds of
+        ( Just xSnap, Just ySnap ) ->
+            translateRoomToSnappedPosition (Just xSnap) (Just ySnap) roomToTranslate
+
+        ( Nothing, Just ySnap ) ->
+            translateRoomToSnappedPosition Nothing (Just ySnap) roomToTranslate
+
+        ( Just xSnap, Nothing ) ->
+            translateRoomToSnappedPosition (Just xSnap) Nothing roomToTranslate
+
+        ( Nothing, Nothing ) ->
+            roomToTranslate
 
 
 pointsToLine : Int -> Int -> ( Int, Int )
