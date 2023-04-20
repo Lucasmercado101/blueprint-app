@@ -1401,7 +1401,7 @@ view model =
                                                                         line
                                                                             [ SA.x1 (roomSnapped.boundingBox.x1 |> toString)
                                                                             , SA.y1 (roomSnapped.boundingBox.y1 + (roomSnapped.boundingBox.height // 2) |> toString)
-                                                                            , SA.x2 (draggedRoomAfterSnapping.x1 |> toString)
+                                                                            , SA.x2 (draggedRoomAfterSnapping.x1 + draggedRoomAfterSnapping.width |> toString)
                                                                             , SA.y2 (draggedRoomAfterSnapping.y1 |> toString)
                                                                             , stroke "orange"
                                                                             , strokeWidth "2"
@@ -2093,9 +2093,9 @@ view model =
                                                                      then
                                                                         -- is inside
                                                                         line
-                                                                            [ SA.x1 (roomSnapped.boundingBox.x1 + (roomSnapped.boundingBox.width) |> toString)
+                                                                            [ SA.x1 (roomSnapped.boundingBox.x1 + roomSnapped.boundingBox.width |> toString)
                                                                             , SA.y1 (roomSnapped.boundingBox.y1 |> toString)
-                                                                            , SA.x2 (roomSnapped.boundingBox.x1 + (roomSnapped.boundingBox.width) |> toString)
+                                                                            , SA.x2 (roomSnapped.boundingBox.x1 + roomSnapped.boundingBox.width |> toString)
                                                                             , SA.y2 (roomSnapped.boundingBox.y1 + roomSnapped.boundingBox.height |> toString)
                                                                             , stroke "orange"
                                                                             , strokeWidth "2"
