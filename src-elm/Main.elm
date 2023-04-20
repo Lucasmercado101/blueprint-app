@@ -1348,12 +1348,9 @@ view model =
                                                                                 newDraggedRoom
                                                                    )
                                                                 |> (\e -> e.boundingBox)
-                                                    in
-                                                    case snappingPoints of
-                                                        ( Just snappedHorizontally, Just snappedVertically ) ->
-                                                            []
 
-                                                        ( Just ( currRoomSnapKind, otherRoomSnapKind, roomSnapped ), Nothing ) ->
+                                                        drawHorizontalLines : ( RoomPossibleSnappingX, RoomPossibleSnappingX, Room ) -> List (Svg msg)
+                                                        drawHorizontalLines ( currRoomSnapKind, otherRoomSnapKind, roomSnapped ) =
                                                             case ( currRoomSnapKind, otherRoomSnapKind ) of
                                                                 ( SnappingXTop, SnappingXTop ) ->
                                                                     let
@@ -1706,9 +1703,9 @@ view model =
                                                                         -- is inside
                                                                         line
                                                                             [ SA.x1 (roomSnapped.boundingBox.x1 |> toString)
-                                                                            , SA.y1 (roomSnapped.boundingBox.y1 + (roomSnapped.boundingBox.height ) |> toString)
+                                                                            , SA.y1 (roomSnapped.boundingBox.y1 + roomSnapped.boundingBox.height |> toString)
                                                                             , SA.x2 (roomSnapped.boundingBox.x1 + roomSnapped.boundingBox.width |> toString)
-                                                                            , SA.y2 (roomSnapped.boundingBox.y1 + (roomSnapped.boundingBox.height ) |> toString)
+                                                                            , SA.y2 (roomSnapped.boundingBox.y1 + roomSnapped.boundingBox.height |> toString)
                                                                             , stroke "orange"
                                                                             , strokeWidth "2"
                                                                             ]
@@ -1742,6 +1739,14 @@ view model =
                                                                         ++ drawX ( roomSnapped.boundingBox.x1 + roomSnapped.boundingBox.width, roomSnapped.boundingBox.y1 + roomSnapped.boundingBox.height ) 5 [ stroke "orange", strokeWidth "2" ]
                                                                         ++ drawX ( draggedRoomAfterSnapping.x1, draggedRoomAfterSnapping.y1 + draggedRoomAfterSnapping.height ) 5 [ stroke "orange", strokeWidth "2" ]
                                                                         ++ drawX ( draggedRoomAfterSnapping.x1 + draggedRoomAfterSnapping.width, draggedRoomAfterSnapping.y1 + draggedRoomAfterSnapping.height ) 5 [ stroke "orange", strokeWidth "2" ]
+                                                    in
+                                                    case snappingPoints of
+                                                        -- TODO: vertically draw fn
+                                                        ( Just snappedHorizontally, Just snappedVertically ) ->
+                                                            drawHorizontalLines snappedHorizontally
+
+                                                        ( Just snappedHorizontally, Nothing ) ->
+                                                            drawHorizontalLines snappedHorizontally
 
                                                         ( Nothing, Just snappedVertically ) ->
                                                             []
