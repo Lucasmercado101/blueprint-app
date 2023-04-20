@@ -818,8 +818,29 @@ update msg model =
                                                                 , width = r.boundingBox.width
                                                                 , height = r.boundingBox.height
                                                                 }
+
+                                                            newDraggedRoom =
+                                                                { r | boundingBox = newRectangle }
+
+                                                            draggedRoomAfterSnapping : Room
+                                                            draggedRoomAfterSnapping =
+                                                                handleSnapping newDraggedRoom (model.rooms |> List.filter (\l -> l.id /= room))
+                                                                    |> (\l ->
+                                                                            case l of
+                                                                                ( Just xSnap, Just ySnap ) ->
+                                                                                    translateRoomToSnappedPosition (Just xSnap) (Just ySnap) newDraggedRoom
+
+                                                                                ( Nothing, Just ySnap ) ->
+                                                                                    translateRoomToSnappedPosition Nothing (Just ySnap) newDraggedRoom
+
+                                                                                ( Just xSnap, Nothing ) ->
+                                                                                    translateRoomToSnappedPosition (Just xSnap) Nothing newDraggedRoom
+
+                                                                                ( Nothing, Nothing ) ->
+                                                                                    newDraggedRoom
+                                                                       )
                                                         in
-                                                        { r | boundingBox = newRectangle }
+                                                        draggedRoomAfterSnapping
 
                                                     else
                                                         r
