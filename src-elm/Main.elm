@@ -40,34 +40,56 @@ screenWidth =
 
 
 -- PORTS
-{- Svg UUID as String since that's the id's name -}
 
 
 port requestGetSvgBoundingBox : String -> Cmd msg
 
 
-
-{- Svg UUID as String since that's the id's name -}
-
-
 port receiveGotSvgBoundingBox : (JD.Value -> msg) -> Sub msg
 
 
-receiveGotSvgBoundingBoxDecoder : Decoder ( String, Rectangle )
-receiveGotSvgBoundingBoxDecoder =
-    JD.map2 (\id rect -> ( id, rect ))
+receiveChangedSvgTextContentDecoder :
+    Decoder
+        { updatedText : String
+        , id : UUID
+        , boundingBox :
+            { x : Float
+            , y : Float
+            , width : Float
+            , height : Float
+            }
+        }
+receiveChangedSvgTextContentDecoder =
+    JD.map3
+        (\updated id rect ->
+            ( updated, id, rect )
+        )
+        (JD.field "updatedText" JD.string)
         (JD.field "id" JD.string)
         (JD.field "boundingBox" bboxDecoder)
+        |> JD.andThen
+            (\( updated, id, rect ) ->
+                case UUID.fromString id of
+                    Ok uuid ->
+                        JD.succeed
+                            { updatedText = updated
+                            , id = uuid
+                            , boundingBox = rect
+                            }
+
+                    Err _ ->
+                        JD.fail "Invalid UUID"
+            )
 
 
-bboxDecoder : Decoder Rectangle
+bboxDecoder : Decoder { x : Float, y : Float, width : Float, height : Float }
 bboxDecoder =
     JD.map4
         (\x y w h ->
-            { x1 = x |> round
-            , y1 = y |> round
-            , width = w |> round
-            , height = h |> round
+            { x = x
+            , y = y
+            , width = w
+            , height = h
             }
         )
         (JD.field "x" JD.float)
@@ -80,9 +102,23 @@ bboxDecoder =
 -- SUBSCRIPTIONS
 
 
+port changeSvgTextContent : ( String, String ) -> Cmd msg
+
+
+port receiveChangedSvgTextContent : (JD.Value -> msg) -> Sub msg
+
+
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    receiveChangedSvgTextContent
+        (\l ->
+            case JD.decodeValue receiveChangedSvgTextContentDecoder l of
+                Ok msg ->
+                    Debug.todo "received text svg change"
+
+                Err err ->
+                    Debug.todo "received text svg change"
+        )
 
 
 mouseMoveDecoder : Decoder ( Int, Int )
