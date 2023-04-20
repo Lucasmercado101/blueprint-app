@@ -1918,8 +1918,8 @@ handleSnapping roomToSnap allRooms =
                     else
                         Nothing
 
-                getClosestXRoom : Room -> Room
-                getClosestXRoom currentlyMatched =
+                isCloserXRoom : Room -> Bool
+                isCloserXRoom currentlyMatched =
                     let
                         centerX =
                             roomToSnap.boundingBox |> Rect.centerX
@@ -1937,13 +1937,13 @@ handleSnapping roomToSnap allRooms =
                             abs (centerX - currentCenterX)
                     in
                     if dNext < dCurr then
-                        currRoom
+                        True
 
                     else
-                        currentlyMatched
+                        False
 
-                getClosestYRoom : Room -> Room
-                getClosestYRoom currentlyMatched =
+                isCloserYRoom : Room -> Bool
+                isCloserYRoom currentlyMatched =
                     let
                         centerY =
                             roomToSnap.boundingBox |> Rect.centerY
@@ -1961,10 +1961,10 @@ handleSnapping roomToSnap allRooms =
                             abs (centerY - currentCenterY)
                     in
                     if dNext < dCurr then
-                        currRoom
+                        True
 
                     else
-                        currentlyMatched
+                        False
             in
             case acc of
                 ( Nothing, Nothing ) ->
@@ -1972,36 +1972,52 @@ handleSnapping roomToSnap allRooms =
                     , currentRoomIsSnappingVertically
                     )
 
-                ( Just (( a, b, previousRoomMatched ) as previousHorizontalMatch), Nothing ) ->
+                ( Just (( _, _, previousRoomMatched ) as previousHorizontalMatch), Nothing ) ->
                     ( case currentRoomIsSnappingHorizontally of
-                        Just _ ->
-                            Just ( a, b, getClosestXRoom previousRoomMatched )
+                        Just ( a, b, _ ) ->
+                            if isCloserXRoom previousRoomMatched then
+                                Just ( a, b, currRoom )
+
+                            else
+                                Just previousHorizontalMatch
 
                         Nothing ->
                             Just previousHorizontalMatch
                     , currentRoomIsSnappingVertically
                     )
 
-                ( Nothing, Just (( a, b, previousRoomMatched ) as previousVerticalMatch) ) ->
+                ( Nothing, Just (( _, _, previousRoomMatched ) as previousVerticalMatch) ) ->
                     ( currentRoomIsSnappingHorizontally
                     , case currentRoomIsSnappingVertically of
-                        Just _ ->
-                            Just ( a, b, getClosestYRoom previousRoomMatched )
+                        Just ( c, d, _ ) ->
+                            if isCloserYRoom previousRoomMatched then
+                                Just ( c, d, currRoom )
+
+                            else
+                                Just previousVerticalMatch
 
                         Nothing ->
                             Just previousVerticalMatch
                     )
 
-                ( Just (( a, b, previousHRoomMatched ) as previousHorizontalMatch), Just (( c, d, previousVRoomMatched ) as previousVerticalMatch) ) ->
+                ( Just (( _, _, previousHRoomMatched ) as previousHorizontalMatch), Just (( _, _, previousVRoomMatched ) as previousVerticalMatch) ) ->
                     ( case currentRoomIsSnappingHorizontally of
-                        Just _ ->
-                            Just ( a, b, getClosestXRoom previousHRoomMatched )
+                        Just ( a, b, _ ) ->
+                            if isCloserXRoom previousHRoomMatched then
+                                Just ( a, b, currRoom )
+
+                            else
+                                Just previousHorizontalMatch
 
                         Nothing ->
                             Just previousHorizontalMatch
                     , case currentRoomIsSnappingVertically of
-                        Just _ ->
-                            Just ( c, d, getClosestYRoom previousVRoomMatched )
+                        Just ( c, d, _ ) ->
+                            if isCloserYRoom previousVRoomMatched then
+                                Just ( c, d, currRoom )
+
+                            else
+                                Just previousVerticalMatch
 
                         Nothing ->
                             Just previousVerticalMatch
@@ -2009,6 +2025,11 @@ handleSnapping roomToSnap allRooms =
         )
         ( Nothing, Nothing )
         allRooms
+
+
+
+-- TODO: check which one i snapped to closer
+-- i may have snapped left with left but i was closer to snapping center with center
 
 
 whereToSnapHorizontally : Room -> Room -> Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX )
@@ -2092,14 +2113,14 @@ whereToSnapVertically room roomImChecking =
             inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.rightX roomImChecking.boundingBox)
     in
     -- NOTE: some of these could be skipped depending on the position of roomToBeSnapped, refactor later?
-    if leftX |> isInsideLeftSnappableArea then
-        Just ( SnappingYLeft, SnappingYLeft )
+    if leftX |> isInsideRightSnappableArea then
+        Just ( SnappingYLeft, SnappingYRight )
 
-    else if centerX |> isInsideLeftSnappableArea then
-        Just ( SnappingYMiddle, SnappingYLeft )
+    else if centerX |> isInsideRightSnappableArea then
+        Just ( SnappingYMiddle, SnappingYRight )
 
-    else if rightX |> isInsideLeftSnappableArea then
-        Just ( SnappingYRight, SnappingYLeft )
+    else if rightX |> isInsideRightSnappableArea then
+        Just ( SnappingYRight, SnappingYRight )
 
     else if leftX |> isInsideMiddleSnappableArea then
         Just ( SnappingYLeft, SnappingYMiddle )
@@ -2110,14 +2131,14 @@ whereToSnapVertically room roomImChecking =
     else if rightX |> isInsideMiddleSnappableArea then
         Just ( SnappingYRight, SnappingYMiddle )
 
-    else if leftX |> isInsideRightSnappableArea then
-        Just ( SnappingYLeft, SnappingYRight )
+    else if leftX |> isInsideLeftSnappableArea then
+        Just ( SnappingYLeft, SnappingYLeft )
 
-    else if centerX |> isInsideRightSnappableArea then
-        Just ( SnappingYMiddle, SnappingYRight )
+    else if centerX |> isInsideLeftSnappableArea then
+        Just ( SnappingYMiddle, SnappingYLeft )
 
-    else if rightX |> isInsideRightSnappableArea then
-        Just ( SnappingYRight, SnappingYRight )
+    else if rightX |> isInsideLeftSnappableArea then
+        Just ( SnappingYRight, SnappingYLeft )
 
     else
         Nothing
