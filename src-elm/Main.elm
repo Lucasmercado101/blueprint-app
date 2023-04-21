@@ -457,6 +457,7 @@ update msg model =
 
                         HoldingClickOnRoom room ->
                             let
+                                draggingSingleRoom : ( Model, Cmd Msg )
                                 draggingSingleRoom =
                                     changeMode
                                         (Select
@@ -464,8 +465,8 @@ update msg model =
                                             , state =
                                                 DraggingRoom
                                                     { room = room
-                                                    , dragOrigin = mouseMoveRelCoords |> toGlobal model.viewport
-                                                    , dragEnd = mouseMoveRelCoords |> toGlobal model.viewport
+                                                    , dragOrigin = sceneMouseMoveCoords
+                                                    , dragEnd = sceneMouseMoveCoords
                                                     , isOverlappingAnotherRoom = False
                                                     }
                                             }
@@ -481,8 +482,8 @@ update msg model =
                                                 , state =
                                                     DraggingRooms
                                                         { rooms = rooms
-                                                        , dragEnd = mouseMoveRelCoords |> toGlobal model.viewport
-                                                        , dragOrigin = mouseMoveRelCoords |> toGlobal model.viewport
+                                                        , dragEnd = sceneMouseMoveCoords
+                                                        , dragOrigin = sceneMouseMoveCoords
                                                         , isOverlappingAnotherRoom = False
                                                         }
                                                 }
