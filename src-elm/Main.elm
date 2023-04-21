@@ -287,13 +287,13 @@ update msg model =
 
                 Select { selected } ->
                     let
-                        globalMouseDownCoords =
-                            mouseDownRelCoords |> toGlobal model.viewport
+                        sceneMouseDownCoords =
+                            mouseDownRelCoords |> Point.add model.viewport
 
                         onARoom : Maybe RoomID
                         onARoom =
                             model.rooms
-                                |> getFirstRoom (globalMouseDownCoords |> isOnRoom)
+                                |> getFirstRoom (sceneMouseDownCoords |> isOnRoom)
                                 |> Maybe.map .id
                     in
                     (case onARoom of
