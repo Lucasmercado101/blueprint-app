@@ -1346,32 +1346,14 @@ view model =
                                             |> Maybe.map
                                                 (\roomImDragging ->
                                                     let
-                                                        ( initialMx1, initialMy1 ) =
-                                                            dragOrigin
+                                                        deltaDrag : Point
+                                                        deltaDrag =
+                                                            Point.subtract dragEnd dragOrigin
 
-                                                        ( mx1, my1 ) =
-                                                            dragEnd
-
-                                                        ( gx, gy ) =
-                                                            model.viewport
-
-                                                        distFromSelectedX =
-                                                            initialMx1 - mx1
-
-                                                        distFromSelectedY =
-                                                            initialMy1 - my1
-
-                                                        newDraggedPosition =
-                                                            { x1 = (roomImDragging.boundingBox.x1 - distFromSelectedX) - gx
-                                                            , y1 = (roomImDragging.boundingBox.y1 - distFromSelectedY) - gy
-                                                            , height = roomImDragging.boundingBox.height
-                                                            , width = roomImDragging.boundingBox.width
-                                                            }
+                                                        newDraggedRoom =
+                                                            roomAddPosition roomImDragging deltaDrag
 
                                                         -- TODO: take into account the viewport offset
-                                                        newDraggedRoom =
-                                                            { roomImDragging | boundingBox = newDraggedPosition }
-
                                                         snappingPoints =
                                                             handleSnapping newDraggedRoom (model.rooms |> List.filter (\r -> r.id /= room))
 
@@ -3274,3 +3256,33 @@ handleTranslateRoomToSnappedPosition roomToTranslate snapKinds =
 pointsToLine : Int -> Int -> ( Int, Int )
 pointsToLine x1 x2 =
     ( min x1 x2, max x1 x2 )
+
+
+roomAddPosition : Room -> Point -> Room
+roomAddPosition room ( x, y ) =
+    let
+        bBox =
+            room.boundingBox
+    in
+    { room
+        | boundingBox =
+            { bBox
+                | x1 = bBox.x1 + x
+                , y1 = bBox.y1 + y
+            }
+    }
+
+
+roomSubPosition : Room -> Point -> Room
+roomSubPosition room ( x, y ) =
+    let
+        bBox =
+            room.boundingBox
+    in
+    { room
+        | boundingBox =
+            { bBox
+                | x1 = bBox.x1 - x
+                , y1 = bBox.y1 - y
+            }
+    }
