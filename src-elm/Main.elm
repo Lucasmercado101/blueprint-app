@@ -512,27 +512,18 @@ update msg model =
                                         DraggingRoom
                                             { room = room
                                             , dragOrigin = dragOrigin
-                                            , dragEnd = mouseMoveRelCoords |> toGlobal model.viewport
+                                            , dragEnd = sceneMouseMoveCoords
                                             , isOverlappingAnotherRoom =
                                                 model.rooms
                                                     |> List.any
                                                         (\r ->
                                                             if r.id == room then
                                                                 let
-                                                                    rectPos : Point
-                                                                    rectPos =
-                                                                        r.boundingBox |> Rect.topLeft
-
-                                                                    ( newX, newY ) =
-                                                                        Point.add rectPos deltaDrag
-
                                                                     newRectangle : Rectangle
                                                                     newRectangle =
-                                                                        { x1 = newX
-                                                                        , y1 = newY
-                                                                        , width = r.boundingBox.width
-                                                                        , height = r.boundingBox.height
-                                                                        }
+                                                                        r
+                                                                            |> roomAddPosition deltaDrag
+                                                                            |> .boundingBox
 
                                                                     isOverlappingAnotherRoom : Bool
                                                                     isOverlappingAnotherRoom =
