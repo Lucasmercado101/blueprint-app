@@ -21,6 +21,11 @@ subtract ( x1, y1 ) ( x2, y2 ) =
     ( x1 - x2, y1 - y2 )
 
 
+delta : ( number, number ) -> ( number, number ) -> ( number, number )
+delta ( x1, y1 ) ( x2, y2 ) =
+    ( abs (x2 - x1), abs (y2 - y1) )
+
+
 scale : number -> ( number, number ) -> ( number, number )
 scale factor ( x1, y1 ) =
     ( x1 * factor, y1 * factor )
