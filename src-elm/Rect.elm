@@ -168,6 +168,14 @@ bottommostRectangle rects =
             Just bottommost
 
 
+subPosition : Point -> Rectangle -> Rectangle
+subPosition ( x, y ) rect =
+    { rect
+        | x1 = rect.x1 - x
+        , y1 = rect.y1 - y
+    }
+
+
 isThereAnyOverlap : Rectangle -> Rectangle -> Bool
 isThereAnyOverlap firstRectangle secondRectangle =
     let
