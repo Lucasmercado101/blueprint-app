@@ -1294,7 +1294,7 @@ view model =
                                                     let
                                                         deltaDrag : Point
                                                         deltaDrag =
-                                                            Point.subtract dragEnd dragOrigin
+                                                            Point.subtract dragOrigin dragEnd
                                                     in
                                                     drawRect
                                                         (boundingBox
