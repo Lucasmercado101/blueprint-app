@@ -1216,7 +1216,7 @@ view model =
                                                     let
                                                         deltaDrag : Point
                                                         deltaDrag =
-                                                            Point.subtract dragEnd dragOrigin
+                                                            dragOrigin |> Point.subtract dragEnd
 
                                                         newDraggedRoom =
                                                             roomImDragging
