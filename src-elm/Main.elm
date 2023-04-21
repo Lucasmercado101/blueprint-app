@@ -382,7 +382,7 @@ update msg model =
                         DraggingToSelectMany { origin } ->
                             changeMode
                                 (Select
-                                    { selected = selected
+                                    { selected = NoRoomSelected
                                     , state =
                                         DraggingToSelectMany
                                             { origin = origin
@@ -573,7 +573,7 @@ update msg model =
                             let
                                 selectArea : Rectangle
                                 selectArea =
-                                    pointsToRectangle (origin |> toGlobal model.viewport) (end |> toGlobal model.viewport)
+                                    pointsToRectangle (origin |> Point.add model.viewport) (end |> Point.add model.viewport)
 
                                 roomsSelected : List Room
                                 roomsSelected =
@@ -584,7 +584,7 @@ update msg model =
                                 (Select
                                     { selected =
                                         if List.isEmpty roomsSelected then
-                                            selected
+                                            NoRoomSelected
 
                                         else
                                             case roomsSelected of
