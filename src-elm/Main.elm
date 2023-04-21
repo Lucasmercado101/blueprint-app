@@ -1292,30 +1292,15 @@ view model =
                                             |> List.map
                                                 (\{ boundingBox } ->
                                                     let
-                                                        { width, height, x1, y1 } =
-                                                            boundingBox
-
-                                                        ( initialMx1, initialMy1 ) =
-                                                            dragOrigin
-
-                                                        ( mx1, my1 ) =
-                                                            dragEnd
-
-                                                        ( gx, gy ) =
-                                                            model.viewport
-
-                                                        distFromSelectedX =
-                                                            initialMx1 - mx1
-
-                                                        distFromSelectedY =
-                                                            initialMy1 - my1
+                                                        deltaDrag : Point
+                                                        deltaDrag =
+                                                            Point.subtract dragEnd dragOrigin
                                                     in
                                                     drawRect
-                                                        { x1 = (x1 - distFromSelectedX) - gx
-                                                        , y1 = (y1 - distFromSelectedY) - gy
-                                                        , height = height
-                                                        , width = width
-                                                        }
+                                                        (boundingBox
+                                                            |> Rect.subPosition deltaDrag
+                                                            |> Rect.subPosition model.viewport
+                                                        )
                                                         [ strokeWidth "2"
                                                         , stroke
                                                             (if isOverlappingAnotherRoom then
@@ -1350,17 +1335,23 @@ view model =
                                                         deltaDrag =
                                                             Point.subtract dragEnd dragOrigin
 
-                                                        newDraggedRoom =
-                                                            roomAddPosition roomImDragging deltaDrag
+                                                        relDraggedRoom : Room
+                                                        relDraggedRoom =
+                                                            roomImDragging
+                                                                |> roomAddPosition deltaDrag
+                                                                |> roomSubPosition model.viewport
 
                                                         -- TODO: take into account the viewport offset
                                                         snappingPoints =
-                                                            handleSnapping newDraggedRoom (model.rooms |> List.filter (\r -> r.id /= room))
+                                                            handleSnapping relDraggedRoom
+                                                                (model.rooms
+                                                                    |> List.filter (\r -> r.id /= room)
+                                                                    |> List.map (roomSubPosition model.viewport)
+                                                                )
 
                                                         draggedRoomAfterSnapping : Rectangle
                                                         draggedRoomAfterSnapping =
-                                                            snappingPoints
-                                                                |> handleTranslateRoomToSnappedPosition newDraggedRoom
+                                                            handleTranslateRoomToSnappedPosition relDraggedRoom snappingPoints
                                                                 |> (\e -> e.boundingBox)
 
                                                         -- TODO: not drawing lines properly if a is inside b but i am if b is inside a
@@ -3261,8 +3252,8 @@ pointsToLine x1 x2 =
     ( min x1 x2, max x1 x2 )
 
 
-roomAddPosition : Room -> Point -> Room
-roomAddPosition room ( x, y ) =
+roomAddPosition : Point -> Room -> Room
+roomAddPosition ( x, y ) room =
     let
         bBox =
             room.boundingBox
@@ -3276,8 +3267,8 @@ roomAddPosition room ( x, y ) =
     }
 
 
-roomSubPosition : Room -> Point -> Room
-roomSubPosition room ( x, y ) =
+roomSubPosition : Point -> Room -> Room
+roomSubPosition ( x, y ) room =
     let
         bBox =
             room.boundingBox
