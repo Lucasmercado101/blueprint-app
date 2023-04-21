@@ -240,30 +240,30 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        changeMode mode =
+            { model | mode = mode }
+
+        pure : a -> ( a, Cmd Msg )
+        pure m =
+            ( m, Cmd.none )
+
+        ignore =
+            pure model
+    in
     case msg of
         DeleteMode ->
-            ( { model
-                | mode = Delete
-              }
-            , Cmd.none
-            )
+            changeMode Delete |> pure
 
         DrawMode ->
-            ( { model | mode = Draw NotDrawing }, Cmd.none )
+            changeMode (Draw NotDrawing) |> pure
 
         PanMode ->
-            ( { model | mode = Pan NotPanning }, Cmd.none )
+            changeMode (Pan NotPanning) |> pure
 
         SelectMode ->
-            ( { model
-                | mode =
-                    Select
-                        { selected = NoRoomSelected
-                        , state = NotHoveringOverRoom
-                        }
-              }
-            , Cmd.none
-            )
+            changeMode (Select { selected = NoRoomSelected, state = NotHoveringOverRoom })
+                |> pure
 
         MouseDown mouseDownRelCoords ->
             case model.mode of
@@ -276,13 +276,13 @@ update msg model =
                 Draw state ->
                     case state of
                         NotDrawing ->
-                            ( { model | mode = Draw HoldingClick }, Cmd.none )
+                            changeMode (Draw HoldingClick) |> pure
 
                         HoldingClick ->
-                            ( model, Cmd.none )
+                            ignore
 
                         Dragging _ ->
-                            ( model, Cmd.none )
+                            ignore
 
                 Select { selected } ->
                     let
