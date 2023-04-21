@@ -1311,7 +1311,6 @@ view model =
                                                                 |> roomAddPosition deltaDrag
                                                                 |> roomSubPosition model.viewport
 
-                                                        -- TODO: take into account the viewport offset
                                                         snappingPoints =
                                                             handleSnapping relDraggedRoom
                                                                 (model.rooms
