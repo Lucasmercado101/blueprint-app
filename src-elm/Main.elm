@@ -918,15 +918,15 @@ view model =
                             [ on "mouseup" (mouseMoveDecoder |> JD.map MouseUp)
                             ]
 
-                        Pan _ ->
+                        Pan panState ->
                             let
                                 isPanning =
-                                    case model.mode of
-                                        Pan _ ->
-                                            True
-
-                                        _ ->
+                                    case panState of
+                                        NotPanning ->
                                             False
+
+                                        Panning _ ->
+                                            True
                             in
                             [ on "mouseup" (mouseMoveDecoder |> JD.map MouseUp)
                             , if isPanning then
