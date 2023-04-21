@@ -758,17 +758,24 @@ update msg model =
                             changeMode (Draw NotDrawing) |> pure
 
                         Dragging { start, end, isOverlappingAnotherRoom } ->
-                            if isOverlappingAnotherRoom then
+                            let
+                                ( x1, y1 ) =
+                                    start
+
+                                ( x2, y2 ) =
+                                    end
+
+                                hasNoWidth =
+                                    x1 == x2
+
+                                hasNoHeight =
+                                    y1 == y2
+                            in
+                            if isOverlappingAnotherRoom || hasNoWidth || hasNoHeight then
                                 changeMode (Draw NotDrawing) |> pure
 
                             else
                                 let
-                                    ( x1, y1 ) =
-                                        start
-
-                                    ( x2, y2 ) =
-                                        end
-
                                     ( ox, oy ) =
                                         model.viewport
 
