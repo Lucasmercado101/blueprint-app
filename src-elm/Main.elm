@@ -396,6 +396,10 @@ update msg model =
                             let
                                 excludingCurrentlySelectedRooms initialRooms =
                                     List.filter (\r -> not <| List.any (\e -> e == r.id) rooms) initialRooms
+
+                                deltaDrag : Point
+                                deltaDrag =
+                                    dragOrigin |> Point.subtract dragEnd
                             in
                             changeMode
                                 (Select
@@ -413,33 +417,16 @@ update msg model =
                                                                 (\e ->
                                                                     if r.id == e then
                                                                         let
-                                                                            ( mInitX, mInitY ) =
-                                                                                dragOrigin
-
-                                                                            ( mX, mY ) =
-                                                                                dragEnd
-
-                                                                            ( x1, y1 ) =
-                                                                                r.boundingBox |> Rect.topLeft
-
-                                                                            ( newX1, newY1 ) =
-                                                                                ( mX - (mInitX - x1)
-                                                                                , mY - (mInitY - y1)
-                                                                                )
+                                                                            draggingRect =
+                                                                                r
+                                                                                    |> roomAddPosition deltaDrag
+                                                                                    |> roomSubPosition model.viewport
 
                                                                             isOverlappingAnotherRoom : Bool
                                                                             isOverlappingAnotherRoom =
                                                                                 model.rooms
                                                                                     |> excludingCurrentlySelectedRooms
-                                                                                    |> List.filter
-                                                                                        (.boundingBox
-                                                                                            >> Rect.isThereAnyOverlap
-                                                                                                { x1 = newX1
-                                                                                                , y1 = newY1
-                                                                                                , width = r.boundingBox.width
-                                                                                                , height = r.boundingBox.height
-                                                                                                }
-                                                                                        )
+                                                                                    |> List.filter (.boundingBox >> Rect.isThereAnyOverlap draggingRect.boundingBox)
                                                                                     |> List.head
                                                                                     |> Maybe.map (always True)
                                                                                     |> Maybe.withDefault False
