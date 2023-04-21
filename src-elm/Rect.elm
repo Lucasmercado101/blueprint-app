@@ -176,6 +176,14 @@ subPosition ( x, y ) rect =
     }
 
 
+addPosition : Point -> Rectangle -> Rectangle
+addPosition ( x, y ) rect =
+    { rect
+        | x1 = rect.x1 + x
+        , y1 = rect.y1 + y
+    }
+
+
 isThereAnyOverlap : Rectangle -> Rectangle -> Bool
 isThereAnyOverlap firstRectangle secondRectangle =
     let
