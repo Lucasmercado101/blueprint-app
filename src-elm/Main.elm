@@ -1294,11 +1294,11 @@ view model =
                                                     let
                                                         deltaDrag : Point
                                                         deltaDrag =
-                                                            Point.subtract dragOrigin dragEnd
+                                                            Point.subtract dragEnd dragOrigin 
                                                     in
                                                     drawRect
                                                         (boundingBox
-                                                            |> Rect.subPosition deltaDrag
+                                                            |> Rect.addPosition deltaDrag
                                                             |> Rect.subPosition model.viewport
                                                         )
                                                         [ strokeWidth "2"
