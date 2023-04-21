@@ -1368,6 +1368,7 @@ view model =
                                                             , width = roomImDragging.boundingBox.width
                                                             }
 
+                                                        -- TODO: take into account the viewport offset
                                                         newDraggedRoom =
                                                             { roomImDragging | boundingBox = newDraggedPosition }
 
@@ -1377,20 +1378,7 @@ view model =
                                                         draggedRoomAfterSnapping : Rectangle
                                                         draggedRoomAfterSnapping =
                                                             snappingPoints
-                                                                |> (\l ->
-                                                                        case l of
-                                                                            ( Just xSnap, Just ySnap ) ->
-                                                                                translateRoomToSnappedPosition (Just xSnap) (Just ySnap) newDraggedRoom
-
-                                                                            ( Nothing, Just ySnap ) ->
-                                                                                translateRoomToSnappedPosition Nothing (Just ySnap) newDraggedRoom
-
-                                                                            ( Just xSnap, Nothing ) ->
-                                                                                translateRoomToSnappedPosition (Just xSnap) Nothing newDraggedRoom
-
-                                                                            ( Nothing, Nothing ) ->
-                                                                                newDraggedRoom
-                                                                   )
+                                                                |> handleTranslateRoomToSnappedPosition newDraggedRoom
                                                                 |> (\e -> e.boundingBox)
 
                                                         drawHorizontalLines : ( RoomPossibleSnappingX, RoomPossibleSnappingX, Room ) -> List (Svg msg)
