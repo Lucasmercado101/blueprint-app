@@ -1363,6 +1363,9 @@ view model =
                                                                 |> handleTranslateRoomToSnappedPosition newDraggedRoom
                                                                 |> (\e -> e.boundingBox)
 
+                                                        -- TODO: not drawing lines properly if a is inside b but i am if b is inside a
+                                                        -- check snap middle middle on a room that's bigger inside a room that's smaller
+                                                        -- on both cases
                                                         drawHorizontalLines : ( RoomPossibleSnappingX, RoomPossibleSnappingX, Room ) -> List (Svg msg)
                                                         drawHorizontalLines ( currRoomSnapKind, otherRoomSnapKind, roomSnapped ) =
                                                             case ( currRoomSnapKind, otherRoomSnapKind ) of
