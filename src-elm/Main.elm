@@ -150,7 +150,6 @@ type alias Model =
     { viewport : Point
     , mode : Mode
     , rooms : List Room
-    , snappingPointsLine : Maybe ( Line, Line )
     }
 
 
@@ -163,7 +162,6 @@ init _ =
     ( { viewport = ( 0, 0 )
       , mode = Pan NotPanning
       , rooms = []
-      , snappingPointsLine = Nothing
       }
     , Cmd.none
     )
@@ -222,9 +220,8 @@ type HoveringOverOrDraggingRoom
 
 type DrawState
     = NotDrawing
-      -- NOTE: "relativeStartingPoint" is there so that
-      -- the rectangle's start is always smaller than its end at the end of the day
-    | SelectedStart
+    | HoldingClick
+    | Dragging
         { start : Point
         , end : Point
         , isOverlappingAnotherRoom : Bool
@@ -279,60 +276,13 @@ update msg model =
                 Draw state ->
                     case state of
                         NotDrawing ->
-                            ( { model
-                                | mode =
-                                    Draw
-                                        (SelectedStart
-                                            { start = mouseDownRelCoords
-                                            , end = mouseDownRelCoords
-                                            , isOverlappingAnotherRoom = False
-                                            }
-                                        )
-                                , snappingPointsLine = Nothing
-                              }
-                            , Cmd.none
-                            )
+                            ( { model | mode = Draw HoldingClick }, Cmd.none )
 
-                        SelectedStart { start, end, isOverlappingAnotherRoom } ->
-                            if isOverlappingAnotherRoom then
-                                ( { model
-                                    | mode = Draw NotDrawing
-                                    , snappingPointsLine = Nothing
-                                  }
-                                , Cmd.none
-                                )
+                        HoldingClick ->
+                            ( model, Cmd.none )
 
-                            else
-                                let
-                                    ( x1, y1 ) =
-                                        start
-
-                                    ( x2, y2 ) =
-                                        end
-
-                                    ( ox, oy ) =
-                                        model.viewport
-
-                                    rectId =
-                                        Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 12345))
-                                            |> Tuple.first
-                                in
-                                ( { model
-                                    | rooms =
-                                        { boundingBox =
-                                            pointsToRectangle start end
-                                                |> rectToGlobal model.viewport
-
-                                        --   TODO: change to use random, have it be a command
-                                        , id = rectId
-                                        }
-                                            :: model.rooms
-                                    , mode = Draw NotDrawing
-                                    , snappingPointsLine = Nothing
-                                  }
-                                  -- NOTE: not fetching the bounding box here because it's not in the dom yet
-                                , Cmd.none
-                                )
+                        Dragging _ ->
+                            ( model, Cmd.none )
 
                 Select { selected } ->
                     let
@@ -370,120 +320,42 @@ update msg model =
                         NotDrawing ->
                             ( model, Cmd.none )
 
-                        SelectedStart { start, end } ->
-                            -- TODO: fix weird bug where it stays snapped after starting to draw near a bottomY of another rectangle
+                        HoldingClick ->
+                            ( { model
+                                | mode =
+                                    Draw
+                                        (Dragging
+                                            { start = mouseMoveRelCoords
+                                            , end = mouseMoveRelCoords
+                                            , isOverlappingAnotherRoom = False
+                                            }
+                                        )
+                              }
+                            , Cmd.none
+                            )
+
+                        Dragging { start } ->
                             let
-                                drawingRect =
+                                sceneRectangle : Rectangle
+                                sceneRectangle =
                                     pointsToRectangle start mouseMoveRelCoords
-                                        |> rectToGlobal model.viewport
+                                        |> Rect.addPosition model.viewport
 
                                 isOverlappingAnotherRoom : Bool
                                 isOverlappingAnotherRoom =
                                     model.rooms
                                         |> List.map .boundingBox
-                                        |> List.any (Rect.isThereAnyOverlap drawingRect)
-
-                                bottomSideIsAlignedToAnotherRectangle : Maybe ( Line, Line )
-                                bottomSideIsAlignedToAnotherRectangle =
-                                    model.rooms
-                                        |> List.map .boundingBox
-                                        |> List.filter (\rect -> numWithinRange (rect |> Rect.bottomY) (drawingRect |> Rect.bottomY) snapDistanceRange)
-                                        |> Rect.closestRectangleX drawingRect
-                                        |> Maybe.andThen
-                                            (\rect ->
-                                                let
-                                                    bl =
-                                                        rect |> Rect.bottomLeft |> Point.x
-
-                                                    br =
-                                                        rect |> Rect.bottomRight |> Point.x
-
-                                                    tlx =
-                                                        drawingRect |> Rect.topLeft |> Point.x
-
-                                                    brx =
-                                                        drawingRect |> Rect.bottomRight |> Point.x
-
-                                                    leftDist =
-                                                        abs tlx - abs br
-
-                                                    rightDist =
-                                                        abs bl - abs brx
-
-                                                    isOnTheRight =
-                                                        if leftDist < rightDist then
-                                                            True
-
-                                                        else
-                                                            False
-
-                                                    minDistBeforeSnapping =
-                                                        snapMinValidDistance
-                                                in
-                                                if isOnTheRight then
-                                                    if rightDist <= minDistBeforeSnapping then
-                                                        Just
-                                                            ( ( drawingRect |> Rect.bottomLeft |> Tuple.mapSecond (always (rect |> Rect.bottomY))
-                                                              , drawingRect |> Rect.bottomRight |> Tuple.mapSecond (always (rect |> Rect.bottomY))
-                                                              )
-                                                            , rect |> Rect.bottomSide
-                                                            )
-
-                                                    else
-                                                        Nothing
-
-                                                else if leftDist <= minDistBeforeSnapping then
-                                                    Just
-                                                        ( rect |> Rect.bottomSide
-                                                        , ( drawingRect |> Rect.bottomLeft |> Tuple.mapSecond (always (rect |> Rect.bottomY))
-                                                          , drawingRect |> Rect.bottomRight |> Tuple.mapSecond (always (rect |> Rect.bottomY))
-                                                          )
-                                                        )
-
-                                                else
-                                                    Nothing
-                                            )
-
-                                snapBottomPosition : Maybe { start : Point, end : Point }
-                                snapBottomPosition =
-                                    bottomSideIsAlignedToAnotherRectangle
-                                        |> Maybe.map
-                                            (\( ( l, _ ), _ ) ->
-                                                toRelative l model.viewport |> Point.y
-                                            )
-                                        |> Maybe.map
-                                            (\e ->
-                                                { start = start
-                                                , end = end |> Tuple.mapSecond (always e)
-                                                }
-                                            )
+                                        |> List.any (Rect.isThereAnyOverlap sceneRectangle)
                             in
                             ( { model
                                 | mode =
                                     Draw
-                                        (SelectedStart
-                                            (case snapBottomPosition of
-                                                Just p ->
-                                                    let
-                                                        ( x1, _ ) =
-                                                            mouseMoveRelCoords
-
-                                                        ( _, y2 ) =
-                                                            p.end
-                                                    in
-                                                    { start = p.start
-                                                    , end = ( x1, y2 )
-                                                    , isOverlappingAnotherRoom = isOverlappingAnotherRoom
-                                                    }
-
-                                                Nothing ->
-                                                    { start = start
-                                                    , end = mouseMoveRelCoords
-                                                    , isOverlappingAnotherRoom = isOverlappingAnotherRoom
-                                                    }
-                                            )
+                                        (Dragging
+                                            { start = start
+                                            , end = mouseMoveRelCoords
+                                            , isOverlappingAnotherRoom = isOverlappingAnotherRoom
+                                            }
                                         )
-                                , snappingPointsLine = bottomSideIsAlignedToAnotherRectangle
                               }
                             , Cmd.none
                             )
@@ -970,8 +842,51 @@ update msg model =
                     , Cmd.none
                     )
 
-                Draw _ ->
-                    ( model, Cmd.none )
+                Draw state ->
+                    case state of
+                        NotDrawing ->
+                            ( model, Cmd.none )
+
+                        HoldingClick ->
+                            ( { model | mode = Draw NotDrawing }, Cmd.none )
+
+                        Dragging { start, end, isOverlappingAnotherRoom } ->
+                            if isOverlappingAnotherRoom then
+                                ( { model | mode = Draw NotDrawing }, Cmd.none )
+
+                            else
+                                let
+                                    ( x1, y1 ) =
+                                        start
+
+                                    ( x2, y2 ) =
+                                        end
+
+                                    ( ox, oy ) =
+                                        model.viewport
+
+                                    rectId : UUID
+                                    rectId =
+                                        Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 12345))
+                                            |> Tuple.first
+
+                                    sceneRect : Rectangle
+                                    sceneRect =
+                                        pointsToRectangle start end
+                                            |> rectToGlobal model.viewport
+                                in
+                                ( { model
+                                    | rooms =
+                                        { boundingBox = sceneRect
+
+                                        --   TODO: change to use random, have it be a command
+                                        , id = rectId
+                                        }
+                                            :: model.rooms
+                                    , mode = Draw NotDrawing
+                                  }
+                                , Cmd.none
+                                )
 
 
 main : Program () Model Msg
@@ -1028,13 +943,25 @@ view model =
                             ]
 
                         Draw state ->
-                            [ on "click" (mouseMoveDecoder |> JD.map MouseDown)
+                            [ on "mousedown" (mouseMoveDecoder |> JD.map MouseDown)
                             , case state of
                                 NotDrawing ->
                                     style "" ""
 
-                                SelectedStart _ ->
+                                HoldingClick ->
                                     on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
+
+                                Dragging _ ->
+                                    on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
+                            , case state of
+                                NotDrawing ->
+                                    style "" ""
+
+                                HoldingClick ->
+                                    on "mouseup" (mouseMoveDecoder |> JD.map MouseUp)
+
+                                Dragging _ ->
+                                    on "mouseup" (mouseMoveDecoder |> JD.map MouseUp)
                             ]
 
                         Select _ ->
@@ -1094,18 +1021,9 @@ view model =
                                         , fill "transparent"
                                         ]
                                 )
-
-                    drawSnapLines : List (Svg Msg)
-                    drawSnapLines =
-                        case model.snappingPointsLine of
-                            Just ( first, second ) ->
-                                drawSnappingLines model.viewport first second
-
-                            Nothing ->
-                                []
                  in
                  -- NOTE: Drawing order is top to bottom, draw on top last
-                 (case model.mode of
+                 case model.mode of
                     Delete ->
                         bgGrid ++ drawRooms model.rooms
 
@@ -1118,7 +1036,10 @@ view model =
                                     NotDrawing ->
                                         drawRooms model.rooms
 
-                                    SelectedStart { start, end, isOverlappingAnotherRoom } ->
+                                    HoldingClick ->
+                                        drawRooms model.rooms
+
+                                    Dragging { start, end, isOverlappingAnotherRoom } ->
                                         drawRooms model.rooms
                                             ++ [ drawRect (pointsToRectangle start end)
                                                     [ strokeWidth "2"
@@ -2187,8 +2108,6 @@ view model =
                             :: drawSelectionArea
                             ++ drawRoomsBeingDragged model.rooms
                             ++ drawRoomBeingDraggedSnappingLines
-                 )
-                    ++ drawSnapLines
                 )
             ]
 
