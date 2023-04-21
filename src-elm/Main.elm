@@ -1227,20 +1227,7 @@ view model =
                                                         draggedRoomAfterSnapping =
                                                             (model.rooms |> List.filter (\r -> r.id /= room) |> List.map (roomSubPosition model.viewport))
                                                                 |> handleSnapping newDraggedRoom
-                                                                |> (\l ->
-                                                                        case l of
-                                                                            ( Just xSnap, Just ySnap ) ->
-                                                                                translateRoomToSnappedPosition (Just xSnap) (Just ySnap) newDraggedRoom
-
-                                                                            ( Nothing, Just ySnap ) ->
-                                                                                translateRoomToSnappedPosition Nothing (Just ySnap) newDraggedRoom
-
-                                                                            ( Just xSnap, Nothing ) ->
-                                                                                translateRoomToSnappedPosition (Just xSnap) Nothing newDraggedRoom
-
-                                                                            ( Nothing, Nothing ) ->
-                                                                                newDraggedRoom
-                                                                   )
+                                                                |> handleTranslateRoomToSnappedPosition newDraggedRoom
                                                     in
                                                     drawRect
                                                         draggedRoomAfterSnapping.boundingBox
