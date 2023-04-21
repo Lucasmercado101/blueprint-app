@@ -837,26 +837,12 @@ update msg model =
                                                 (\r ->
                                                     if r.id == room then
                                                         let
+                                                            deltaDrag : Point
                                                             deltaDrag =
-                                                                Point.subtract dragEnd dragOrigin
-
-                                                            rectPos : Point
-                                                            rectPos =
-                                                                r.boundingBox |> Rect.topLeft
-
-                                                            ( newX, newY ) =
-                                                                Point.add rectPos deltaDrag
-
-                                                            newRectangle : Rectangle
-                                                            newRectangle =
-                                                                { x1 = newX
-                                                                , y1 = newY
-                                                                , width = r.boundingBox.width
-                                                                , height = r.boundingBox.height
-                                                                }
+                                                                dragOrigin |> Point.subtract dragEnd
 
                                                             newDraggedRoom =
-                                                                { r | boundingBox = newRectangle }
+                                                                r |> roomAddPosition deltaDrag
 
                                                             draggedRoomAfterSnapping : Room
                                                             draggedRoomAfterSnapping =
