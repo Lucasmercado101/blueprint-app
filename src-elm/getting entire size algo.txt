@@ -1,0 +1,8 @@
+all rooms -> get topmost rectangle (smallest Y) 
+-> get second most top rectangle (smallest Y, bigger than first Y) that is not inside of the first topmost rectangle, so either to the right or left
+-> check if right or left (smaller x or bigger x + width)
+-> store it and got a new bigger line, x1 of the one that's most on the left, be it first topmost or second, and x1 + width of second one
+-> add to a sorter list either to the left or right of the first rectangle, smaller or bigger
+-> use the new line to get the next topmost closest Y that's to the left or right
+-> repeat until a foldL returns Nothing
+-> since it's sorted i can easily just get the empty spaces between
