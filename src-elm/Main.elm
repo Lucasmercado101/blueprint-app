@@ -1212,35 +1212,16 @@ view model =
                                         rooms
                                             |> getFirstRoom (\{ id } -> id == room)
                                             |> Maybe.map
-                                                (\({ boundingBox } as roomImDragging) ->
+                                                (\roomImDragging ->
                                                     let
-                                                        { width, height, x1, y1 } =
-                                                            boundingBox
-
-                                                        ( initialMx1, initialMy1 ) =
-                                                            dragOrigin
-
-                                                        ( mx1, my1 ) =
-                                                            dragEnd
-
-                                                        ( gx, gy ) =
-                                                            model.viewport
-
-                                                        distFromSelectedX =
-                                                            initialMx1 - mx1
-
-                                                        distFromSelectedY =
-                                                            initialMy1 - my1
-
-                                                        newDraggedPosition =
-                                                            { x1 = (x1 - distFromSelectedX) - gx
-                                                            , y1 = (y1 - distFromSelectedY) - gy
-                                                            , height = height
-                                                            , width = width
-                                                            }
+                                                        deltaDrag : Point
+                                                        deltaDrag =
+                                                            Point.subtract dragEnd dragOrigin
 
                                                         newDraggedRoom =
-                                                            { roomImDragging | boundingBox = newDraggedPosition }
+                                                            roomImDragging
+                                                                |> roomAddPosition deltaDrag
+                                                                |> roomSubPosition model.viewport
 
                                                         draggedRoomAfterSnapping : Room
                                                         draggedRoomAfterSnapping =
