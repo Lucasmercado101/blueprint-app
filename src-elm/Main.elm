@@ -710,23 +710,7 @@ update msg model =
                                             |> List.map
                                                 (\r ->
                                                     if List.any (\e -> r.id == e) rooms then
-                                                        let
-                                                            rectPos : Point
-                                                            rectPos =
-                                                                r.boundingBox |> Rect.topLeft
-
-                                                            ( newX, newY ) =
-                                                                Point.add rectPos deltaDrag
-
-                                                            newRectangle : Rectangle
-                                                            newRectangle =
-                                                                { x1 = newX
-                                                                , y1 = newY
-                                                                , width = r.boundingBox.width
-                                                                , height = r.boundingBox.height
-                                                                }
-                                                        in
-                                                        { r | boundingBox = newRectangle }
+                                                        r |> roomAddPosition deltaDrag
 
                                                     else
                                                         r
