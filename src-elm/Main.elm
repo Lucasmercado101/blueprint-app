@@ -346,13 +346,13 @@ update msg model =
 
                 Select { selected, state } ->
                     let
-                        mouseMoveGlobalCoords =
+                        sceneMouseMoveCoords =
                             mouseMoveRelCoords |> toGlobal model.viewport
 
                         roomImHoveringOver : Maybe RoomID
                         roomImHoveringOver =
                             model.rooms
-                                |> getFirstRoom (mouseMoveGlobalCoords |> isOnRoom)
+                                |> getFirstRoom (sceneMouseMoveCoords |> isOnRoom)
                                 |> Maybe.map .id
                     in
                     case state of
