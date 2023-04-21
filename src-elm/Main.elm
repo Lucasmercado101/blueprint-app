@@ -1225,7 +1225,8 @@ view model =
 
                                                         draggedRoomAfterSnapping : Room
                                                         draggedRoomAfterSnapping =
-                                                            handleSnapping newDraggedRoom (model.rooms |> List.map (roomSubPosition model.viewport) |> List.filter (\r -> r.id /= room))
+                                                            (model.rooms |> List.filter (\r -> r.id /= room) |> List.map (roomSubPosition model.viewport))
+                                                                |> handleSnapping newDraggedRoom
                                                                 |> (\l ->
                                                                         case l of
                                                                             ( Just xSnap, Just ySnap ) ->
