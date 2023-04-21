@@ -1000,6 +1000,7 @@ main =
 
 view : Model -> Html Msg
 view model =
+    -- TODO: only draw rooms that are visible, inside the viewport
     div []
         [ div
             ([ style "background-color" background
@@ -1294,7 +1295,7 @@ view model =
                                                     let
                                                         deltaDrag : Point
                                                         deltaDrag =
-                                                            Point.subtract dragEnd dragOrigin 
+                                                            Point.subtract dragEnd dragOrigin
                                                     in
                                                     drawRect
                                                         (boundingBox
