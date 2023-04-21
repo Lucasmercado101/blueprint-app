@@ -410,6 +410,7 @@ update msg model =
                                             , dragOrigin = dragOrigin
                                             , dragEnd = mouseMoveRelCoords |> toGlobal model.viewport
                                             , isOverlappingAnotherRoom =
+                                                -- TODO: refactor so it's not double loop
                                                 model.rooms
                                                     |> List.any
                                                         (\r ->
