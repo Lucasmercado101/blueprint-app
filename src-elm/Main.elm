@@ -325,7 +325,19 @@ update msg model =
                             ignore
 
                         HoldingClick ->
-                            changeMode (Draw (Dragging { start = mouseMoveRelCoords, end = mouseMoveRelCoords, isOverlappingAnotherRoom = False }))
+                            let
+                                sceneRectangle : Rectangle
+                                sceneRectangle =
+                                    pointsToRectangle mouseMoveRelCoords mouseMoveRelCoords
+                                        |> Rect.addPosition model.viewport
+
+                                isOverlappingAnotherRoom : Bool
+                                isOverlappingAnotherRoom =
+                                    model.rooms
+                                        |> List.map .boundingBox
+                                        |> List.any (Rect.isThereAnyOverlap sceneRectangle)
+                            in
+                            changeMode (Draw (Dragging { start = mouseMoveRelCoords, end = mouseMoveRelCoords, isOverlappingAnotherRoom = isOverlappingAnotherRoom }))
                                 |> pure
 
                         Dragging { start } ->
@@ -731,13 +743,10 @@ update msg model =
 
                 Delete ->
                     let
-                        globalMouseUpCoords =
-                            mouseUpRelCoords |> toGlobal model.viewport
+                        sceneMouseUpCoords =
+                            mouseUpRelCoords |> Point.add model.viewport
                     in
-                    { model
-                        | rooms =
-                            model.rooms |> List.filter (globalMouseUpCoords |> isNotOnRoom)
-                    }
+                    { model | rooms = model.rooms |> List.filter (sceneMouseUpCoords |> isNotOnRoom) }
                         |> pure
 
                 Draw state ->
