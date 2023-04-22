@@ -934,14 +934,52 @@ view model =
                                         , fill "transparent"
                                         ]
                                 )
+
+                    topMostRects =
+                        getTotalRoomsXSpace model.rooms
+
+                    topmostY : List (Svg msg)
+                    topmostY =
+                        case topMostRects of
+                            [] ->
+                                [ S.text_ [ SA.x "10", SA.y "10", SA.fill "white" ]
+                                    [ S.text "No rooms" ]
+                                ]
+
+                            x :: _ ->
+                                let
+                                    smallestX =
+                                        topMostRects |> List.sortBy .x1 |> List.head |> Maybe.withDefault x |> .x1
+
+                                    biggestX =
+                                        topMostRects
+                                            |> List.sortBy .x1
+                                            |> List.reverse
+                                            |> List.head
+                                            |> Maybe.withDefault x
+                                            |> (\l -> l.x1 + l.width)
+
+                                    smallestY =
+                                        topMostRects |> List.sortBy .y1 |> List.head |> Maybe.withDefault x |> .y1
+                                in
+                                [ line
+                                    [ x1 (smallestX |> String.fromInt)
+                                    , y1 (smallestY - 50 |> String.fromInt)
+                                    , x2 (biggestX |> String.fromInt)
+                                    , y2 (smallestY - 50 |> String.fromInt)
+                                    , stroke "orange"
+                                    , strokeWidth "2"
+                                    ]
+                                    []
+                                ]
                  in
                  -- NOTE: Drawing order is top to bottom, draw on top last
                  case model.mode of
                     Delete ->
-                        bgGrid ++ drawRooms model.rooms
+                        bgGrid ++ drawRooms model.rooms ++ topmostY
 
                     Pan _ ->
-                        bgGrid ++ drawRooms model.rooms
+                        bgGrid ++ drawRooms model.rooms ++ topmostY
 
                     Draw state ->
                         bgGrid
@@ -967,6 +1005,7 @@ view model =
                                                     ]
                                                ]
                                )
+                            ++ topmostY
 
                     Select { selected, state } ->
                         let
@@ -2021,6 +2060,7 @@ view model =
                             :: drawSelectionArea
                             ++ drawRoomsBeingDragged model.rooms
                             ++ drawRoomBeingDraggedSnappingLines
+                            ++ topmostY
                 )
             ]
 
@@ -3074,8 +3114,8 @@ roomSubPosition ( x, y ) room =
     }
 
 
-getTotalRoomsXSpaceSorted : List Room -> List Rectangle
-getTotalRoomsXSpaceSorted rooms =
+getTotalRoomsXSpace : List Room -> List Rectangle
+getTotalRoomsXSpace rooms =
     let
         isInsideFound1DLines : List ( Int, Int ) -> ( Int, Int ) -> Bool
         isInsideFound1DLines lines line =
