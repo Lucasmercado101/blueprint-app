@@ -2925,8 +2925,8 @@ whereToSnapVertically room roomImChecking =
 
 
 overlap1DLines : ( Int, Int ) -> ( Int, Int ) -> Bool
-overlap1DLines ( x1, x2 ) ( y1, y2 ) =
-    inRange x1 x2 y1 || inRange x1 x2 y2 || inRange y1 y2 x1 || inRange y1 y2 x2
+overlap1DLines ( a1, a2 ) ( b1, b2 ) =
+    inRange a1 a2 b1 || inRange a1 a2 b2 || inRange b1 b2 a1 || inRange b1 b2 a2
 
 
 translateRoomToSnappedPosition : Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX, Room ) -> Maybe ( RoomPossibleSnappingY, RoomPossibleSnappingY, Room ) -> Room -> Room
