@@ -936,34 +936,61 @@ view model =
                                 )
 
                     topMostRects =
-                        getTotalRoomsXSpace model.rooms
+                        getTotalRoomsXSpace model.rooms |> List.sortBy .x1
 
                     topmostY : List (Svg msg)
                     topmostY =
                         case topMostRects of
                             [] ->
-                                [ S.text_ [ SA.x "10", SA.y "10", SA.fill "white" ]
-                                    [ S.text "No rooms" ]
-                                ]
+                                []
 
-                            x :: _ ->
+                            x :: xs ->
                                 let
                                     smallestX =
-                                        topMostRects |> List.sortBy .x1 |> List.head |> Maybe.withDefault x |> .x1
+                                        x :: xs |> List.head |> Maybe.withDefault x |> .x1
 
                                     biggestX =
-                                        topMostRects
-                                            |> List.sortBy .x1
+                                        x
+                                            :: xs
                                             |> List.reverse
                                             |> List.head
                                             |> Maybe.withDefault x
                                             |> (\l -> l.x1 + l.width)
 
                                     smallestY =
-                                        topMostRects |> List.sortBy .y1 |> List.head |> Maybe.withDefault x |> .y1
+                                        x :: xs |> List.sortBy .y1 |> List.head |> Maybe.withDefault x |> .y1
 
                                     ( vx, vy ) =
                                         viewport
+
+                                    totalWidth =
+                                        List.foldl
+                                            (\next ( total, curr ) ->
+                                                let
+                                                    ( a1, a2 ) =
+                                                        ( curr.x1, curr |> Rect.topRight |> Point.x )
+
+                                                    ( b1, b2 ) =
+                                                        ( next.x1, next |> Rect.topRight |> Point.x )
+
+                                                    nextLeftIsInsideCurr =
+                                                        b1 |> inRange a1 a2
+
+                                                    nextRightIsOutsideCurr =
+                                                        b2 |> inRange a1 a2 |> not
+
+                                                    newTotal =
+                                                        if nextLeftIsInsideCurr && nextRightIsOutsideCurr then
+                                                            total + (b2 - a1 - curr.width)
+
+                                                        else
+                                                            total + next.width
+                                                in
+                                                ( newTotal, curr )
+                                            )
+                                            ( x.width, x )
+                                            xs
+                                            |> Tuple.first
                                 in
                                 [ line
                                     [ x1 (smallestX - vx |> String.fromInt)
@@ -974,6 +1001,14 @@ view model =
                                     , strokeWidth "2"
                                     ]
                                     []
+                                , S.text_
+                                    [ SA.x (smallestX - vx |> String.fromInt)
+                                    , SA.y (smallestY - vy - 100 |> String.fromInt)
+                                    , SA.fill "white"
+                                    , SA.fontSize "20"
+                                    , SA.class "svgText"
+                                    ]
+                                    [ S.text (totalWidth |> String.fromInt) ]
                                 ]
                  in
                  -- NOTE: Drawing order is top to bottom, draw on top last
