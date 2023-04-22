@@ -2929,6 +2929,11 @@ overlap1DLines ( a1, a2 ) ( b1, b2 ) =
     inRange a1 a2 b1 || inRange a1 a2 b2 || inRange b1 b2 a1 || inRange b1 b2 a2
 
 
+isInside1DLine : ( Int, Int ) -> ( Int, Int ) -> Bool
+isInside1DLine ( a1, a2 ) ( b1, b2 ) =
+    (b1 |> inRange a1 a2) && (b2 |> inRange a1 a2)
+
+
 translateRoomToSnappedPosition : Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX, Room ) -> Maybe ( RoomPossibleSnappingY, RoomPossibleSnappingY, Room ) -> Room -> Room
 translateRoomToSnappedPosition horizontalSnap verticalSnap roomToTranslate =
     (case horizontalSnap of
@@ -3067,3 +3072,80 @@ roomSubPosition ( x, y ) room =
                 , y1 = bBox.y1 - y
             }
     }
+
+
+getTotalRoomsXSpaceSorted : List Room -> List Rectangle
+getTotalRoomsXSpaceSorted rooms =
+    let
+        isInsideFound1DLines : List ( Int, Int ) -> ( Int, Int ) -> Bool
+        isInsideFound1DLines lines line =
+            List.any (\l -> line |> isInside1DLine l) lines
+
+        isThereATopmostRoom : Maybe Room
+        isThereATopmostRoom =
+            rooms |> List.sortBy (.boundingBox >> .y1) |> List.head
+    in
+    case isThereATopmostRoom of
+        Nothing ->
+            []
+
+        Just topmostRoom ->
+            let
+                getNextTopmostRoom : List Room -> List ( Int, Int ) -> Maybe Room
+                getNextTopmostRoom roomsToSearch lines =
+                    roomsToSearch
+                        |> List.foldl
+                            (\next acc ->
+                                let
+                                    nextRect : Rectangle
+                                    nextRect =
+                                        next.boundingBox
+
+                                    nextRoomTopXLine =
+                                        ( nextRect |> Rect.topLeft |> Point.x, nextRect |> Rect.topRight |> Point.x )
+                                in
+                                case acc of
+                                    Nothing ->
+                                        if nextRoomTopXLine |> isInsideFound1DLines lines then
+                                            Nothing
+
+                                        else
+                                            Just next
+
+                                    Just curr ->
+                                        let
+                                            currRect =
+                                                curr.boundingBox
+                                        in
+                                        if nextRoomTopXLine |> isInsideFound1DLines lines then
+                                            Just curr
+
+                                        else if (nextRect |> Rect.topLeft |> Point.y) < (currRect |> Rect.topLeft |> Point.y) then
+                                            Just next
+
+                                        else
+                                            Just curr
+                            )
+                            Nothing
+
+                getAllTopmostRooms : List Room -> List Room -> List Room
+                getAllTopmostRooms allRooms currentTopmostRooms =
+                    let
+                        topXline rect =
+                            ( rect |> Rect.topLeft |> Point.x, rect |> Rect.topRight |> Point.x )
+                    in
+                    case getNextTopmostRoom allRooms (currentTopmostRooms |> List.map (.boundingBox >> topXline)) of
+                        Nothing ->
+                            currentTopmostRooms
+
+                        Just nextTopmost ->
+                            let
+                                nextTopmostRooms =
+                                    nextTopmost :: currentTopmostRooms
+
+                                allRoomsMinusTopMostRooms =
+                                    allRooms |> List.filter (\r -> not <| List.any (\r2 -> r.id == r2.id) nextTopmostRooms)
+                            in
+                            getAllTopmostRooms allRoomsMinusTopMostRooms nextTopmostRooms
+            in
+            getAllTopmostRooms rooms [ topmostRoom ] |> List.map .boundingBox
