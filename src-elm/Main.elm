@@ -961,12 +961,15 @@ view model =
 
                                     smallestY =
                                         topMostRects |> List.sortBy .y1 |> List.head |> Maybe.withDefault x |> .y1
+
+                                    ( vx, vy ) =
+                                        viewport
                                 in
                                 [ line
-                                    [ x1 (smallestX |> String.fromInt)
-                                    , y1 (smallestY - 50 |> String.fromInt)
-                                    , x2 (biggestX |> String.fromInt)
-                                    , y2 (smallestY - 50 |> String.fromInt)
+                                    [ x1 (smallestX - vx |> String.fromInt)
+                                    , y1 (smallestY - vy - 50 |> String.fromInt)
+                                    , x2 (biggestX - vx |> String.fromInt)
+                                    , y2 (smallestY - vy - 50 |> String.fromInt)
                                     , stroke "orange"
                                     , strokeWidth "2"
                                     ]
