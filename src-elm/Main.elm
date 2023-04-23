@@ -1007,6 +1007,63 @@ view model =
                                             e :: es ->
                                                 getOccupiedAndEmptySpacesX rect [ e ] ++ getOccupiedAndEmptySpacesX e es
 
+                                    helperGetOccupiedAndEmptySpacesXV2 prev rest =
+                                        case rest of
+                                            [] ->
+                                                [ prev ]
+
+                                            [ currRect ] ->
+                                                let
+                                                    firstLine =
+                                                        ( x.x1, x |> Rect.topRight |> Point.x )
+
+                                                    lastLine =
+                                                        ( currRect.x1, currRect |> Rect.topRight |> Point.x )
+
+                                                    isInsideX =
+                                                        lastLine |> isInside1DLine firstLine
+
+                                                    isEntirelyOutsideX =
+                                                        lastLine |> isOutside1DLine firstLine
+                                                in
+                                                if isInsideX then
+                                                    [ prev
+                                                    , Occupied currRect
+                                                    , Occupied
+                                                        { x1 = currRect.x1 + currRect.width
+                                                        , y1 = x.y1
+                                                        , width = x.x1 + x.width
+                                                        , height = x.height
+                                                        }
+                                                    ]
+
+                                                else if isEntirelyOutsideX then
+                                                    [ Occupied x
+                                                    , EmptySpace
+                                                        { x = x.x1 + x.width
+                                                        , width = currRect.x1 - x.x1 - x.width
+                                                        }
+                                                    , Occupied currRect
+                                                    ]
+
+                                                else
+                                                    [ Occupied
+                                                        { x1 = x.x1
+                                                        , y1 = x.y1
+                                                        , width = (currRect.x1 - x.x1) + x.x1
+                                                        , height = x.height
+                                                        }
+                                                    , Occupied
+                                                        { x1 = (currRect.x1 - x.x1) + x.x1
+                                                        , y1 = currRect.y1
+                                                        , width = currRect.width
+                                                        , height = currRect.height
+                                                        }
+                                                    ]
+
+                                            _ ->
+                                                []
+
                                     getOccupiedAndEmptySpacesXV2 =
                                         case xs of
                                             [] ->
@@ -1025,6 +1082,12 @@ view model =
 
                                                     isEntirelyOutsideX =
                                                         lastLine |> isOutside1DLine firstLine
+
+                                                    isOnTop =
+                                                        x.y1 > lastOne.y1
+
+                                                    isOnBottom =
+                                                        x.y1 < lastOne.y1
                                                 in
                                                 if isInsideX then
                                                     [ Occupied
@@ -1051,23 +1114,79 @@ view model =
                                                     , Occupied lastOne
                                                     ]
 
-                                                else
+                                                else if isOnTop then
                                                     [ Occupied
                                                         { x1 = x.x1
                                                         , y1 = x.y1
-                                                        , width = (lastOne.x1 - x.x1) + x.x1
+                                                        , width = (x.x1 + x.width) - (lastOne.x1 + lastOne.width)
                                                         , height = x.height
                                                         }
+                                                    , Occupied lastOne
+                                                    ]
+
+                                                else
+                                                    [ Occupied x
                                                     , Occupied
-                                                        { x1 = (lastOne.x1 - x.x1) + x.x1
+                                                        { x1 = x.x1 + x.width
                                                         , y1 = lastOne.y1
-                                                        , width = lastOne.width
+                                                        , width = (lastOne.x1 + lastOne.width) - (x.x1 + x.width)
                                                         , height = lastOne.height
                                                         }
                                                     ]
 
-                                            _ ->
-                                                []
+                                            currRect :: rx ->
+                                                let
+                                                    firstLine =
+                                                        ( x.x1, x |> Rect.topRight |> Point.x )
+
+                                                    lastLine =
+                                                        ( currRect.x1, currRect |> Rect.topRight |> Point.x )
+
+                                                    isInsideX =
+                                                        lastLine |> isInside1DLine firstLine
+
+                                                    isEntirelyOutsideX =
+                                                        lastLine |> isOutside1DLine firstLine
+                                                in
+                                                if isInsideX then
+                                                    [ Occupied
+                                                        { x1 = x.x1
+                                                        , y1 = x.y1
+                                                        , width = currRect.x1 - x.x1
+                                                        , height = x.height
+                                                        }
+                                                    , Occupied currRect
+                                                    , Occupied
+                                                        { x1 = currRect.x1 + currRect.width
+                                                        , y1 = x.y1
+                                                        , width = x.x1 + x.width
+                                                        , height = x.height
+                                                        }
+                                                    ]
+
+                                                else if isEntirelyOutsideX then
+                                                    [ Occupied x
+                                                    , EmptySpace
+                                                        { x = x.x1 + x.width
+                                                        , width = currRect.x1 - x.x1 - x.width
+                                                        }
+                                                    , Occupied currRect
+                                                    ]
+
+                                                else
+                                                    [ Occupied
+                                                        { x1 = x.x1
+                                                        , y1 = x.y1
+                                                        , width = (currRect.x1 - x.x1) + x.x1
+                                                        , height = x.height
+                                                        }
+                                                    , Occupied
+                                                        { x1 = (currRect.x1 - x.x1) + x.x1
+                                                        , y1 = currRect.y1
+                                                        , width = currRect.width
+                                                        , height = currRect.height
+                                                        }
+                                                    ]
 
                                     allSpacesX =
                                         getOccupiedAndEmptySpacesXV2 |> Debug.log "a"
@@ -1124,26 +1243,48 @@ view model =
                                         (\l ->
                                             case l of
                                                 EmptySpace data ->
-                                                    line
-                                                        [ SA.x1 (data.x - vx |> String.fromInt)
-                                                        , SA.y1 (smallestY - vy - 50 |> String.fromInt)
-                                                        , SA.x2 (data.x - vx |> String.fromInt)
-                                                        , SA.y2 (smallestY - vy - 25 |> String.fromInt)
-                                                        , SA.stroke "Chartreuse"
-                                                        , SA.strokeWidth "2"
+                                                    S.g []
+                                                        [ line
+                                                            [ SA.x1 (data.x - vx |> String.fromInt)
+                                                            , SA.y1 (smallestY - vy - 50 |> String.fromInt)
+                                                            , SA.x2 (data.x - vx |> String.fromInt)
+                                                            , SA.y2 (smallestY - vy - 25 |> String.fromInt)
+                                                            , SA.stroke "Chartreuse"
+                                                            , SA.strokeWidth "2"
+                                                            ]
+                                                            []
+                                                        , line
+                                                            [ SA.x1 (data.x + data.width - vx |> String.fromInt)
+                                                            , SA.y1 (smallestY - vy - 75 |> String.fromInt)
+                                                            , SA.x2 (data.x + data.width - vx |> String.fromInt)
+                                                            , SA.y2 (smallestY - vy - 50 |> String.fromInt)
+                                                            , SA.stroke "purple"
+                                                            , SA.strokeWidth "2"
+                                                            ]
+                                                            []
                                                         ]
-                                                        []
 
-                                                Occupied { x1 } ->
-                                                    line
-                                                        [ SA.x1 (x1 - vx |> String.fromInt)
-                                                        , SA.y1 (smallestY - vy - 50 |> String.fromInt)
-                                                        , SA.x2 (x1 - vx |> String.fromInt)
-                                                        , SA.y2 (smallestY - vy - 25 |> String.fromInt)
-                                                        , SA.stroke "Chartreuse"
-                                                        , SA.strokeWidth "2"
+                                                Occupied { x1, width } ->
+                                                    S.g []
+                                                        [ line
+                                                            [ SA.x1 (x1 - vx |> String.fromInt)
+                                                            , SA.y1 (smallestY - vy - 50 |> String.fromInt)
+                                                            , SA.x2 (x1 - vx |> String.fromInt)
+                                                            , SA.y2 (smallestY - vy - 25 |> String.fromInt)
+                                                            , SA.stroke "Chartreuse"
+                                                            , SA.strokeWidth "2"
+                                                            ]
+                                                            []
+                                                        , line
+                                                            [ SA.x1 (x1 + width - vx |> String.fromInt)
+                                                            , SA.y1 (smallestY - vy - 75 |> String.fromInt)
+                                                            , SA.x2 (x1 + width - vx |> String.fromInt)
+                                                            , SA.y2 (smallestY - vy - 50 |> String.fromInt)
+                                                            , SA.stroke "red"
+                                                            , SA.strokeWidth "2"
+                                                            ]
+                                                            []
                                                         ]
-                                                        []
                                         )
                                         allSpacesX
                  in
