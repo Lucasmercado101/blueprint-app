@@ -3085,6 +3085,11 @@ isInside1DLine ( a1, a2 ) ( b1, b2 ) =
     (b1 |> inRange a1 a2) && (b2 |> inRange a1 a2)
 
 
+isInside1DLines : List ( Int, Int ) -> ( Int, Int ) -> Bool
+isInside1DLines lines line =
+    List.any (\l -> line |> isInside1DLine l) lines
+
+
 translateRoomToSnappedPosition : Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX, Room ) -> Maybe ( RoomPossibleSnappingY, RoomPossibleSnappingY, Room ) -> Room -> Room
 translateRoomToSnappedPosition horizontalSnap verticalSnap roomToTranslate =
     (case horizontalSnap of
@@ -3237,10 +3242,6 @@ type SpaceType
 getTotalRoomsXSpace : List Room -> List Rectangle
 getTotalRoomsXSpace rooms =
     let
-        isInsideFound1DLines : List ( Int, Int ) -> ( Int, Int ) -> Bool
-        isInsideFound1DLines lines line =
-            List.any (\l -> line |> isInside1DLine l) lines
-
         isThereATopmostRoom : Maybe Room
         isThereATopmostRoom =
             rooms |> List.sortBy (.boundingBox >> .y1) |> List.head
@@ -3266,7 +3267,7 @@ getTotalRoomsXSpace rooms =
                                 in
                                 case acc of
                                     Nothing ->
-                                        if nextRoomTopXLine |> isInsideFound1DLines lines then
+                                        if nextRoomTopXLine |> isInside1DLines lines then
                                             Nothing
 
                                         else
@@ -3277,7 +3278,7 @@ getTotalRoomsXSpace rooms =
                                             currRect =
                                                 curr.boundingBox
                                         in
-                                        if nextRoomTopXLine |> isInsideFound1DLines lines then
+                                        if nextRoomTopXLine |> isInside1DLines lines then
                                             Just curr
 
                                         else if (nextRect |> Rect.topLeft |> Point.y) < (currRect |> Rect.topLeft |> Point.y) then
