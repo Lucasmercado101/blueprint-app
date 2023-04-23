@@ -938,8 +938,8 @@ view model =
                     topMostRects =
                         getTotalRoomsXSpace model.rooms |> List.sortBy .x1
 
-                    topmostY : List (Svg msg)
-                    topmostY =
+                    topWidthMeasuringLine : List (Svg msg)
+                    topWidthMeasuringLine =
                         case topMostRects of
                             [] ->
                                 []
@@ -1087,10 +1087,10 @@ view model =
                  -- NOTE: Drawing order is top to bottom, draw on top last
                  case model.mode of
                     Delete ->
-                        bgGrid ++ drawRooms model.rooms ++ topmostY
+                        bgGrid ++ drawRooms model.rooms ++ topWidthMeasuringLine
 
                     Pan _ ->
-                        bgGrid ++ drawRooms model.rooms ++ topmostY
+                        bgGrid ++ drawRooms model.rooms ++ topWidthMeasuringLine
 
                     Draw state ->
                         bgGrid
@@ -1116,7 +1116,7 @@ view model =
                                                     ]
                                                ]
                                )
-                            ++ topmostY
+                            ++ topWidthMeasuringLine
 
                     Select { selected, state } ->
                         let
@@ -2171,7 +2171,7 @@ view model =
                             :: drawSelectionArea
                             ++ drawRoomsBeingDragged model.rooms
                             ++ drawRoomBeingDraggedSnappingLines
-                            ++ topmostY
+                            ++ topWidthMeasuringLine
                 )
             ]
 
