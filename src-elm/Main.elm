@@ -950,8 +950,8 @@ view model =
                                         x :: xs |> List.head |> Maybe.withDefault x |> .x1
 
                                     biggestX =
-                                        x
-                                            :: xs
+                                        (x :: xs)
+                                            |> List.sortBy (\l -> l.x1 + l.width)
                                             |> List.reverse
                                             |> List.head
                                             |> Maybe.withDefault x
