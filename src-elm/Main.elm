@@ -1062,9 +1062,9 @@ view model =
                                             case l of
                                                 EmptySpace data ->
                                                     line
-                                                        [ SA.x1 (data.x |> String.fromInt)
+                                                        [ SA.x1 (data.x - vx |> String.fromInt)
                                                         , SA.y1 (smallestY - vy - 50 |> String.fromInt)
-                                                        , SA.x2 (data.x |> String.fromInt)
+                                                        , SA.x2 (data.x - vx |> String.fromInt)
                                                         , SA.y2 (smallestY - vy - 25 |> String.fromInt)
                                                         , SA.stroke "Chartreuse"
                                                         , SA.strokeWidth "2"
@@ -1073,9 +1073,9 @@ view model =
 
                                                 Occupied { x1 } ->
                                                     line
-                                                        [ SA.x1 (x1 |> String.fromInt)
+                                                        [ SA.x1 (x1 - vx |> String.fromInt)
                                                         , SA.y1 (smallestY - vy - 50 |> String.fromInt)
-                                                        , SA.x2 (x1 |> String.fromInt)
+                                                        , SA.x2 (x1 - vx |> String.fromInt)
                                                         , SA.y2 (smallestY - vy - 25 |> String.fromInt)
                                                         , SA.stroke "Chartreuse"
                                                         , SA.strokeWidth "2"
