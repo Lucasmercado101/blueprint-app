@@ -1007,9 +1007,72 @@ view model =
                                             e :: es ->
                                                 getOccupiedAndEmptySpacesX rect [ e ] ++ getOccupiedAndEmptySpacesX e es
 
-                                    allSpacesX =
-                                        Occupied x :: getOccupiedAndEmptySpacesX x xs
+                                    getOccupiedAndEmptySpacesXV2 =
+                                        case xs of
+                                            [] ->
+                                                [ Occupied x ]
 
+                                            [ lastOne ] ->
+                                                let
+                                                    firstLine =
+                                                        ( x.x1, x |> Rect.topRight |> Point.x )
+
+                                                    lastLine =
+                                                        ( lastOne.x1, lastOne |> Rect.topRight |> Point.x )
+
+                                                    isInsideX =
+                                                        lastLine |> isInside1DLine firstLine
+
+                                                    isEntirelyOutsideX =
+                                                        lastLine |> isOutside1DLine firstLine
+                                                in
+                                                if isInsideX then
+                                                    [ Occupied
+                                                        { x1 = x.x1
+                                                        , y1 = x.y1
+                                                        , width = lastOne.x1 - x.x1
+                                                        , height = x.height
+                                                        }
+                                                    , Occupied lastOne
+                                                    , Occupied
+                                                        { x1 = lastOne.x1 + lastOne.width
+                                                        , y1 = x.y1
+                                                        , width = x.x1 + x.width
+                                                        , height = x.height
+                                                        }
+                                                    ]
+
+                                                else if isEntirelyOutsideX then
+                                                    [ Occupied x
+                                                    , EmptySpace
+                                                        { x = x.x1 + x.width
+                                                        , width = lastOne.x1 - x.x1 - x.width
+                                                        }
+                                                    , Occupied lastOne
+                                                    ]
+
+                                                else
+                                                    [ Occupied
+                                                        { x1 = x.x1
+                                                        , y1 = x.y1
+                                                        , width = (lastOne.x1 - x.x1) + x.x1
+                                                        , height = x.height
+                                                        }
+                                                    , Occupied
+                                                        { x1 = (lastOne.x1 - x.x1) + x.x1
+                                                        , y1 = lastOne.y1
+                                                        , width = lastOne.width
+                                                        , height = lastOne.height
+                                                        }
+                                                    ]
+
+                                            _ ->
+                                                []
+
+                                    allSpacesX =
+                                        getOccupiedAndEmptySpacesXV2 |> Debug.log "a"
+
+                                    -- Occupied x :: getOccupiedAndEmptySpacesX x xs
                                     totalWidth =
                                         List.foldl
                                             (\next ( total, curr ) ->
@@ -3085,6 +3148,11 @@ isInside1DLine ( a1, a2 ) ( b1, b2 ) =
     (b1 |> inRange a1 a2) && (b2 |> inRange a1 a2)
 
 
+isOutside1DLine : ( Int, Int ) -> ( Int, Int ) -> Bool
+isOutside1DLine ( a1, a2 ) ( b1, b2 ) =
+    not (b1 |> inRange a1 a2) && not (b2 |> inRange a1 a2)
+
+
 isInside1DLines : List ( Int, Int ) -> ( Int, Int ) -> Bool
 isInside1DLines lines line =
     List.any (\l -> line |> isInside1DLine l) lines
@@ -3233,10 +3301,6 @@ roomSubPosition ( x, y ) room =
 type SpaceType
     = Occupied Rectangle
     | EmptySpace { x : Int, width : Int }
-
-
-
--- TODO: not working if a small one is on TOP of a big one, doesn't take into account the last one
 
 
 getTotalRoomsXSpace : List Room -> List Rectangle
