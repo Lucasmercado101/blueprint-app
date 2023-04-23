@@ -963,6 +963,53 @@ view model =
                                     ( vx, vy ) =
                                         viewport
 
+                                    getOccupiedAndEmptySpacesX : Rectangle -> List Rectangle -> List SpaceType
+                                    getOccupiedAndEmptySpacesX rect allRects =
+                                        case allRects of
+                                            [] ->
+                                                []
+
+                                            [ last ] ->
+                                                let
+                                                    ( a1, a2 ) =
+                                                        ( rect.x1, rect |> Rect.topRight |> Point.x )
+
+                                                    ( b1, b2 ) =
+                                                        ( last.x1, last |> Rect.topRight |> Point.x )
+
+                                                    lastLeftIsInsideRect =
+                                                        b1 |> inRange a1 a2
+
+                                                    lastRightIsOutsideRect =
+                                                        b2 |> inRange a1 a2 |> not
+                                                in
+                                                if lastLeftIsInsideRect && lastRightIsOutsideRect then
+                                                    let
+                                                        w =
+                                                            b2 - a1 - rect.width
+                                                    in
+                                                    [ Occupied
+                                                        { x1 = rect.x1 + rect.width
+                                                        , y1 = rect.y1
+                                                        , width = w
+                                                        , height = rect.height
+                                                        }
+                                                    ]
+
+                                                else
+                                                    [ EmptySpace
+                                                        { x = rect.x1 + rect.width
+                                                        , width = b2 - a1 - rect.width - last.width
+                                                        }
+                                                    , Occupied last
+                                                    ]
+
+                                            e :: es ->
+                                                getOccupiedAndEmptySpacesX rect [ e ] ++ getOccupiedAndEmptySpacesX e es
+
+                                    allSpacesX =
+                                        Occupied x :: getOccupiedAndEmptySpacesX x xs
+
                                     totalWidth =
                                         List.foldl
                                             (\next ( total, curr ) ->
@@ -1010,6 +1057,32 @@ view model =
                                     ]
                                     [ S.text (totalWidth |> String.fromInt) ]
                                 ]
+                                    ++ List.map
+                                        (\l ->
+                                            case l of
+                                                EmptySpace data ->
+                                                    line
+                                                        [ SA.x1 (data.x |> String.fromInt)
+                                                        , SA.y1 (smallestY - vy - 50 |> String.fromInt)
+                                                        , SA.x2 (data.x |> String.fromInt)
+                                                        , SA.y2 (smallestY - vy - 25 |> String.fromInt)
+                                                        , SA.stroke "Chartreuse"
+                                                        , SA.strokeWidth "2"
+                                                        ]
+                                                        []
+
+                                                Occupied { x1 } ->
+                                                    line
+                                                        [ SA.x1 (x1 |> String.fromInt)
+                                                        , SA.y1 (smallestY - vy - 50 |> String.fromInt)
+                                                        , SA.x2 (x1 |> String.fromInt)
+                                                        , SA.y2 (smallestY - vy - 25 |> String.fromInt)
+                                                        , SA.stroke "Chartreuse"
+                                                        , SA.strokeWidth "2"
+                                                        ]
+                                                        []
+                                        )
+                                        allSpacesX
                  in
                  -- NOTE: Drawing order is top to bottom, draw on top last
                  case model.mode of
@@ -3150,6 +3223,11 @@ roomSubPosition ( x, y ) room =
                 , y1 = bBox.y1 - y
             }
     }
+
+
+type SpaceType
+    = Occupied Rectangle
+    | EmptySpace { x : Int, width : Int }
 
 
 getTotalRoomsXSpace : List Room -> List Rectangle
