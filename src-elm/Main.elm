@@ -3230,6 +3230,10 @@ type SpaceType
     | EmptySpace { x : Int, width : Int }
 
 
+
+-- TODO: not working if a small one is on TOP of a big one, doesn't take into account the last one
+
+
 getTotalRoomsXSpace : List Room -> List Rectangle
 getTotalRoomsXSpace rooms =
     let
