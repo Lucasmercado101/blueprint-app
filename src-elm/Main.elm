@@ -1015,17 +1015,17 @@ view model =
 
                                             [ currRect ] ->
                                                 let
-                                                    firstLine =
+                                                    prevLine =
                                                         ( prev.x1, x |> Rect.topRight |> Point.x )
 
-                                                    lastLine =
+                                                    currLine =
                                                         ( currRect.x1, currRect |> Rect.topRight |> Point.x )
 
                                                     isInsideX =
-                                                        lastLine |> isInside1DLine firstLine
+                                                        currLine |> isInside1DLine prevLine
 
                                                     isEntirelyOutsideX =
-                                                        lastLine |> isOutside1DLine firstLine
+                                                        currLine |> isOutside1DLine prevLine
 
                                                     isOnTopRight =
                                                         prev.y1 > currRect.y1
@@ -1045,7 +1045,12 @@ view model =
                                                             topOne.x1 + topOne.width
                                                     in
                                                     -- is inside and on top
-                                                    [ Occupied prev
+                                                    [ Occupied
+                                                        { x1 = prev.x1
+                                                        , y1 = 1
+                                                        , width = topOne.x1 - prev.x1
+                                                        , height = 1
+                                                        }
                                                     , Occupied topOne
                                                     , Occupied
                                                         { x1 = topOne.x1 + topOne.width
@@ -1056,7 +1061,7 @@ view model =
                                                     ]
 
                                                 else if isEntirelyOutsideX then
-                                                    [ Occupied x
+                                                    [ Occupied prev
                                                     , EmptySpace
                                                         { x = prev.x1 + prev.width
                                                         , width = currRect.x1 - prev.x1 - prev.width
@@ -1070,7 +1075,7 @@ view model =
                                                             currRect
 
                                                         bottomOne =
-                                                            x
+                                                            prev
                                                     in
                                                     [ Occupied
                                                         { x1 = bottomOne.x1
@@ -1084,7 +1089,7 @@ view model =
                                                 else
                                                     let
                                                         topOne =
-                                                            x
+                                                            prev
 
                                                         bottomOne =
                                                             currRect
@@ -1098,8 +1103,8 @@ view model =
                                                         }
                                                     ]
 
-                                            _ ->
-                                                []
+                                            e :: es ->
+                                                helperGetOccupiedAndEmptySpacesXV2 prev [ e ] ++ helperGetOccupiedAndEmptySpacesXV2 e es
 
                                     getOccupiedAndEmptySpacesXV2 =
                                         case xs of
