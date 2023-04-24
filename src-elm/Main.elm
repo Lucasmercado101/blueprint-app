@@ -1016,7 +1016,7 @@ view model =
                                             [ currRect ] ->
                                                 let
                                                     prevLine =
-                                                        ( prev.x1, x |> Rect.topRight |> Point.x )
+                                                        ( prev.x1, prev |> Rect.topRight |> Point.x )
 
                                                     currLine =
                                                         ( currRect.x1, currRect |> Rect.topRight |> Point.x )
