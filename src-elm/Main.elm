@@ -1007,15 +1007,16 @@ view model =
                                             e :: es ->
                                                 getOccupiedAndEmptySpacesX rect [ e ] ++ getOccupiedAndEmptySpacesX e es
 
+                                    helperGetOccupiedAndEmptySpacesXV2 : Rectangle -> List Rectangle -> List SpaceType
                                     helperGetOccupiedAndEmptySpacesXV2 prev rest =
                                         case rest of
                                             [] ->
-                                                [ prev ]
+                                                [ Occupied prev ]
 
                                             [ currRect ] ->
                                                 let
                                                     firstLine =
-                                                        ( x.x1, x |> Rect.topRight |> Point.x )
+                                                        ( prev.x1, x |> Rect.topRight |> Point.x )
 
                                                     lastLine =
                                                         ( currRect.x1, currRect |> Rect.topRight |> Point.x )
@@ -1025,39 +1026,75 @@ view model =
 
                                                     isEntirelyOutsideX =
                                                         lastLine |> isOutside1DLine firstLine
+
+                                                    isOnTopRight =
+                                                        prev.y1 > currRect.y1
                                                 in
                                                 if isInsideX then
-                                                    [ prev
-                                                    , Occupied currRect
+                                                    let
+                                                        topOne =
+                                                            currRect
+
+                                                        bottomOne =
+                                                            x
+
+                                                        bX2 =
+                                                            bottomOne.x1 + bottomOne.width
+
+                                                        tX2 =
+                                                            topOne.x1 + topOne.width
+                                                    in
+                                                    -- is inside and on top
+                                                    [ Occupied prev
+                                                    , Occupied topOne
                                                     , Occupied
-                                                        { x1 = currRect.x1 + currRect.width
-                                                        , y1 = x.y1
-                                                        , width = x.x1 + x.width
-                                                        , height = x.height
+                                                        { x1 = topOne.x1 + topOne.width
+                                                        , y1 = bottomOne.y1
+                                                        , width = bX2 - tX2
+                                                        , height = bottomOne.height
                                                         }
                                                     ]
 
                                                 else if isEntirelyOutsideX then
                                                     [ Occupied x
                                                     , EmptySpace
-                                                        { x = x.x1 + x.width
-                                                        , width = currRect.x1 - x.x1 - x.width
+                                                        { x = prev.x1 + prev.width
+                                                        , width = currRect.x1 - prev.x1 - prev.width
                                                         }
                                                     , Occupied currRect
                                                     ]
 
-                                                else
+                                                else if isOnTopRight then
+                                                    let
+                                                        topOne =
+                                                            currRect
+
+                                                        bottomOne =
+                                                            x
+                                                    in
                                                     [ Occupied
-                                                        { x1 = x.x1
-                                                        , y1 = x.y1
-                                                        , width = (currRect.x1 - x.x1) + x.x1
-                                                        , height = x.height
+                                                        { x1 = bottomOne.x1
+                                                        , y1 = bottomOne.y1
+                                                        , width = topOne.x1 - bottomOne.x1
+                                                        , height = bottomOne.height
                                                         }
+                                                    , Occupied topOne
+                                                    ]
+
+                                                else
+                                                    let
+                                                        topOne =
+                                                            x
+
+                                                        bottomOne =
+                                                            currRect
+                                                    in
+                                                    [ Occupied topOne
                                                     , Occupied
-                                                        { x1 = (currRect.x1 - x.x1) + x.x1
-                                                        , y1 = currRect.y1
-                                                        , width = currRect.width
-                                                        , height = currRect.height
+                                                        { x1 = topOne.x1 + topOne.width
+                                                        , y1 = bottomOne.y1
+                                                        , width = (bottomOne.x1 + bottomOne.width) - (prev.x1 + prev.width)
+                                                        , height = bottomOne.height
                                                         }
                                                     ]
 
@@ -1172,22 +1209,40 @@ view model =
 
                                                     isEntirelyOutsideX =
                                                         lastLine |> isOutside1DLine firstLine
+
+                                                    isOnTopRight =
+                                                        x.y1 > currRect.y1
                                                 in
                                                 if isInsideX then
+                                                    let
+                                                        topOne =
+                                                            currRect
+
+                                                        bottomOne =
+                                                            x
+
+                                                        bX2 =
+                                                            bottomOne.x1 + bottomOne.width
+
+                                                        tX2 =
+                                                            topOne.x1 + topOne.width
+                                                    in
+                                                    -- is inside and on top
                                                     [ Occupied
-                                                        { x1 = x.x1
-                                                        , y1 = x.y1
-                                                        , width = currRect.x1 - x.x1
-                                                        , height = x.height
+                                                        { x1 = bottomOne.x1
+                                                        , y1 = bottomOne.y1
+                                                        , width = topOne.x1 - bottomOne.x1
+                                                        , height = bottomOne.height
                                                         }
-                                                    , Occupied currRect
-                                                    , Occupied
-                                                        { x1 = currRect.x1 + currRect.width
-                                                        , y1 = x.y1
-                                                        , width = x.x1 + x.width
-                                                        , height = x.height
-                                                        }
+                                                    , Occupied topOne
                                                     ]
+                                                        ++ helperGetOccupiedAndEmptySpacesXV2
+                                                            { x1 = topOne.x1 + topOne.width
+                                                            , y1 = bottomOne.y1
+                                                            , width = bX2 - tX2
+                                                            , height = bottomOne.height
+                                                            }
+                                                            rx
 
                                                 else if isEntirelyOutsideX then
                                                     [ Occupied x
@@ -1195,23 +1250,45 @@ view model =
                                                         { x = x.x1 + x.width
                                                         , width = currRect.x1 - x.x1 - x.width
                                                         }
-                                                    , Occupied currRect
                                                     ]
+                                                        ++ helperGetOccupiedAndEmptySpacesXV2
+                                                            currRect
+                                                            rx
+
+                                                else if isOnTopRight then
+                                                    let
+                                                        topOne =
+                                                            currRect
+
+                                                        bottomOne =
+                                                            x
+                                                    in
+                                                    Occupied
+                                                        { x1 = bottomOne.x1
+                                                        , y1 = bottomOne.y1
+                                                        , width = topOne.x1 - bottomOne.x1
+                                                        , height = bottomOne.height
+                                                        }
+                                                        :: helperGetOccupiedAndEmptySpacesXV2
+                                                            topOne
+                                                            rx
 
                                                 else
-                                                    [ Occupied
-                                                        { x1 = x.x1
-                                                        , y1 = x.y1
-                                                        , width = (currRect.x1 - x.x1) + x.x1
-                                                        , height = x.height
-                                                        }
-                                                    , Occupied
-                                                        { x1 = (currRect.x1 - x.x1) + x.x1
-                                                        , y1 = currRect.y1
-                                                        , width = currRect.width
-                                                        , height = currRect.height
-                                                        }
-                                                    ]
+                                                    let
+                                                        topOne =
+                                                            x
+
+                                                        bottomOne =
+                                                            currRect
+                                                    in
+                                                    Occupied topOne
+                                                        :: helperGetOccupiedAndEmptySpacesXV2
+                                                            { x1 = topOne.x1 + topOne.width
+                                                            , y1 = bottomOne.y1
+                                                            , width = (bottomOne.x1 + bottomOne.width) - (x.x1 + x.width)
+                                                            , height = bottomOne.height
+                                                            }
+                                                            rx
 
                                     allSpacesX =
                                         getOccupiedAndEmptySpacesXV2
