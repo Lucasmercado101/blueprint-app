@@ -1083,25 +1083,36 @@ view model =
                                                     isEntirelyOutsideX =
                                                         lastLine |> isOutside1DLine firstLine
 
-                                                    isOnTop =
+                                                    isOnTopRight =
                                                         x.y1 > lastOne.y1
-
-                                                    isOnBottom =
-                                                        x.y1 < lastOne.y1
                                                 in
                                                 if isInsideX then
+                                                    let
+                                                        topOne =
+                                                            lastOne
+
+                                                        bottomOne =
+                                                            x
+
+                                                        bX2 =
+                                                            bottomOne.x1 + bottomOne.width
+
+                                                        tX2 =
+                                                            topOne.x1 + topOne.width
+                                                    in
+                                                    -- is inside and on top
                                                     [ Occupied
-                                                        { x1 = x.x1
-                                                        , y1 = x.y1
-                                                        , width = lastOne.x1 - x.x1
-                                                        , height = x.height
+                                                        { x1 = bottomOne.x1
+                                                        , y1 = bottomOne.y1
+                                                        , width = topOne.x1 - bottomOne.x1
+                                                        , height = bottomOne.height
                                                         }
-                                                    , Occupied lastOne
+                                                    , Occupied topOne
                                                     , Occupied
-                                                        { x1 = lastOne.x1 + lastOne.width
-                                                        , y1 = x.y1
-                                                        , width = x.x1 + x.width
-                                                        , height = x.height
+                                                        { x1 = topOne.x1 + topOne.width
+                                                        , y1 = bottomOne.y1
+                                                        , width = bX2 - tX2
+                                                        , height = bottomOne.height
                                                         }
                                                     ]
 
@@ -1114,23 +1125,37 @@ view model =
                                                     , Occupied lastOne
                                                     ]
 
-                                                else if isOnTop then
+                                                else if isOnTopRight then
+                                                    let
+                                                        topOne =
+                                                            lastOne
+
+                                                        bottomOne =
+                                                            x
+                                                    in
                                                     [ Occupied
-                                                        { x1 = x.x1
-                                                        , y1 = x.y1
-                                                        , width = (x.x1 + x.width) - (lastOne.x1 + lastOne.width)
-                                                        , height = x.height
+                                                        { x1 = bottomOne.x1
+                                                        , y1 = bottomOne.y1
+                                                        , width = topOne.x1 - bottomOne.x1
+                                                        , height = bottomOne.height
                                                         }
-                                                    , Occupied lastOne
+                                                    , Occupied topOne
                                                     ]
 
                                                 else
-                                                    [ Occupied x
+                                                    let
+                                                        topOne =
+                                                            x
+
+                                                        bottomOne =
+                                                            lastOne
+                                                    in
+                                                    [ Occupied topOne
                                                     , Occupied
-                                                        { x1 = x.x1 + x.width
-                                                        , y1 = lastOne.y1
-                                                        , width = (lastOne.x1 + lastOne.width) - (x.x1 + x.width)
-                                                        , height = lastOne.height
+                                                        { x1 = topOne.x1 + topOne.width
+                                                        , y1 = bottomOne.y1
+                                                        , width = (bottomOne.x1 + bottomOne.width) - (x.x1 + x.width)
+                                                        , height = bottomOne.height
                                                         }
                                                     ]
 
@@ -1189,7 +1214,7 @@ view model =
                                                     ]
 
                                     allSpacesX =
-                                        getOccupiedAndEmptySpacesXV2 |> Debug.log "a"
+                                        getOccupiedAndEmptySpacesXV2
 
                                     -- Occupied x :: getOccupiedAndEmptySpacesX x xs
                                     totalWidth =
