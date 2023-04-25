@@ -3396,8 +3396,8 @@ is1DLineInside1DLine ( a1, a2 ) ( b1, b2 ) =
     (b1 |> inRange a1 a2) && (b2 |> inRange a1 a2)
 
 
-isInside1DLine : number -> ( number, number ) -> Bool
-isInside1DLine n ( a1, a2 ) =
+isInside1DLine : ( number, number ) -> number -> Bool
+isInside1DLine ( a1, a2 ) n =
     n |> inRange a1 a2
 
 
