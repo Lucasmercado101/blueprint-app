@@ -3639,44 +3639,49 @@ foldlDefaultFirst fn list =
             Just (List.foldl fn x xs)
 
 
-getAllRoomsTopXAsSegments : List Rectangle -> List SpaceType
+getAllRoomsTopXAsSegments : List Room -> List SpaceType
 getAllRoomsTopXAsSegments e =
     case e of
         [] ->
             []
 
         [ onlyRoom ] ->
-            [ Occupied onlyRoom ]
+            [ Occupied onlyRoom.boundingBox ]
 
-        firstRoom :: restRooms ->
+        firstRoom :: otherRooms ->
             let
-                highestRoom : Rectangle
+                pointInsideRoom : Int -> Rectangle -> Bool
+                pointInsideRoom point r =
+                    point |> isInside1DLine (Rect.topSideAs1DLine r)
+
+                highestRoom : Room
                 highestRoom =
                     List.foldl
                         (\next curr ->
-                            if next.y1 < curr.y1 then
+                            if next.boundingBox.y1 < curr.boundingBox.y1 then
                                 next
 
                             else
                                 curr
                         )
                         firstRoom
-                        restRooms
+                        otherRooms
 
-                pointInsideRoom : Int -> Rectangle -> Bool
-                pointInsideRoom point r =
-                    point |> isInside1DLine (Rect.topSideAs1DLine r)
+                allRoomsMinusHighest =
+                    List.filter (\r -> r.id /= highestRoom.id) otherRooms
+
+                belowHighest r =
+                    r.boundingBox.y1 <= highestRoom.boundingBox.y1
+
+                toTheRightOfHighest r =
+                    ((highestRoom.boundingBox |> Rect.rightX) + 1) < r.boundingBox.x1
+
+                rightNextToHighestRoom r =
+                    pointInsideRoom ((highestRoom.boundingBox |> Rect.rightX) + 1) r.boundingBox
 
                 nextOneOnTheRight =
-                    let
-                        belowHighest r =
-                            r.y1 <= highestRoom.y1
-
-                        rightNextToHighestRoom =
-                            pointInsideRoom ((highestRoom |> Rect.rightX) + 1)
-                    in
                     case
-                        (firstRoom :: restRooms)
+                        allRoomsMinusHighest
                             |> List.filter rightNextToHighestRoom
                             |> List.filter belowHighest
                     of
@@ -3684,7 +3689,7 @@ getAllRoomsTopXAsSegments e =
                             [ Occupied
                                 (List.foldl
                                     (\next curr ->
-                                        if next.y1 < curr.y1 then
+                                        if next.boundingBox.y1 < curr.boundingBox.y1 then
                                             next
 
                                         else
@@ -3692,20 +3697,22 @@ getAllRoomsTopXAsSegments e =
                                     )
                                     x
                                     xs
+                                    |> .boundingBox
                                 )
                             ]
 
                         [] ->
                             case
-                                (firstRoom :: restRooms)
+                                allRoomsMinusHighest
                                     |> List.filter belowHighest
+                                    |> List.filter toTheRightOfHighest
                                     |> foldlDefaultFirst
                                         (\next curr ->
-                                            if next.y1 < curr.y1 then
+                                            if next.boundingBox.y1 < curr.boundingBox.y1 then
                                                 next
 
-                                            else if next.y1 == curr.y1 then
-                                                if next.x1 < curr.x1 then
+                                            else if next.boundingBox.y1 == curr.boundingBox.y1 then
+                                                if next.boundingBox.x1 < curr.boundingBox.x1 then
                                                     next
 
                                                 else
@@ -3716,9 +3723,14 @@ getAllRoomsTopXAsSegments e =
                                         )
                             of
                                 Just roomAcross ->
-                                    []
+                                    [ EmptySpace
+                                        { x = (highestRoom.boundingBox |> Rect.rightX) + 1
+                                        , width = roomAcross.boundingBox.x1 - (highestRoom.boundingBox |> Rect.rightX)
+                                        }
+                                    , Occupied roomAcross.boundingBox
+                                    ]
 
                                 Nothing ->
                                     []
             in
-            Occupied highestRoom :: nextOneOnTheRight
+            Occupied highestRoom.boundingBox :: nextOneOnTheRight
