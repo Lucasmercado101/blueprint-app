@@ -1022,7 +1022,7 @@ view model =
                                                         ( currRect.x1, currRect |> Rect.topRight |> Point.x )
 
                                                     isInsideX =
-                                                        currLine |> isInside1DLine prevLine
+                                                        currLine |> is1DLineInside1DLine prevLine
 
                                                     isEntirelyOutsideX =
                                                         currLine |> isOutside1DLine prevLine
@@ -1120,7 +1120,7 @@ view model =
                                                         ( lastOne.x1, lastOne |> Rect.topRight |> Point.x )
 
                                                     isInsideX =
-                                                        lastLine |> isInside1DLine firstLine
+                                                        lastLine |> is1DLineInside1DLine firstLine
 
                                                     isEntirelyOutsideX =
                                                         lastLine |> isOutside1DLine firstLine
@@ -1210,7 +1210,7 @@ view model =
                                                         ( currRect.x1, currRect |> Rect.topRight |> Point.x )
 
                                                     isInsideX =
-                                                        lastLine |> isInside1DLine firstLine
+                                                        lastLine |> is1DLineInside1DLine firstLine
 
                                                     isEntirelyOutsideX =
                                                         lastLine |> isOutside1DLine firstLine
@@ -3391,8 +3391,8 @@ overlap1DLines ( a1, a2 ) ( b1, b2 ) =
     inRange a1 a2 b1 || inRange a1 a2 b2 || inRange b1 b2 a1 || inRange b1 b2 a2
 
 
-isInside1DLine : ( Int, Int ) -> ( Int, Int ) -> Bool
-isInside1DLine ( a1, a2 ) ( b1, b2 ) =
+is1DLineInside1DLine : ( Int, Int ) -> ( Int, Int ) -> Bool
+is1DLineInside1DLine ( a1, a2 ) ( b1, b2 ) =
     (b1 |> inRange a1 a2) && (b2 |> inRange a1 a2)
 
 
@@ -3403,7 +3403,7 @@ isOutside1DLine ( a1, a2 ) ( b1, b2 ) =
 
 isInside1DLines : List ( Int, Int ) -> ( Int, Int ) -> Bool
 isInside1DLines lines line =
-    List.any (\l -> line |> isInside1DLine l) lines
+    List.any (\l -> line |> is1DLineInside1DLine l) lines
 
 
 translateRoomToSnappedPosition : Maybe ( RoomPossibleSnappingX, RoomPossibleSnappingX, Room ) -> Maybe ( RoomPossibleSnappingY, RoomPossibleSnappingY, Room ) -> Room -> Room
