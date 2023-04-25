@@ -3644,7 +3644,6 @@ pointInsideTopLineOfRoom point r =
     point |> isInside1DLine (Rect.topSideAs1DLine r.boundingBox)
 
 
-
 getAllRoomsTopXAsSegments : List Room -> List SpaceType
 getAllRoomsTopXAsSegments e =
     case e of
@@ -3716,6 +3715,9 @@ getAllRoomsTopXAsSegments e =
                                 Occupied
                                     { x1 = onTheRightX1
                                     , y1 = onTheRight.y1
+
+                                    -- TODO: i don't actually know what width to make it
+                                    -- as i don't know where the next room is currently
                                     , width = onTheRightWidth
                                     , height = onTheRight.height
                                     }
@@ -3747,6 +3749,9 @@ getAllRoomsTopXAsSegments e =
                                         { x = (highestRoom.boundingBox |> Rect.rightX) + 1
                                         , width = roomAcross.boundingBox.x1 - (highestRoom.boundingBox |> Rect.rightX)
                                         }
+
+                                    -- TODO: i don't actually know what width to make it
+                                    -- as i don't know where the next room is currently
                                     , Occupied roomAcross.boundingBox
                                     ]
 
