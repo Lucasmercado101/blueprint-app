@@ -3686,19 +3686,37 @@ getAllRoomsTopXAsSegments e =
                             |> List.filter belowHighest
                     of
                         x :: xs ->
-                            [ Occupied
-                                (List.foldl
-                                    (\next curr ->
-                                        if next.boundingBox.y1 < curr.boundingBox.y1 then
-                                            next
+                            let
+                                onTheRight =
+                                    List.foldl
+                                        (\next curr ->
+                                            if next.boundingBox.y1 < curr.boundingBox.y1 then
+                                                next
 
-                                        else
-                                            curr
-                                    )
-                                    x
-                                    xs
-                                    |> .boundingBox
-                                )
+                                            else
+                                                curr
+                                        )
+                                        x
+                                        xs
+                                        |> .boundingBox
+                            in
+                            [ if onTheRight.x1 == (highestRoom.boundingBox |> Rect.rightX) + 1 then
+                                Occupied onTheRight
+
+                              else
+                                let
+                                    onTheRightX1 =
+                                        onTheRight.x1 + ((highestRoom.boundingBox |> Rect.topRight |> Point.x) - onTheRight.x1)
+
+                                    onTheRightWidth =
+                                        (onTheRight |> Rect.rightX) - (highestRoom.boundingBox |> Rect.rightX)
+                                in
+                                Occupied
+                                    { x1 = onTheRightX1
+                                    , y1 = onTheRight.y1
+                                    , width = onTheRightWidth
+                                    , height = onTheRight.height
+                                    }
                             ]
 
                         [] ->
