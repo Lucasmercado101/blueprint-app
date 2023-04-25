@@ -34,6 +34,11 @@ bottomSide rect =
     ( bottomLeft rect, bottomRight rect )
 
 
+topSideAs1DLine : Rectangle -> ( Int, Int )
+topSideAs1DLine rect =
+    ( rect.x1, rect.x1 + rect.width )
+
+
 bottomY : Rectangle -> Int
 bottomY rect =
     rect.y1 + rect.height
