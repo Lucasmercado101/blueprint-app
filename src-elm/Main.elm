@@ -3645,6 +3645,9 @@ getAllRoomsTopXAsSegments e =
         [] ->
             []
 
+        [ onlyRoom ] ->
+            [ Occupied onlyRoom ]
+
         firstRoom :: restRooms ->
             let
                 highestRoom : Rectangle
