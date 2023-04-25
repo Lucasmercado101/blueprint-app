@@ -2925,7 +2925,7 @@ type RoomPossibleSnappingY
     | SnappingYRight
 
 
-inRange : Int -> Int -> Int -> Bool
+inRange : number -> number -> number -> Bool
 inRange min max number =
     min <= number && number <= max
 
@@ -3394,6 +3394,11 @@ overlap1DLines ( a1, a2 ) ( b1, b2 ) =
 is1DLineInside1DLine : ( Int, Int ) -> ( Int, Int ) -> Bool
 is1DLineInside1DLine ( a1, a2 ) ( b1, b2 ) =
     (b1 |> inRange a1 a2) && (b2 |> inRange a1 a2)
+
+
+isInside1DLine : number -> ( number, number ) -> Bool
+isInside1DLine n ( a1, a2 ) =
+    n |> inRange a1 a2
 
 
 isOutside1DLine : ( Int, Int ) -> ( Int, Int ) -> Bool
