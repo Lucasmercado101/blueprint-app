@@ -3637,3 +3637,65 @@ foldlDefaultFirst fn list =
 
         x :: xs ->
             Just (List.foldl fn x xs)
+
+
+getAllRoomsTopXAsSegments : List Rectangle -> List SpaceType
+getAllRoomsTopXAsSegments rooms =
+    let
+        tRoom : Maybe Rectangle
+        tRoom =
+            foldlDefaultFirst
+                (\next curr ->
+                    if next.y1 < curr.y1 then
+                        next
+
+                    else
+                        curr
+                )
+                rooms
+
+        pointInsideRoom : Int -> Rectangle -> Bool
+        pointInsideRoom point r =
+            point |> isInside1DLine (Rect.topSideAs1DLine r)
+    in
+    case tRoom of
+        Nothing ->
+            []
+
+        Just highestRoom ->
+            let
+                nextOneOnTheRight =
+                    let
+                        belowTopMost r =
+                            r.y1 <= highestRoom.y1
+                    in
+                    case
+                        rooms
+                            |> List.filter (pointInsideRoom ((highestRoom |> Rect.rightX) + 1))
+                            |> List.filter belowTopMost
+                    of
+                        x :: xs ->
+                            Just
+                                (List.foldl
+                                    (\next curr ->
+                                        if next.y1 < curr.y1 then
+                                            next
+
+                                        else if next.y1 == curr.y1 then
+                                            if next.x1 < curr.x1 then
+                                                next
+
+                                            else
+                                                curr
+
+                                        else
+                                            curr
+                                    )
+                                    x
+                                    xs
+                                )
+
+                        [] ->
+                            Nothing
+            in
+            [ Occupied highestRoom ]
