@@ -3666,27 +3666,23 @@ getAllRoomsTopXAsSegments rooms =
             let
                 nextOneOnTheRight =
                     let
-                        belowTopMost r =
+                        belowHighest r =
                             r.y1 <= highestRoom.y1
+
+                        rightNextToHighestRoom =
+                            pointInsideRoom ((highestRoom |> Rect.rightX) + 1)
                     in
                     case
                         rooms
-                            |> List.filter (pointInsideRoom ((highestRoom |> Rect.rightX) + 1))
-                            |> List.filter belowTopMost
+                            |> List.filter rightNextToHighestRoom
+                            |> List.filter belowHighest
                     of
                         x :: xs ->
-                            Just
+                            [ Occupied
                                 (List.foldl
                                     (\next curr ->
                                         if next.y1 < curr.y1 then
                                             next
-
-                                        else if next.y1 == curr.y1 then
-                                            if next.x1 < curr.x1 then
-                                                next
-
-                                            else
-                                                curr
 
                                         else
                                             curr
@@ -3694,8 +3690,32 @@ getAllRoomsTopXAsSegments rooms =
                                     x
                                     xs
                                 )
+                            ]
 
                         [] ->
-                            Nothing
+                            case
+                                rooms
+                                    |> List.filter belowHighest
+                                    |> foldlDefaultFirst
+                                        (\next curr ->
+                                            if next.y1 < curr.y1 then
+                                                next
+
+                                            else if next.y1 == curr.y1 then
+                                                if next.x1 < curr.x1 then
+                                                    next
+
+                                                else
+                                                    curr
+
+                                            else
+                                                curr
+                                        )
+                            of
+                                Just roomAcross ->
+                                    []
+
+                                Nothing ->
+                                    []
             in
-            [ Occupied highestRoom ]
+            [ Occupied highestRoom ] ++ nextOneOnTheRight
