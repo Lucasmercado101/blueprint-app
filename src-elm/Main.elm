@@ -3640,30 +3640,30 @@ foldlDefaultFirst fn list =
 
 
 getAllRoomsTopXAsSegments : List Rectangle -> List SpaceType
-getAllRoomsTopXAsSegments rooms =
-    let
-        tRoom : Maybe Rectangle
-        tRoom =
-            foldlDefaultFirst
-                (\next curr ->
-                    if next.y1 < curr.y1 then
-                        next
-
-                    else
-                        curr
-                )
-                rooms
-
-        pointInsideRoom : Int -> Rectangle -> Bool
-        pointInsideRoom point r =
-            point |> isInside1DLine (Rect.topSideAs1DLine r)
-    in
-    case tRoom of
-        Nothing ->
+getAllRoomsTopXAsSegments e =
+    case e of
+        [] ->
             []
 
-        Just highestRoom ->
+        firstRoom :: restRooms ->
             let
+                highestRoom : Rectangle
+                highestRoom =
+                    List.foldl
+                        (\next curr ->
+                            if next.y1 < curr.y1 then
+                                next
+
+                            else
+                                curr
+                        )
+                        firstRoom
+                        restRooms
+
+                pointInsideRoom : Int -> Rectangle -> Bool
+                pointInsideRoom point r =
+                    point |> isInside1DLine (Rect.topSideAs1DLine r)
+
                 nextOneOnTheRight =
                     let
                         belowHighest r =
@@ -3673,7 +3673,7 @@ getAllRoomsTopXAsSegments rooms =
                             pointInsideRoom ((highestRoom |> Rect.rightX) + 1)
                     in
                     case
-                        rooms
+                        (firstRoom :: restRooms)
                             |> List.filter rightNextToHighestRoom
                             |> List.filter belowHighest
                     of
@@ -3694,7 +3694,7 @@ getAllRoomsTopXAsSegments rooms =
 
                         [] ->
                             case
-                                rooms
+                                (firstRoom :: restRooms)
                                     |> List.filter belowHighest
                                     |> foldlDefaultFirst
                                         (\next curr ->
@@ -3718,4 +3718,4 @@ getAllRoomsTopXAsSegments rooms =
                                 Nothing ->
                                     []
             in
-            [ Occupied highestRoom ] ++ nextOneOnTheRight
+            Occupied highestRoom :: nextOneOnTheRight
