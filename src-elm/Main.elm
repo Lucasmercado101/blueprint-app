@@ -3639,6 +3639,12 @@ foldlDefaultFirst fn list =
             Just (List.foldl fn x xs)
 
 
+pointInsideTopLineOfRoom : Int -> Room -> Bool
+pointInsideTopLineOfRoom point r =
+    point |> isInside1DLine (Rect.topSideAs1DLine r.boundingBox)
+
+
+
 getAllRoomsTopXAsSegments : List Room -> List SpaceType
 getAllRoomsTopXAsSegments e =
     case e of
@@ -3650,10 +3656,6 @@ getAllRoomsTopXAsSegments e =
 
         firstRoom :: otherRooms ->
             let
-                pointInsideRoom : Int -> Rectangle -> Bool
-                pointInsideRoom point r =
-                    point |> isInside1DLine (Rect.topSideAs1DLine r)
-
                 highestRoom : Room
                 highestRoom =
                     List.foldl
@@ -3677,7 +3679,7 @@ getAllRoomsTopXAsSegments e =
                     ((highestRoom.boundingBox |> Rect.rightX) + 1) < r.boundingBox.x1
 
                 rightNextToHighestRoom r =
-                    pointInsideRoom ((highestRoom.boundingBox |> Rect.rightX) + 1) r.boundingBox
+                    pointInsideTopLineOfRoom ((highestRoom.boundingBox |> Rect.rightX) + 1) r
 
                 nextOneOnTheRight =
                     case
