@@ -3622,3 +3622,13 @@ getTotalRoomsXSpace rooms =
                             getAllTopmostRooms allRoomsMinusTopMostRooms nextTopmostRooms
             in
             getAllTopmostRooms rooms [ topmostRoom ] |> List.map .boundingBox
+
+
+foldlDefaultFirst : (a -> a -> a) -> List a -> Maybe a
+foldlDefaultFirst fn list =
+    case list of
+        [] ->
+            Nothing
+
+        x :: xs ->
+            Just (List.foldl fn x xs)
