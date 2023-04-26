@@ -110,15 +110,18 @@ port receiveChangedSvgTextContent : (JD.Value -> msg) -> Sub msg
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    receiveChangedSvgTextContent
-        (\l ->
-            case JD.decodeValue receiveChangedSvgTextContentDecoder l of
-                Ok msg ->
-                    Debug.todo "received text svg change"
+    Sub.none
 
-                Err err ->
-                    Debug.todo "received text svg change"
-        )
+
+
+-- receiveChangedSvgTextContent
+--     (\l ->
+--         case JD.decodeValue receiveChangedSvgTextContentDecoder l of
+--             Ok msg ->
+--                 Debug.todo "received text svg change"
+--             Err err ->
+--                 Debug.todo "received text svg change"
+--     )
 
 
 mouseMoveDecoder : Decoder ( Int, Int )
