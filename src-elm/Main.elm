@@ -3690,14 +3690,14 @@ getNextRightSegment segment rooms =
         [] ->
             []
 
-        _ :: allRooms ->
+        nextRoom :: allRooms ->
             let
                 roomsAboveSegment r =
                     r.boundingBox.y1 < segment.y1
 
                 roomsAboveAndInsideSegment : List Room
                 roomsAboveAndInsideSegment =
-                    allRooms
+                    (nextRoom :: allRooms)
                         |> List.filter roomsAboveSegment
                         |> List.filter (\r -> (r.boundingBox |> Rect.topSideAs1DLine) |> is1DLineInside1DLine (segment |> Rect.topSideAs1DLine))
             in
@@ -3744,7 +3744,7 @@ getNextRightSegment segment rooms =
                             (segment |> Rect.rightX) |> isInside1DLine (r.boundingBox |> Rect.topSideAs1DLine)
 
                         partiallyInsideOfSegmentRooms =
-                            List.filter segmentX2IsPartiallyInsideRoom allRooms
+                            List.filter segmentX2IsPartiallyInsideRoom (nextRoom :: allRooms)
 
                         roomsOnTop =
                             partiallyInsideOfSegmentRooms
@@ -3772,11 +3772,6 @@ getNextRightSegment segment rooms =
                                         x
                                         xs
                                         |> .boundingBox
-                                        |> (\o ->
-                                                { o
-                                                    | x1 = (segment |> Rect.rightX) - o.x1
-                                                }
-                                           )
 
                                 newCurrentSegment =
                                     { x1 = segment.x1
@@ -3820,7 +3815,7 @@ getNextRightSegment segment rooms =
                                 [] ->
                                     let
                                         roomsToTheRightOfSegment =
-                                            allRooms
+                                            (nextRoom :: allRooms)
                                                 |> List.filter (\r -> (segment |> Rect.rightX) < r.boundingBox.x1)
                                     in
                                     case roomsToTheRightOfSegment of
@@ -3921,7 +3916,7 @@ getAllRoomsTopXAsSegments e =
                                         |> .boundingBox
                             in
                             if nextSegment.x1 == (highestRoom.boundingBox |> Rect.rightX) + 1 then
-                                getNextRightSegment nextSegment otherRooms
+                                getNextRightSegment nextSegment allRoomsMinusHighest
 
                             else
                                 getNextRightSegment
@@ -3930,7 +3925,7 @@ getAllRoomsTopXAsSegments e =
                                     , width = (nextSegment |> Rect.rightX) - (highestRoom.boundingBox |> Rect.rightX)
                                     , height = nextSegment.height
                                     }
-                                    otherRooms
+                                    allRoomsMinusHighest
 
                         [] ->
                             case
@@ -3958,7 +3953,7 @@ getAllRoomsTopXAsSegments e =
                                         { x = (highestRoom.boundingBox |> Rect.rightX) + 1
                                         , width = roomAcross.boundingBox.x1 - (highestRoom.boundingBox |> Rect.rightX)
                                         }
-                                        :: getNextRightSegment roomAcross.boundingBox otherRooms
+                                        :: getNextRightSegment roomAcross.boundingBox allRoomsMinusHighest
 
                                 Nothing ->
                                     []
