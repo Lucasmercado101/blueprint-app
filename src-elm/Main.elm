@@ -3640,7 +3640,7 @@ getAllRoomsTopXAsSegments e =
                 rightLeftToHighestRoom r =
                     pointInsideTopLineOfRoom (highestRoom.boundingBox.x1 - 1) r
 
-                toTheLefttOfHighest r =
+                toTheLeftOfHighest r =
                     (r.boundingBox |> Rect.rightX) < (highestRoom.boundingBox.x1 - 1)
 
                 nextOneOnTheLeft : List SpaceType
@@ -3681,7 +3681,7 @@ getAllRoomsTopXAsSegments e =
                             case
                                 allRoomsMinusHighest
                                     |> List.filter belowHighest
-                                    |> List.filter toTheLefttOfHighest
+                                    |> List.filter toTheLeftOfHighest
                                     |> foldlDefaultFirst
                                         (\next curr ->
                                             if (next.boundingBox |> Rect.rightX) > (curr.boundingBox |> Rect.rightX) then
