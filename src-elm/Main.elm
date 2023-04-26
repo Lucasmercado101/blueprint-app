@@ -3174,7 +3174,7 @@ foldlDefaultFirst fn list =
 
 pointInsideTopLineOfRoom : Int -> Room -> Bool
 pointInsideTopLineOfRoom point r =
-    point |> isInside1DLine (Rect.topSideAs1DLine r.boundingBox)
+    point |> isInside1DLine (Rect.xAs1DLine r.boundingBox)
 
 
 getNextRightSegment : Rectangle -> List Room -> List SpaceType
@@ -3194,7 +3194,7 @@ getNextRightSegment segment rooms =
                 roomsAboveAndInsideSegment =
                     allRooms
                         |> List.filter roomsAboveSegment
-                        |> List.filter (\r -> (r.boundingBox |> Rect.topSideAs1DLine) |> is1DLineInside1DLine (segment |> Rect.topSideAs1DLine))
+                        |> List.filter (\r -> (r.boundingBox |> Rect.xAs1DLine) |> is1DLineInside1DLine (segment |> Rect.xAs1DLine))
 
                 getRoomsToTheRight =
                     let
@@ -3275,7 +3275,7 @@ getNextRightSegment segment rooms =
                 [] ->
                     let
                         segmentX2IsPartiallyInsideRoom r =
-                            (segment |> Rect.rightX) |> isInside1DLine (r.boundingBox |> Rect.topSideAs1DLine)
+                            (segment |> Rect.rightX) |> isInside1DLine (r.boundingBox |> Rect.xAs1DLine)
 
                         partiallyInsideOfSegmentRooms =
                             List.filter segmentX2IsPartiallyInsideRoom allRooms
@@ -3374,7 +3374,7 @@ getNextTopLeftSegment segment rooms =
                 roomsAboveAndInsideSegment =
                     allRooms
                         |> List.filter roomsAboveSegment
-                        |> List.filter (\r -> (r.boundingBox |> Rect.topSideAs1DLine) |> is1DLineInside1DLine (segment |> Rect.topSideAs1DLine))
+                        |> List.filter (\r -> (r.boundingBox |> Rect.xAs1DLine) |> is1DLineInside1DLine (segment |> Rect.xAs1DLine))
 
                 getRoomsToTheLeft =
                     let
@@ -3455,7 +3455,7 @@ getNextTopLeftSegment segment rooms =
                 [] ->
                     let
                         segmentX1IsPartiallyInsideRoom r =
-                            segment.x1 |> isInside1DLine (r.boundingBox |> Rect.topSideAs1DLine)
+                            segment.x1 |> isInside1DLine (r.boundingBox |> Rect.xAs1DLine)
 
                         partiallyInsideOfSegmentRooms =
                             List.filter segmentX1IsPartiallyInsideRoom allRooms
