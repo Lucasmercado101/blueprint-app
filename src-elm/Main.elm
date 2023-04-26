@@ -3690,14 +3690,93 @@ getNextRightSegment segment rooms =
         [] ->
             []
 
-        nextRoom :: allRooms ->
+        [ lastRoom ] ->
+            let
+                roomIsAboveAndInsideSegment =
+                    (lastRoom.boundingBox.y1 < segment.y1)
+                        && ((lastRoom.boundingBox |> Rect.topSideAs1DLine) |> is1DLineInside1DLine (segment |> Rect.topSideAs1DLine))
+            in
+            if roomIsAboveAndInsideSegment then
+                let
+                    newCurrentSegment =
+                        { x1 = segment.x1
+                        , y1 = segment.y1
+                        , width = lastRoom.boundingBox.x1 - segment.x1
+                        , height = segment.height
+                        }
+                in
+                [ Occupied newCurrentSegment, Occupied lastRoom.boundingBox ]
+
+            else
+                let
+                    segmentX2IsPartiallyInsideLastRoomAndRoomIsOnTopOfSegment =
+                        ((segment |> Rect.rightX) |> isInside1DLine (lastRoom.boundingBox |> Rect.topSideAs1DLine))
+                            && (segment.y1 > lastRoom.boundingBox.y1)
+                in
+                if segmentX2IsPartiallyInsideLastRoomAndRoomIsOnTopOfSegment then
+                    let
+                        newCurrentSegment =
+                            { x1 = segment.x1
+                            , y1 = segment.y1
+                            , width = lastRoom.boundingBox.x1 - segment.x1
+                            , height = segment.height
+                            }
+                    in
+                    [ Occupied newCurrentSegment, Occupied lastRoom.boundingBox ]
+
+                else
+                    let
+                        segmentX2IsPartiallyInsideLastRoomAndRoomIsBelowSegment =
+                            ((segment |> Rect.rightX) |> isInside1DLine (lastRoom.boundingBox |> Rect.topSideAs1DLine))
+                                && (segment.y1 < lastRoom.boundingBox.y1)
+                    in
+                    if segmentX2IsPartiallyInsideLastRoomAndRoomIsBelowSegment then
+                        let
+                            nextSegment =
+                                lastRoom.boundingBox
+                                    |> (\o ->
+                                            { o
+                                                | x1 = segment |> Rect.rightX
+                                                , width = (o |> Rect.rightX) - (segment |> Rect.rightX)
+                                            }
+                                       )
+                        in
+                        [ Occupied segment, Occupied nextSegment ]
+
+                    else
+                        let
+                            roomIsToTheRightOfSegment =
+                                (segment |> Rect.rightX) < lastRoom.boundingBox.x1
+                        in
+                        if roomIsToTheRightOfSegment then
+                            let
+                                closestAndHighestRoomToTheRight =
+                                    lastRoom
+                                        |> .boundingBox
+                            in
+                            if closestAndHighestRoomToTheRight.x1 == ((segment |> Rect.rightX) + 1) then
+                                [ Occupied segment, Occupied closestAndHighestRoomToTheRight ]
+
+                            else
+                                [ Occupied segment
+                                , EmptySpace
+                                    { x = segment |> Rect.rightX
+                                    , width = closestAndHighestRoomToTheRight.x1 - (segment |> Rect.rightX)
+                                    }
+                                , Occupied closestAndHighestRoomToTheRight
+                                ]
+
+                        else
+                            [ Occupied segment ]
+
+        allRooms ->
             let
                 roomsAboveSegment r =
                     r.boundingBox.y1 < segment.y1
 
                 roomsAboveAndInsideSegment : List Room
                 roomsAboveAndInsideSegment =
-                    (nextRoom :: allRooms)
+                    allRooms
                         |> List.filter roomsAboveSegment
                         |> List.filter (\r -> (r.boundingBox |> Rect.topSideAs1DLine) |> is1DLineInside1DLine (segment |> Rect.topSideAs1DLine))
             in
@@ -3739,7 +3818,7 @@ getNextRightSegment segment rooms =
                             (segment |> Rect.rightX) |> isInside1DLine (r.boundingBox |> Rect.topSideAs1DLine)
 
                         partiallyInsideOfSegmentRooms =
-                            List.filter segmentX2IsPartiallyInsideRoom (nextRoom :: allRooms)
+                            List.filter segmentX2IsPartiallyInsideRoom allRooms
 
                         roomsOnTop =
                             partiallyInsideOfSegmentRooms
@@ -3810,7 +3889,7 @@ getNextRightSegment segment rooms =
                                 [] ->
                                     let
                                         roomsToTheRightOfSegment =
-                                            (nextRoom :: allRooms)
+                                            allRooms
                                                 |> List.filter (\r -> (segment |> Rect.rightX) < r.boundingBox.x1)
                                     in
                                     case roomsToTheRightOfSegment of
