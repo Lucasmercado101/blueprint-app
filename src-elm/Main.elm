@@ -3890,7 +3890,7 @@ getAllRoomsTopXAsSegments e =
                     List.filter (\r -> r.id /= highestRoom.id) otherRooms
 
                 belowHighest r =
-                    r.boundingBox.y1 <= highestRoom.boundingBox.y1
+                    r.boundingBox.y1 >= highestRoom.boundingBox.y1
 
                 toTheRightOfHighest r =
                     ((highestRoom.boundingBox |> Rect.rightX) + 1) < r.boundingBox.x1
