@@ -3723,11 +3723,6 @@ getNextRightSegment segment rooms =
                                 x
                                 xs
                                 |> .boundingBox
-                                |> (\o ->
-                                        { o
-                                            | x1 = (segment |> Rect.rightX) - o.x1
-                                        }
-                                   )
 
                         newCurrentSegment =
                             { x1 = segment.x1
