@@ -936,13 +936,10 @@ view model =
                                 )
 
                     topMostRects =
-                        getTotalRoomsXSpace model.rooms |> List.sortBy .x1
-
-                    b =
                         getAllRoomsTopXAsSegments model.rooms
 
                     drawMeasuringLines =
-                        case b of
+                        case topMostRects of
                             [] ->
                                 []
 
@@ -964,6 +961,42 @@ view model =
                                             )
                                             -- TEMP sorta
                                             50000
+                                            (x :: xs)
+
+                                    smallestX =
+                                        List.foldl
+                                            (\next acc ->
+                                                case next of
+                                                    EmptySpace _ ->
+                                                        acc
+
+                                                    Occupied data ->
+                                                        if data.x1 < acc then
+                                                            data.x1
+
+                                                        else
+                                                            acc
+                                            )
+                                            -- TEMP sorta
+                                            50000
+                                            (x :: xs)
+
+                                    biggestX =
+                                        List.foldl
+                                            (\next acc ->
+                                                case next of
+                                                    EmptySpace _ ->
+                                                        acc
+
+                                                    Occupied data ->
+                                                        if data.x1 + data.width > acc then
+                                                            data.x1 + data.width
+
+                                                        else
+                                                            acc
+                                            )
+                                            -- TEMP sorta
+                                            -50000
                                             (x :: xs)
 
                                     ( vx, vy ) =
@@ -1016,427 +1049,27 @@ view model =
                                                         []
                                                     ]
                                     )
-                                    b
-
-                    topWidthMeasuringLine : List (Svg msg)
-                    topWidthMeasuringLine =
-                        case topMostRects of
-                            [] ->
-                                []
-
-                            x :: xs ->
-                                let
-                                    smallestX =
-                                        x :: xs |> List.head |> Maybe.withDefault x |> .x1
-
-                                    biggestX =
-                                        (x :: xs)
-                                            |> List.sortBy (\l -> l.x1 + l.width)
-                                            |> List.reverse
-                                            |> List.head
-                                            |> Maybe.withDefault x
-                                            |> (\l -> l.x1 + l.width)
-
-                                    smallestY =
-                                        x :: xs |> List.sortBy .y1 |> List.head |> Maybe.withDefault x |> .y1
-
-                                    ( vx, vy ) =
-                                        viewport
-
-                                    getOccupiedAndEmptySpacesX : Rectangle -> List Rectangle -> List SpaceType
-                                    getOccupiedAndEmptySpacesX rect allRects =
-                                        case allRects of
-                                            [] ->
-                                                []
-
-                                            [ last ] ->
-                                                let
-                                                    ( a1, a2 ) =
-                                                        ( rect.x1, rect |> Rect.topRight |> Point.x )
-
-                                                    ( b1, b2 ) =
-                                                        ( last.x1, last |> Rect.topRight |> Point.x )
-
-                                                    lastLeftIsInsideRect =
-                                                        b1 |> inRange a1 a2
-
-                                                    lastRightIsOutsideRect =
-                                                        b2 |> inRange a1 a2 |> not
-                                                in
-                                                if lastLeftIsInsideRect && lastRightIsOutsideRect then
-                                                    let
-                                                        w =
-                                                            b2 - a1 - rect.width
-                                                    in
-                                                    [ Occupied
-                                                        { x1 = rect.x1 + rect.width
-                                                        , y1 = rect.y1
-                                                        , width = w
-                                                        , height = rect.height
-                                                        }
-                                                    ]
-
-                                                else
-                                                    [ EmptySpace
-                                                        { x = rect.x1 + rect.width
-                                                        , width = b2 - a1 - rect.width - last.width
-                                                        }
-                                                    , Occupied last
-                                                    ]
-
-                                            e :: es ->
-                                                getOccupiedAndEmptySpacesX rect [ e ] ++ getOccupiedAndEmptySpacesX e es
-
-                                    helperGetOccupiedAndEmptySpacesXV2 : Rectangle -> List Rectangle -> List SpaceType
-                                    helperGetOccupiedAndEmptySpacesXV2 prev rest =
-                                        case rest of
-                                            [] ->
-                                                [ Occupied prev ]
-
-                                            [ currRect ] ->
-                                                let
-                                                    prevLine =
-                                                        ( prev.x1, prev |> Rect.topRight |> Point.x )
-
-                                                    currLine =
-                                                        ( currRect.x1, currRect |> Rect.topRight |> Point.x )
-
-                                                    isInsideX =
-                                                        currLine |> is1DLineInside1DLine prevLine
-
-                                                    isEntirelyOutsideX =
-                                                        currLine |> isOutside1DLine prevLine
-
-                                                    isOnTopRight =
-                                                        prev.y1 > currRect.y1
-                                                in
-                                                if isInsideX then
-                                                    let
-                                                        topOne =
-                                                            currRect
-
-                                                        bottomOne =
-                                                            x
-
-                                                        bX2 =
-                                                            bottomOne.x1 + bottomOne.width
-
-                                                        tX2 =
-                                                            topOne.x1 + topOne.width
-                                                    in
-                                                    -- is inside and on top
-                                                    [ Occupied
-                                                        { x1 = prev.x1
-                                                        , y1 = 1
-                                                        , width = topOne.x1 - prev.x1
-                                                        , height = 1
-                                                        }
-                                                    , Occupied topOne
-                                                    , Occupied
-                                                        { x1 = topOne.x1 + topOne.width
-                                                        , y1 = bottomOne.y1
-                                                        , width = bX2 - tX2
-                                                        , height = bottomOne.height
-                                                        }
-                                                    ]
-
-                                                else if isEntirelyOutsideX then
-                                                    [ Occupied prev
-                                                    , EmptySpace
-                                                        { x = prev.x1 + prev.width
-                                                        , width = currRect.x1 - prev.x1 - prev.width
-                                                        }
-                                                    , Occupied currRect
-                                                    ]
-
-                                                else if isOnTopRight then
-                                                    let
-                                                        topOne =
-                                                            currRect
-
-                                                        bottomOne =
-                                                            prev
-                                                    in
-                                                    [ Occupied
-                                                        { x1 = bottomOne.x1
-                                                        , y1 = bottomOne.y1
-                                                        , width = topOne.x1 - bottomOne.x1
-                                                        , height = bottomOne.height
-                                                        }
-                                                    , Occupied topOne
-                                                    ]
-
-                                                else
-                                                    let
-                                                        topOne =
-                                                            prev
-
-                                                        bottomOne =
-                                                            currRect
-                                                    in
-                                                    [ Occupied topOne
-                                                    , Occupied
-                                                        { x1 = topOne.x1 + topOne.width
-                                                        , y1 = bottomOne.y1
-                                                        , width = (bottomOne.x1 + bottomOne.width) - (prev.x1 + prev.width)
-                                                        , height = bottomOne.height
-                                                        }
-                                                    ]
-
-                                            e :: es ->
-                                                helperGetOccupiedAndEmptySpacesXV2 prev [ e ] ++ helperGetOccupiedAndEmptySpacesXV2 e es
-
-                                    getOccupiedAndEmptySpacesXV2 =
-                                        case xs of
-                                            [] ->
-                                                [ Occupied x ]
-
-                                            [ lastOne ] ->
-                                                let
-                                                    firstLine =
-                                                        ( x.x1, x |> Rect.topRight |> Point.x )
-
-                                                    lastLine =
-                                                        ( lastOne.x1, lastOne |> Rect.topRight |> Point.x )
-
-                                                    isInsideX =
-                                                        lastLine |> is1DLineInside1DLine firstLine
-
-                                                    isEntirelyOutsideX =
-                                                        lastLine |> isOutside1DLine firstLine
-
-                                                    isOnTopRight =
-                                                        x.y1 > lastOne.y1
-                                                in
-                                                if isInsideX then
-                                                    let
-                                                        topOne =
-                                                            lastOne
-
-                                                        bottomOne =
-                                                            x
-
-                                                        bX2 =
-                                                            bottomOne.x1 + bottomOne.width
-
-                                                        tX2 =
-                                                            topOne.x1 + topOne.width
-                                                    in
-                                                    -- is inside and on top
-                                                    [ Occupied
-                                                        { x1 = bottomOne.x1
-                                                        , y1 = bottomOne.y1
-                                                        , width = topOne.x1 - bottomOne.x1
-                                                        , height = bottomOne.height
-                                                        }
-                                                    , Occupied topOne
-                                                    , Occupied
-                                                        { x1 = topOne.x1 + topOne.width
-                                                        , y1 = bottomOne.y1
-                                                        , width = bX2 - tX2
-                                                        , height = bottomOne.height
-                                                        }
-                                                    ]
-
-                                                else if isEntirelyOutsideX then
-                                                    [ Occupied x
-                                                    , EmptySpace
-                                                        { x = x.x1 + x.width
-                                                        , width = lastOne.x1 - x.x1 - x.width
-                                                        }
-                                                    , Occupied lastOne
-                                                    ]
-
-                                                else if isOnTopRight then
-                                                    let
-                                                        topOne =
-                                                            lastOne
-
-                                                        bottomOne =
-                                                            x
-                                                    in
-                                                    [ Occupied
-                                                        { x1 = bottomOne.x1
-                                                        , y1 = bottomOne.y1
-                                                        , width = topOne.x1 - bottomOne.x1
-                                                        , height = bottomOne.height
-                                                        }
-                                                    , Occupied topOne
-                                                    ]
-
-                                                else
-                                                    let
-                                                        topOne =
-                                                            x
-
-                                                        bottomOne =
-                                                            lastOne
-                                                    in
-                                                    [ Occupied topOne
-                                                    , Occupied
-                                                        { x1 = topOne.x1 + topOne.width
-                                                        , y1 = bottomOne.y1
-                                                        , width = (bottomOne.x1 + bottomOne.width) - (x.x1 + x.width)
-                                                        , height = bottomOne.height
-                                                        }
-                                                    ]
-
-                                            currRect :: rx ->
-                                                let
-                                                    firstLine =
-                                                        ( x.x1, x |> Rect.topRight |> Point.x )
-
-                                                    lastLine =
-                                                        ( currRect.x1, currRect |> Rect.topRight |> Point.x )
-
-                                                    isInsideX =
-                                                        lastLine |> is1DLineInside1DLine firstLine
-
-                                                    isEntirelyOutsideX =
-                                                        lastLine |> isOutside1DLine firstLine
-
-                                                    isOnTopRight =
-                                                        x.y1 > currRect.y1
-                                                in
-                                                if isInsideX then
-                                                    let
-                                                        topOne =
-                                                            currRect
-
-                                                        bottomOne =
-                                                            x
-
-                                                        bX2 =
-                                                            bottomOne.x1 + bottomOne.width
-
-                                                        tX2 =
-                                                            topOne.x1 + topOne.width
-                                                    in
-                                                    -- is inside and on top
-                                                    [ Occupied
-                                                        { x1 = bottomOne.x1
-                                                        , y1 = bottomOne.y1
-                                                        , width = topOne.x1 - bottomOne.x1
-                                                        , height = bottomOne.height
-                                                        }
-                                                    , Occupied topOne
-                                                    ]
-                                                        ++ helperGetOccupiedAndEmptySpacesXV2
-                                                            { x1 = topOne.x1 + topOne.width
-                                                            , y1 = bottomOne.y1
-                                                            , width = bX2 - tX2
-                                                            , height = bottomOne.height
-                                                            }
-                                                            rx
-
-                                                else if isEntirelyOutsideX then
-                                                    [ Occupied x
-                                                    , EmptySpace
-                                                        { x = x.x1 + x.width
-                                                        , width = currRect.x1 - x.x1 - x.width
-                                                        }
-                                                    ]
-                                                        ++ helperGetOccupiedAndEmptySpacesXV2
-                                                            currRect
-                                                            rx
-
-                                                else if isOnTopRight then
-                                                    let
-                                                        topOne =
-                                                            currRect
-
-                                                        bottomOne =
-                                                            x
-                                                    in
-                                                    Occupied
-                                                        { x1 = bottomOne.x1
-                                                        , y1 = bottomOne.y1
-                                                        , width = topOne.x1 - bottomOne.x1
-                                                        , height = bottomOne.height
-                                                        }
-                                                        :: helperGetOccupiedAndEmptySpacesXV2
-                                                            topOne
-                                                            rx
-
-                                                else
-                                                    let
-                                                        topOne =
-                                                            x
-
-                                                        bottomOne =
-                                                            currRect
-                                                    in
-                                                    Occupied topOne
-                                                        :: helperGetOccupiedAndEmptySpacesXV2
-                                                            { x1 = topOne.x1 + topOne.width
-                                                            , y1 = bottomOne.y1
-                                                            , width = (bottomOne.x1 + bottomOne.width) - (x.x1 + x.width)
-                                                            , height = bottomOne.height
-                                                            }
-                                                            rx
-
-                                    allSpacesX =
-                                        getOccupiedAndEmptySpacesXV2
-
-                                    -- Occupied x :: getOccupiedAndEmptySpacesX x xs
-                                    totalWidth =
-                                        List.foldl
-                                            (\next ( total, curr ) ->
-                                                let
-                                                    ( a1, a2 ) =
-                                                        ( curr.x1, curr |> Rect.topRight |> Point.x )
-
-                                                    ( b1, b2 ) =
-                                                        ( next.x1, next |> Rect.topRight |> Point.x )
-
-                                                    nextLeftIsInsideCurr =
-                                                        b1 |> inRange a1 a2
-
-                                                    nextRightIsOutsideCurr =
-                                                        b2 |> inRange a1 a2 |> not
-
-                                                    newTotal =
-                                                        if nextLeftIsInsideCurr && nextRightIsOutsideCurr then
-                                                            total + (b2 - a1 - curr.width)
-
-                                                        else
-                                                            total + next.width
-                                                in
-                                                ( newTotal, curr )
-                                            )
-                                            ( x.width, x )
-                                            xs
-                                            |> Tuple.first
-                                in
-                                [ line
-                                    [ x1 (smallestX - vx |> String.fromInt)
-                                    , y1 (smallestY - vy - 50 |> String.fromInt)
-                                    , x2 (biggestX - vx |> String.fromInt)
-                                    , y2 (smallestY - vy - 50 |> String.fromInt)
-                                    , stroke "orange"
-                                    , strokeWidth "2"
-                                    ]
-                                    []
-                                , S.text_
-                                    [ SA.x (smallestX - vx |> String.fromInt)
-                                    , SA.y (smallestY - vy - 100 |> String.fromInt)
-                                    , SA.fill "white"
-                                    , SA.fontSize "20"
-                                    , SA.class "svgText"
-                                    ]
-                                    [ S.text (totalWidth |> String.fromInt) ]
-                                ]
+                                    topMostRects
+                                    ++ [ line
+                                            [ x1 (smallestX - vx |> String.fromInt)
+                                            , y1 (smallestY - vy - 50 |> String.fromInt)
+                                            , x2 (biggestX - vx |> String.fromInt)
+                                            , y2 (smallestY - vy - 50 |> String.fromInt)
+                                            , stroke "orange"
+                                            , strokeWidth "2"
+                                            ]
+                                            []
+                                       ]
                  in
                  -- NOTE: Drawing order is top to bottom, draw on top last
                  case model.mode of
                     Delete ->
                         bgGrid
                             ++ drawRooms model.rooms
-                            ++ topWidthMeasuringLine
                             ++ drawMeasuringLines
 
                     Pan _ ->
-                        bgGrid ++ drawRooms model.rooms ++ topWidthMeasuringLine ++ drawMeasuringLines
+                        bgGrid ++ drawRooms model.rooms ++ drawMeasuringLines
 
                     Draw state ->
                         bgGrid
@@ -1462,7 +1095,6 @@ view model =
                                                     ]
                                                ]
                                )
-                            ++ topWidthMeasuringLine
                             ++ drawMeasuringLines
 
                     Select { selected, state } ->
@@ -2519,7 +2151,6 @@ view model =
                             ++ drawRoomsBeingDragged model.rooms
                             ++ drawRoomBeingDraggedSnappingLines
                             --
-                            ++ topWidthMeasuringLine
                             ++ drawMeasuringLines
                 )
             ]
@@ -3592,79 +3223,6 @@ roomSubPosition ( x, y ) room =
 type SpaceType
     = Occupied Rectangle
     | EmptySpace { x : Int, width : Int }
-
-
-getTotalRoomsXSpace : List Room -> List Rectangle
-getTotalRoomsXSpace rooms =
-    let
-        isThereATopmostRoom : Maybe Room
-        isThereATopmostRoom =
-            rooms |> List.sortBy (.boundingBox >> .y1) |> List.head
-    in
-    case isThereATopmostRoom of
-        Nothing ->
-            []
-
-        Just topmostRoom ->
-            let
-                getNextTopmostRoom : List Room -> List ( Int, Int ) -> Maybe Room
-                getNextTopmostRoom roomsToSearch lines =
-                    roomsToSearch
-                        |> List.foldl
-                            (\next acc ->
-                                let
-                                    nextRect : Rectangle
-                                    nextRect =
-                                        next.boundingBox
-
-                                    nextRoomTopXLine =
-                                        ( nextRect |> Rect.topLeft |> Point.x, nextRect |> Rect.topRight |> Point.x )
-                                in
-                                case acc of
-                                    Nothing ->
-                                        if nextRoomTopXLine |> isInside1DLines lines then
-                                            Nothing
-
-                                        else
-                                            Just next
-
-                                    Just curr ->
-                                        let
-                                            currRect =
-                                                curr.boundingBox
-                                        in
-                                        if nextRoomTopXLine |> isInside1DLines lines then
-                                            Just curr
-
-                                        else if (nextRect |> Rect.topLeft |> Point.y) < (currRect |> Rect.topLeft |> Point.y) then
-                                            Just next
-
-                                        else
-                                            Just curr
-                            )
-                            Nothing
-
-                getAllTopmostRooms : List Room -> List Room -> List Room
-                getAllTopmostRooms allRooms currentTopmostRooms =
-                    let
-                        topXline rect =
-                            ( rect |> Rect.topLeft |> Point.x, rect |> Rect.topRight |> Point.x )
-                    in
-                    case getNextTopmostRoom allRooms (currentTopmostRooms |> List.map (.boundingBox >> topXline)) of
-                        Nothing ->
-                            currentTopmostRooms
-
-                        Just nextTopmost ->
-                            let
-                                nextTopmostRooms =
-                                    nextTopmost :: currentTopmostRooms
-
-                                allRoomsMinusTopMostRooms =
-                                    allRooms |> List.filter (\r -> not <| List.any (\r2 -> r.id == r2.id) nextTopmostRooms)
-                            in
-                            getAllTopmostRooms allRoomsMinusTopMostRooms nextTopmostRooms
-            in
-            getAllTopmostRooms rooms [ topmostRoom ] |> List.map .boundingBox
 
 
 foldlDefaultFirst : (a -> a -> a) -> List a -> Maybe a
