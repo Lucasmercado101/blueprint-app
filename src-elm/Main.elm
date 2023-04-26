@@ -2461,11 +2461,6 @@ getIdOfRoomBeingHoveredOrDragged hoveringOverOrDraggingRoom =
             Nothing
 
 
-calcSlope : ( Float, Float ) -> ( Float, Float ) -> Float
-calcSlope ( x1, y1 ) ( x2, y2 ) =
-    (y2 - y1) / (x2 - x1)
-
-
 none : Svg msg
 none =
     S.text ""
@@ -2514,88 +2509,6 @@ rectToGlobal globalView { x1, y1, width, height } =
     , width = width
     , height = height
     }
-
-
-closestRoomX : Room -> List Room -> Maybe Room
-closestRoomX room rooms =
-    let
-        centerX =
-            room.boundingBox.x1 + (room.boundingBox.height // 2)
-    in
-    case rooms of
-        [] ->
-            Nothing
-
-        [ onlyRoom ] ->
-            Just onlyRoom
-
-        x :: xs ->
-            Just
-                (List.foldl
-                    (\next current ->
-                        let
-                            centerXCurrent =
-                                current.boundingBox.x1 + (current.boundingBox.height // 2)
-
-                            centerXNext =
-                                next.boundingBox.x1 + (next.boundingBox.height // 2)
-
-                            dNext =
-                                abs (centerX - centerXNext)
-
-                            dCurr =
-                                abs (centerX - centerXCurrent)
-                        in
-                        if dNext < dCurr then
-                            next
-
-                        else
-                            current
-                    )
-                    x
-                    xs
-                )
-
-
-closestRoomY : Room -> List Room -> Maybe Room
-closestRoomY room rooms =
-    let
-        centerY =
-            room.boundingBox.y1 + (room.boundingBox.width // 2)
-    in
-    case rooms of
-        [] ->
-            Nothing
-
-        [ onlyRoom ] ->
-            Just onlyRoom
-
-        x :: xs ->
-            Just
-                (List.foldl
-                    (\next current ->
-                        let
-                            centerYCurrent =
-                                current.boundingBox.y1 + (current.boundingBox.width // 2)
-
-                            centerYNext =
-                                next.boundingBox.y1 + (next.boundingBox.width // 2)
-
-                            dNext =
-                                abs (centerY - centerYNext)
-
-                            dCurr =
-                                abs (centerY - centerYCurrent)
-                        in
-                        if dNext < dCurr then
-                            next
-
-                        else
-                            current
-                    )
-                    x
-                    xs
-                )
 
 
 type RoomPossibleSnappingX
