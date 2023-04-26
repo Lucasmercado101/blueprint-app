@@ -1025,6 +1025,14 @@ view model =
                                                         , SA.strokeWidth "2"
                                                         ]
                                                         []
+                                                    , S.text_
+                                                        [ SA.x (data.x - vx |> String.fromInt)
+                                                        , SA.y (smallestY - vy - 55 |> String.fromInt)
+                                                        , SA.fill "white"
+                                                        , SA.class "svgText"
+                                                        ]
+                                                        [ S.text (data.width |> String.fromInt)
+                                                        ]
                                                     ]
 
                                             Occupied { x1, width } ->
@@ -1047,6 +1055,14 @@ view model =
                                                         , SA.strokeWidth "2"
                                                         ]
                                                         []
+                                                    , S.text_
+                                                        [ SA.x (x1 - vx |> String.fromInt)
+                                                        , SA.y (smallestY - vy - 55 |> String.fromInt)
+                                                        , SA.fill "white"
+                                                        , SA.class "svgText"
+                                                        ]
+                                                        [ S.text (width |> String.fromInt)
+                                                        ]
                                                     ]
                                     )
                                     topMostRects
