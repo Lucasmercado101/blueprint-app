@@ -938,6 +938,71 @@ view model =
                     topMostRects =
                         getTotalRoomsXSpace model.rooms |> List.sortBy .x1
 
+                    b =
+                        getAllRoomsTopXAsSegments model.rooms
+
+                    drawMeasuringLines =
+                        case b of
+                            [] ->
+                                []
+
+                            x :: xs ->
+                                let
+                                    smallestY =
+                                        50
+
+                                    ( vx, vy ) =
+                                        viewport
+                                in
+                                List.map
+                                    (\l ->
+                                        case l of
+                                            EmptySpace data ->
+                                                S.g []
+                                                    [ line
+                                                        [ SA.x1 (data.x - vx |> String.fromInt)
+                                                        , SA.y1 (smallestY - vy - 50 |> String.fromInt)
+                                                        , SA.x2 (data.x - vx |> String.fromInt)
+                                                        , SA.y2 (smallestY - vy - 25 |> String.fromInt)
+                                                        , SA.stroke "Chartreuse"
+                                                        , SA.strokeWidth "2"
+                                                        ]
+                                                        []
+                                                    , line
+                                                        [ SA.x1 (data.x + data.width - vx |> String.fromInt)
+                                                        , SA.y1 (smallestY - vy - 75 |> String.fromInt)
+                                                        , SA.x2 (data.x + data.width - vx |> String.fromInt)
+                                                        , SA.y2 (smallestY - vy - 50 |> String.fromInt)
+                                                        , SA.stroke "purple"
+                                                        , SA.strokeWidth "2"
+                                                        ]
+                                                        []
+                                                    ]
+
+                                            Occupied { x1, width } ->
+                                                S.g []
+                                                    [ line
+                                                        [ SA.x1 (x1 - vx |> String.fromInt)
+                                                        , SA.y1 (smallestY - vy - 50 |> String.fromInt)
+                                                        , SA.x2 (x1 - vx |> String.fromInt)
+                                                        , SA.y2 (smallestY - vy - 25 |> String.fromInt)
+                                                        , SA.stroke "Chartreuse"
+                                                        , SA.strokeWidth "2"
+                                                        ]
+                                                        []
+                                                    , line
+                                                        [ SA.x1 (x1 + width - vx |> String.fromInt)
+                                                        , SA.y1 (smallestY - vy - 75 |> String.fromInt)
+                                                        , SA.x2 (x1 + width - vx |> String.fromInt)
+                                                        , SA.y2 (smallestY - vy - 50 |> String.fromInt)
+                                                        , SA.stroke "red"
+                                                        , SA.strokeWidth "2"
+                                                        ]
+                                                        []
+                                                    ]
+                                    )
+                                    b
+
                     topWidthMeasuringLine : List (Svg msg)
                     topWidthMeasuringLine =
                         case topMostRects of
@@ -1346,62 +1411,17 @@ view model =
                                     ]
                                     [ S.text (totalWidth |> String.fromInt) ]
                                 ]
-                                    ++ List.map
-                                        (\l ->
-                                            case l of
-                                                EmptySpace data ->
-                                                    S.g []
-                                                        [ line
-                                                            [ SA.x1 (data.x - vx |> String.fromInt)
-                                                            , SA.y1 (smallestY - vy - 50 |> String.fromInt)
-                                                            , SA.x2 (data.x - vx |> String.fromInt)
-                                                            , SA.y2 (smallestY - vy - 25 |> String.fromInt)
-                                                            , SA.stroke "Chartreuse"
-                                                            , SA.strokeWidth "2"
-                                                            ]
-                                                            []
-                                                        , line
-                                                            [ SA.x1 (data.x + data.width - vx |> String.fromInt)
-                                                            , SA.y1 (smallestY - vy - 75 |> String.fromInt)
-                                                            , SA.x2 (data.x + data.width - vx |> String.fromInt)
-                                                            , SA.y2 (smallestY - vy - 50 |> String.fromInt)
-                                                            , SA.stroke "purple"
-                                                            , SA.strokeWidth "2"
-                                                            ]
-                                                            []
-                                                        ]
-
-                                                Occupied { x1, width } ->
-                                                    S.g []
-                                                        [ line
-                                                            [ SA.x1 (x1 - vx |> String.fromInt)
-                                                            , SA.y1 (smallestY - vy - 50 |> String.fromInt)
-                                                            , SA.x2 (x1 - vx |> String.fromInt)
-                                                            , SA.y2 (smallestY - vy - 25 |> String.fromInt)
-                                                            , SA.stroke "Chartreuse"
-                                                            , SA.strokeWidth "2"
-                                                            ]
-                                                            []
-                                                        , line
-                                                            [ SA.x1 (x1 + width - vx |> String.fromInt)
-                                                            , SA.y1 (smallestY - vy - 75 |> String.fromInt)
-                                                            , SA.x2 (x1 + width - vx |> String.fromInt)
-                                                            , SA.y2 (smallestY - vy - 50 |> String.fromInt)
-                                                            , SA.stroke "red"
-                                                            , SA.strokeWidth "2"
-                                                            ]
-                                                            []
-                                                        ]
-                                        )
-                                        allSpacesX
                  in
                  -- NOTE: Drawing order is top to bottom, draw on top last
                  case model.mode of
                     Delete ->
-                        bgGrid ++ drawRooms model.rooms ++ topWidthMeasuringLine
+                        bgGrid
+                            ++ drawRooms model.rooms
+                            ++ topWidthMeasuringLine
+                            ++ drawMeasuringLines
 
                     Pan _ ->
-                        bgGrid ++ drawRooms model.rooms ++ topWidthMeasuringLine
+                        bgGrid ++ drawRooms model.rooms ++ topWidthMeasuringLine ++ drawMeasuringLines
 
                     Draw state ->
                         bgGrid
@@ -1428,6 +1448,7 @@ view model =
                                                ]
                                )
                             ++ topWidthMeasuringLine
+                            ++ drawMeasuringLines
 
                     Select { selected, state } ->
                         let
@@ -2482,7 +2503,9 @@ view model =
                             :: drawSelectionArea
                             ++ drawRoomsBeingDragged model.rooms
                             ++ drawRoomBeingDraggedSnappingLines
+                            --
                             ++ topWidthMeasuringLine
+                            ++ drawMeasuringLines
                 )
             ]
 
@@ -3652,11 +3675,8 @@ getNextRightSegment segment rooms =
         [] ->
             []
 
-        nextRoom :: allRooms ->
+        _ :: allRooms ->
             let
-                allRoomsExceptNextRoom =
-                    List.filter (\r -> r.id /= nextRoom.id) allRooms
-
                 roomsAboveSegment r =
                     r.boundingBox.y1 < segment.y1
 
@@ -3701,7 +3721,7 @@ getNextRightSegment segment rooms =
                             , height = segment.height
                             }
                     in
-                    Occupied newCurrentSegment :: getNextRightSegment nextSegment allRoomsExceptNextRoom
+                    Occupied newCurrentSegment :: getNextRightSegment nextSegment allRooms
 
                 [] ->
                     let
@@ -3750,7 +3770,7 @@ getNextRightSegment segment rooms =
                                     , height = segment.height
                                     }
                             in
-                            Occupied newCurrentSegment :: getNextRightSegment nextSegment allRoomsExceptNextRoom
+                            Occupied newCurrentSegment :: getNextRightSegment nextSegment allRooms
 
                         [] ->
                             let
@@ -3780,7 +3800,7 @@ getNextRightSegment segment rooms =
                                                         }
                                                    )
                                     in
-                                    Occupied segment :: getNextRightSegment nextSegment allRoomsExceptNextRoom
+                                    Occupied segment :: getNextRightSegment nextSegment allRooms
 
                                 [] ->
                                     let
@@ -3812,7 +3832,7 @@ getNextRightSegment segment rooms =
                                                         |> .boundingBox
                                             in
                                             if closestAndHighestRoomToTheRight.x1 == ((segment |> Rect.rightX) + 1) then
-                                                Occupied segment :: getNextRightSegment closestAndHighestRoomToTheRight allRoomsExceptNextRoom
+                                                Occupied segment :: getNextRightSegment closestAndHighestRoomToTheRight allRooms
 
                                             else
                                                 [ Occupied segment
@@ -3821,7 +3841,7 @@ getNextRightSegment segment rooms =
                                                     , width = closestAndHighestRoomToTheRight.x1 - (segment |> Rect.rightX)
                                                     }
                                                 ]
-                                                    ++ getNextRightSegment closestAndHighestRoomToTheRight allRoomsExceptNextRoom
+                                                    ++ getNextRightSegment closestAndHighestRoomToTheRight allRooms
 
                                         [] ->
                                             -- NOTE: Will not happen ever
@@ -3864,6 +3884,7 @@ getAllRoomsTopXAsSegments e =
                 rightNextToHighestRoom r =
                     pointInsideTopLineOfRoom ((highestRoom.boundingBox |> Rect.rightX) + 1) r
 
+                nextOneOnTheRight : List SpaceType
                 nextOneOnTheRight =
                     case
                         allRoomsMinusHighest
@@ -3872,7 +3893,7 @@ getAllRoomsTopXAsSegments e =
                     of
                         x :: xs ->
                             let
-                                onTheRight =
+                                nextSegment =
                                     List.foldl
                                         (\next curr ->
                                             if next.boundingBox.y1 < curr.boundingBox.y1 then
@@ -3885,27 +3906,17 @@ getAllRoomsTopXAsSegments e =
                                         xs
                                         |> .boundingBox
                             in
-                            [ if onTheRight.x1 == (highestRoom.boundingBox |> Rect.rightX) + 1 then
-                                Occupied onTheRight
+                            if nextSegment.x1 == (highestRoom.boundingBox |> Rect.rightX) + 1 then
+                                getNextRightSegment nextSegment otherRooms
 
-                              else
-                                let
-                                    onTheRightX1 =
-                                        onTheRight.x1 + ((highestRoom.boundingBox |> Rect.topRight |> Point.x) - onTheRight.x1)
-
-                                    onTheRightWidth =
-                                        (onTheRight |> Rect.rightX) - (highestRoom.boundingBox |> Rect.rightX)
-                                in
-                                Occupied
-                                    { x1 = onTheRightX1
-                                    , y1 = onTheRight.y1
-
-                                    -- TODO: i don't actually know what width to make it
-                                    -- as i don't know where the next room is currently
-                                    , width = onTheRightWidth
-                                    , height = onTheRight.height
+                            else
+                                getNextRightSegment
+                                    { x1 = highestRoom.boundingBox |> Rect.rightX
+                                    , y1 = nextSegment.y1
+                                    , width = (nextSegment |> Rect.rightX) - (highestRoom.boundingBox |> Rect.rightX)
+                                    , height = nextSegment.height
                                     }
-                            ]
+                                    otherRooms
 
                         [] ->
                             case
@@ -3914,11 +3925,11 @@ getAllRoomsTopXAsSegments e =
                                     |> List.filter toTheRightOfHighest
                                     |> foldlDefaultFirst
                                         (\next curr ->
-                                            if next.boundingBox.y1 < curr.boundingBox.y1 then
+                                            if next.boundingBox.x1 < curr.boundingBox.x1 then
                                                 next
 
-                                            else if next.boundingBox.y1 == curr.boundingBox.y1 then
-                                                if next.boundingBox.x1 < curr.boundingBox.x1 then
+                                            else if next.boundingBox.x1 == curr.boundingBox.x1 then
+                                                if next.boundingBox.y1 < curr.boundingBox.y1 then
                                                     next
 
                                                 else
@@ -3929,15 +3940,11 @@ getAllRoomsTopXAsSegments e =
                                         )
                             of
                                 Just roomAcross ->
-                                    [ EmptySpace
+                                    EmptySpace
                                         { x = (highestRoom.boundingBox |> Rect.rightX) + 1
                                         , width = roomAcross.boundingBox.x1 - (highestRoom.boundingBox |> Rect.rightX)
                                         }
-
-                                    -- TODO: i don't actually know what width to make it
-                                    -- as i don't know where the next room is currently
-                                    , Occupied roomAcross.boundingBox
-                                    ]
+                                        :: getNextRightSegment roomAcross.boundingBox otherRooms
 
                                 Nothing ->
                                     []
