@@ -956,13 +956,14 @@ view model =
                                                         acc
 
                                                     Occupied data ->
-                                                        if data.y1 > acc then
+                                                        if data.y1 < acc then
                                                             data.y1
 
                                                         else
                                                             acc
                                             )
-                                            0
+                                            -- TEMP sorta
+                                            50000
                                             (x :: xs)
 
                                     ( vx, vy ) =
@@ -3858,8 +3859,7 @@ getNextRightSegment segment rooms =
                                                     ++ getNextRightSegment closestAndHighestRoomToTheRight allRooms
 
                                         [] ->
-                                            -- NOTE: Will not happen ever
-                                            []
+                                            [ Occupied segment ]
 
 
 getAllRoomsTopXAsSegments : List Room -> List SpaceType
