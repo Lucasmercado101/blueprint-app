@@ -949,7 +949,21 @@ view model =
                             x :: xs ->
                                 let
                                     smallestY =
-                                        50
+                                        List.foldl
+                                            (\next acc ->
+                                                case next of
+                                                    EmptySpace _ ->
+                                                        acc
+
+                                                    Occupied data ->
+                                                        if data.y1 > acc then
+                                                            data.y1
+
+                                                        else
+                                                            acc
+                                            )
+                                            0
+                                            (x :: xs)
 
                                     ( vx, vy ) =
                                         viewport
