@@ -1012,7 +1012,7 @@ view model =
                                                         , SA.y1 (smallestY - vy - 50 |> String.fromInt)
                                                         , SA.x2 (data.x - vx |> String.fromInt)
                                                         , SA.y2 (smallestY - vy - 25 |> String.fromInt)
-                                                        , SA.stroke "Chartreuse"
+                                                        , SA.stroke "orange"
                                                         , SA.strokeWidth "2"
                                                         ]
                                                         []
@@ -1021,7 +1021,7 @@ view model =
                                                         , SA.y1 (smallestY - vy - 75 |> String.fromInt)
                                                         , SA.x2 (data.x + data.width - vx |> String.fromInt)
                                                         , SA.y2 (smallestY - vy - 50 |> String.fromInt)
-                                                        , SA.stroke "purple"
+                                                        , SA.stroke "DarkTurquoise"
                                                         , SA.strokeWidth "2"
                                                         ]
                                                         []
