@@ -3779,40 +3779,8 @@ getNextRightSegment segment rooms =
                     allRooms
                         |> List.filter roomsAboveSegment
                         |> List.filter (\r -> (r.boundingBox |> Rect.topSideAs1DLine) |> is1DLineInside1DLine (segment |> Rect.topSideAs1DLine))
-            in
-            case roomsAboveAndInsideSegment of
-                x :: xs ->
-                    let
-                        nextSegment =
-                            List.foldl
-                                (\next curr ->
-                                    if next.boundingBox.x1 < curr.boundingBox.x1 then
-                                        next
 
-                                    else if next.boundingBox.x1 == curr.boundingBox.x1 then
-                                        if next.boundingBox.y1 < curr.boundingBox.y1 then
-                                            next
-
-                                        else
-                                            curr
-
-                                    else
-                                        curr
-                                )
-                                x
-                                xs
-                                |> .boundingBox
-
-                        newCurrentSegment =
-                            { x1 = segment.x1
-                            , y1 = segment.y1
-                            , width = nextSegment.x1 - segment.x1
-                            , height = segment.height
-                            }
-                    in
-                    Occupied newCurrentSegment :: getNextRightSegment nextSegment allRooms
-
-                [] ->
+                getRoomsToTheRight =
                     let
                         roomsToTheRightOfSegment =
                             allRooms
@@ -3854,35 +3822,101 @@ getNextRightSegment segment rooms =
                                     ++ getNextRightSegment closestAndHighestRoomToTheRight allRooms
 
                         [] ->
-                            let
-                                segmentX2IsPartiallyInsideRoom r =
-                                    (segment |> Rect.rightX) |> isInside1DLine (r.boundingBox |> Rect.topSideAs1DLine)
+                            [ Occupied segment ]
+            in
+            case roomsAboveAndInsideSegment of
+                x :: xs ->
+                    let
+                        nextSegment =
+                            List.foldl
+                                (\next curr ->
+                                    if next.boundingBox.x1 < curr.boundingBox.x1 then
+                                        next
 
-                                partiallyInsideOfSegmentRooms =
-                                    List.filter segmentX2IsPartiallyInsideRoom allRooms
+                                    else if next.boundingBox.x1 == curr.boundingBox.x1 then
+                                        if next.boundingBox.y1 < curr.boundingBox.y1 then
+                                            next
+
+                                        else
+                                            curr
+
+                                    else
+                                        curr
+                                )
+                                x
+                                xs
+                                |> .boundingBox
+
+                        newCurrentSegment =
+                            { x1 = segment.x1
+                            , y1 = segment.y1
+                            , width = nextSegment.x1 - segment.x1
+                            , height = segment.height
+                            }
+                    in
+                    Occupied newCurrentSegment :: getNextRightSegment nextSegment allRooms
+
+                [] ->
+                    let
+                        segmentX2IsPartiallyInsideRoom r =
+                            (segment |> Rect.rightX) |> isInside1DLine (r.boundingBox |> Rect.topSideAs1DLine)
+
+                        partiallyInsideOfSegmentRooms =
+                            List.filter segmentX2IsPartiallyInsideRoom allRooms
+                    in
+                    case partiallyInsideOfSegmentRooms of
+                        s :: sx ->
+                            let
+                                roomsOnTop =
+                                    partiallyInsideOfSegmentRooms
+                                        |> List.filter roomsAboveSegment
                             in
-                            case partiallyInsideOfSegmentRooms of
-                                s :: sx ->
+                            case roomsOnTop of
+                                x :: xs ->
                                     let
-                                        roomsOnTop =
-                                            partiallyInsideOfSegmentRooms
-                                                |> List.filter roomsAboveSegment
+                                        nextSegment =
+                                            List.foldl
+                                                (\next curr ->
+                                                    if next.boundingBox.x1 < curr.boundingBox.x1 then
+                                                        next
+
+                                                    else if next.boundingBox.x1 == curr.boundingBox.x1 then
+                                                        if next.boundingBox.y1 < curr.boundingBox.y1 then
+                                                            next
+
+                                                        else
+                                                            curr
+
+                                                    else
+                                                        curr
+                                                )
+                                                x
+                                                xs
+                                                |> .boundingBox
+
+                                        newCurrentSegment =
+                                            { x1 = segment.x1
+                                            , y1 = segment.y1
+                                            , width = nextSegment.x1 - segment.x1
+                                            , height = segment.height
+                                            }
                                     in
-                                    case roomsOnTop of
+                                    Occupied newCurrentSegment :: getNextRightSegment nextSegment allRooms
+
+                                [] ->
+                                    let
+                                        roomsOnBottom =
+                                            partiallyInsideOfSegmentRooms
+                                                |> List.filter (\l -> segment.y1 < l.boundingBox.y1)
+                                    in
+                                    case roomsOnBottom of
                                         x :: xs ->
                                             let
                                                 nextSegment =
                                                     List.foldl
                                                         (\next curr ->
-                                                            if next.boundingBox.x1 < curr.boundingBox.x1 then
+                                                            if next.boundingBox.y1 < curr.boundingBox.y1 then
                                                                 next
-
-                                                            else if next.boundingBox.x1 == curr.boundingBox.x1 then
-                                                                if next.boundingBox.y1 < curr.boundingBox.y1 then
-                                                                    next
-
-                                                                else
-                                                                    curr
 
                                                             else
                                                                 curr
@@ -3890,51 +3924,20 @@ getNextRightSegment segment rooms =
                                                         x
                                                         xs
                                                         |> .boundingBox
-
-                                                newCurrentSegment =
-                                                    { x1 = segment.x1
-                                                    , y1 = segment.y1
-                                                    , width = nextSegment.x1 - segment.x1
-                                                    , height = segment.height
-                                                    }
+                                                        |> (\o ->
+                                                                { o
+                                                                    | x1 = segment |> Rect.rightX
+                                                                    , width = (o |> Rect.rightX) - (segment |> Rect.rightX)
+                                                                }
+                                                           )
                                             in
-                                            Occupied newCurrentSegment :: getNextRightSegment nextSegment allRooms
+                                            Occupied segment :: getNextRightSegment nextSegment allRooms
 
                                         [] ->
-                                            let
-                                                roomsOnBottom =
-                                                    partiallyInsideOfSegmentRooms
-                                                        |> List.filter (\l -> segment.y1 < l.boundingBox.y1)
-                                            in
-                                            case roomsOnBottom of
-                                                x :: xs ->
-                                                    let
-                                                        nextSegment =
-                                                            List.foldl
-                                                                (\next curr ->
-                                                                    if next.boundingBox.y1 < curr.boundingBox.y1 then
-                                                                        next
+                                            getRoomsToTheRight
 
-                                                                    else
-                                                                        curr
-                                                                )
-                                                                x
-                                                                xs
-                                                                |> .boundingBox
-                                                                |> (\o ->
-                                                                        { o
-                                                                            | x1 = segment |> Rect.rightX
-                                                                            , width = (o |> Rect.rightX) - (segment |> Rect.rightX)
-                                                                        }
-                                                                   )
-                                                    in
-                                                    Occupied segment :: getNextRightSegment nextSegment allRooms
-
-                                                [] ->
-                                                    []
-
-                                [] ->
-                                    [ Occupied segment ]
+                        [] ->
+                            getRoomsToTheRight
 
 
 getAllRoomsTopXAsSegments : List Room -> List SpaceType
