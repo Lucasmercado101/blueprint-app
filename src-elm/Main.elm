@@ -2610,9 +2610,14 @@ type RoomPossibleSnappingY
     | SnappingYRight
 
 
-inRange : number -> number -> number -> Bool
-inRange min max number =
+inRangeInc : number -> number -> number -> Bool
+inRangeInc min max number =
     min <= number && number <= max
+
+
+inRangeExc : number -> number -> number -> Bool
+inRangeExc min max number =
+    min < number && number < max
 
 
 
@@ -2841,7 +2846,7 @@ whereToSnapHorizontally room roomImChecking =
 
         isInsideTopSnappableArea : Int -> Bool
         isInsideTopSnappableArea number =
-            inRange (number - snapDistanceRange) (number + snapDistanceRange) roomImChecking.boundingBox.y1
+            inRangeInc (number - snapDistanceRange) (number + snapDistanceRange) roomImChecking.boundingBox.y1
 
         insideTopDistance : Int -> Int
         insideTopDistance number =
@@ -2849,7 +2854,7 @@ whereToSnapHorizontally room roomImChecking =
 
         isInsideMiddleSnappableArea : Int -> Bool
         isInsideMiddleSnappableArea number =
-            inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.centerY roomImChecking.boundingBox)
+            inRangeInc (number - snapDistanceRange) (number + snapDistanceRange) (Rect.centerY roomImChecking.boundingBox)
 
         insideMiddleDistance : Int -> Int
         insideMiddleDistance number =
@@ -2857,7 +2862,7 @@ whereToSnapHorizontally room roomImChecking =
 
         isInsideBottomSnappableArea : Int -> Bool
         isInsideBottomSnappableArea number =
-            inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.bottomY roomImChecking.boundingBox)
+            inRangeInc (number - snapDistanceRange) (number + snapDistanceRange) (Rect.bottomY roomImChecking.boundingBox)
 
         insideBottomDistance : Int -> Int
         insideBottomDistance number =
@@ -2963,7 +2968,7 @@ whereToSnapVertically room roomImChecking =
 
         isInsideLeftSnappableArea : Int -> Bool
         isInsideLeftSnappableArea number =
-            inRange (number - snapDistanceRange) (number + snapDistanceRange) roomImChecking.boundingBox.x1
+            inRangeInc (number - snapDistanceRange) (number + snapDistanceRange) roomImChecking.boundingBox.x1
 
         insideLeftDistance : Int -> Int
         insideLeftDistance number =
@@ -2971,7 +2976,7 @@ whereToSnapVertically room roomImChecking =
 
         isInsideMiddleSnappableArea : Int -> Bool
         isInsideMiddleSnappableArea number =
-            inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.centerX roomImChecking.boundingBox)
+            inRangeInc (number - snapDistanceRange) (number + snapDistanceRange) (Rect.centerX roomImChecking.boundingBox)
 
         insideMiddleDistance : Int -> Int
         insideMiddleDistance number =
@@ -2979,7 +2984,7 @@ whereToSnapVertically room roomImChecking =
 
         isInsideRightSnappableArea : Int -> Bool
         isInsideRightSnappableArea number =
-            inRange (number - snapDistanceRange) (number + snapDistanceRange) (Rect.rightX roomImChecking.boundingBox)
+            inRangeInc (number - snapDistanceRange) (number + snapDistanceRange) (Rect.rightX roomImChecking.boundingBox)
 
         insideRightDistance : Int -> Int
         insideRightDistance number =
@@ -3073,22 +3078,22 @@ whereToSnapVertically room roomImChecking =
 
 overlap1DLines : ( Int, Int ) -> ( Int, Int ) -> Bool
 overlap1DLines ( a1, a2 ) ( b1, b2 ) =
-    inRange a1 a2 b1 || inRange a1 a2 b2 || inRange b1 b2 a1 || inRange b1 b2 a2
+    inRangeInc a1 a2 b1 || inRangeInc a1 a2 b2 || inRangeInc b1 b2 a1 || inRangeInc b1 b2 a2
 
 
 is1DLineInside1DLine : ( Int, Int ) -> ( Int, Int ) -> Bool
 is1DLineInside1DLine ( a1, a2 ) ( b1, b2 ) =
-    (b1 |> inRange a1 a2) && (b2 |> inRange a1 a2)
+    (b1 |> inRangeInc a1 a2) && (b2 |> inRangeInc a1 a2)
 
 
 isInside1DLine : ( number, number ) -> number -> Bool
 isInside1DLine ( a1, a2 ) n =
-    n |> inRange a1 a2
+    n |> inRangeInc a1 a2
 
 
 isOutside1DLine : ( Int, Int ) -> ( Int, Int ) -> Bool
 isOutside1DLine ( a1, a2 ) ( b1, b2 ) =
-    not (b1 |> inRange a1 a2) && not (b2 |> inRange a1 a2)
+    not (b1 |> inRangeInc a1 a2) && not (b2 |> inRangeInc a1 a2)
 
 
 isInside1DLines : List ( Int, Int ) -> ( Int, Int ) -> Bool
