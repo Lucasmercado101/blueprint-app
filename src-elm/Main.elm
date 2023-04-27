@@ -124,9 +124,17 @@ subscriptions _ =
 --     )
 
 
-mouseMoveDecoder : Decoder ( Int, Int )
-mouseMoveDecoder =
-    JD.map2 (\x y -> ( x, y ))
+mouseEventDecoder : Decoder MouseEvent
+mouseEventDecoder =
+    -- https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent
+    JD.map3
+        (\btn x y ->
+            { layerX = x
+            , layerY = y
+            , button = buttonToMouseEventButton btn
+            }
+        )
+        (JD.field "button" JD.int)
         (JD.field "layerX" JD.int)
         (JD.field "layerY" JD.int)
 
@@ -232,9 +240,9 @@ type DrawState
 
 
 type Msg
-    = MouseMove Point
-    | MouseDown Point
-    | MouseUp Point
+    = MouseMove MouseEvent
+    | MouseDown MouseEvent
+    | MouseUp MouseEvent
     | DrawMode
     | PanMode
     | DeleteMode
@@ -268,7 +276,11 @@ update msg model =
             changeMode (Select { selected = NoRoomSelected, state = NotHoveringOverRoom })
                 |> pure
 
-        MouseDown mouseDownRelCoords ->
+        MouseDown mouseEvent ->
+            let
+                mouseDownRelCoords =
+                    ( mouseEvent.layerX, mouseEvent.layerY )
+            in
             case model.mode of
                 Delete ->
                     ignore
@@ -308,7 +320,11 @@ update msg model =
                     )
                         |> pure
 
-        MouseMove mouseMoveRelCoords ->
+        MouseMove mouseEvent ->
+            let
+                mouseMoveRelCoords =
+                    ( mouseEvent.layerX, mouseEvent.layerY )
+            in
             case model.mode of
                 Delete ->
                     ignore
@@ -557,7 +573,11 @@ update msg model =
                                 )
                                 |> pure
 
-        MouseUp mouseUpRelCoords ->
+        MouseUp mouseEvent ->
+            let
+                mouseUpRelCoords =
+                    ( mouseEvent.layerX, mouseEvent.layerY )
+            in
             case model.mode of
                 Pan state ->
                     case state of
@@ -831,7 +851,7 @@ view model =
                 ++ (case model.mode of
                         -- TODO: add highlight on hover on delete mode
                         Delete ->
-                            [ on "mouseup" (mouseMoveDecoder |> JD.map MouseUp)
+                            [ on "mouseup" (mouseEventDecoder |> JD.map MouseUp)
                             ]
 
                         Pan panState ->
@@ -844,9 +864,9 @@ view model =
                                         Panning _ ->
                                             True
                             in
-                            [ on "mouseup" (mouseMoveDecoder |> JD.map MouseUp)
+                            [ on "mouseup" (mouseEventDecoder |> JD.map MouseUp)
                             , if isPanning then
-                                on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
+                                on "mousemove" (mouseEventDecoder |> JD.map MouseMove)
 
                               else
                                 style "" ""
@@ -855,35 +875,35 @@ view model =
 
                               else
                                 style "cursor" "grab"
-                            , on "mousedown" (mouseMoveDecoder |> JD.map MouseDown)
+                            , on "mousedown" (mouseEventDecoder |> JD.map MouseDown)
                             ]
 
                         Draw state ->
-                            [ on "mousedown" (mouseMoveDecoder |> JD.map MouseDown)
+                            [ on "mousedown" (mouseEventDecoder |> JD.map MouseDown)
                             , case state of
                                 NotDrawing ->
                                     style "" ""
 
                                 HoldingClick ->
-                                    on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
+                                    on "mousemove" (mouseEventDecoder |> JD.map MouseMove)
 
                                 Dragging _ ->
-                                    on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
+                                    on "mousemove" (mouseEventDecoder |> JD.map MouseMove)
                             , case state of
                                 NotDrawing ->
                                     style "" ""
 
                                 HoldingClick ->
-                                    on "mouseup" (mouseMoveDecoder |> JD.map MouseUp)
+                                    on "mouseup" (mouseEventDecoder |> JD.map MouseUp)
 
                                 Dragging _ ->
-                                    on "mouseup" (mouseMoveDecoder |> JD.map MouseUp)
+                                    on "mouseup" (mouseEventDecoder |> JD.map MouseUp)
                             ]
 
                         Select _ ->
-                            [ on "mousemove" (mouseMoveDecoder |> JD.map MouseMove)
-                            , on "mousedown" (mouseMoveDecoder |> JD.map MouseDown)
-                            , on "mouseup" (mouseMoveDecoder |> JD.map MouseUp)
+                            [ on "mousemove" (mouseEventDecoder |> JD.map MouseMove)
+                            , on "mousedown" (mouseEventDecoder |> JD.map MouseDown)
+                            , on "mouseup" (mouseEventDecoder |> JD.map MouseUp)
                             ]
                    )
             )
@@ -3713,3 +3733,37 @@ getAllRoomsTopXAsSegments e =
                                     []
             in
             nextOneOnTheLeft ++ (Occupied highestRoom.boundingBox :: nextOneOnTheRight)
+
+
+type MouseEventButton
+    = Left
+    | Middle
+    | Right
+    | Back
+    | Forward
+
+
+buttonToMouseEventButton : Int -> MouseEventButton
+buttonToMouseEventButton button =
+    case button of
+        0 ->
+            Left
+
+        1 ->
+            Middle
+
+        2 ->
+            Right
+
+        3 ->
+            Back
+
+        _ ->
+            Forward
+
+
+type alias MouseEvent =
+    { layerX : Int
+    , layerY : Int
+    , button : MouseEventButton
+    }
