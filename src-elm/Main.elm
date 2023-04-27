@@ -3,8 +3,8 @@ port module Main exposing (..)
 import Browser
 import Debug exposing (toString)
 import Html exposing (..)
-import Html.Attributes exposing (style, value)
-import Html.Events exposing (on, onClick, onInput)
+import Html.Attributes exposing (style)
+import Html.Events exposing (on, onClick, preventDefaultOn)
 import Json.Decode as JD exposing (Decoder)
 import Point
 import Random
@@ -122,24 +122,6 @@ subscriptions _ =
 --             Err err ->
 --                 Debug.todo "received text svg change"
 --     )
-
-
-mouseEventDecoder : Decoder MouseEvent
-mouseEventDecoder =
-    -- https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent
-    JD.map3
-        (\btn x y ->
-            { layerX = x
-            , layerY = y
-            , button = buttonToMouseEventButton btn
-            }
-        )
-        (JD.field "button" JD.int)
-        (JD.field "layerX" JD.int)
-        (JD.field "layerY" JD.int)
-
-
-
 -- MODEL
 
 
@@ -159,6 +141,7 @@ type alias Room =
 
 type alias Model =
     { viewport : Point
+    , panning : Maybe ( Point, Point )
     , mode : Mode
     , rooms : List Room
     }
@@ -171,7 +154,8 @@ type alias Model =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { viewport = ( 0, 0 )
-      , mode = Pan NotPanning
+      , panning = Nothing
+      , mode = Draw NotDrawing
       , rooms = []
       }
     , Cmd.none
@@ -183,8 +167,7 @@ init _ =
 
 
 type Mode
-    = Pan PanState
-    | Draw DrawState
+    = Draw DrawState
     | Select
         { selected : SelectedRoom
         , state : HoveringOverOrDraggingRoom
@@ -232,7 +215,7 @@ type HoveringOverOrDraggingRoom
 type DrawState
     = NotDrawing
     | HoldingClick
-    | Dragging
+    | DraggingDraw
         { start : Point
         , end : Point
         , isOverlappingAnotherRoom : Bool
@@ -240,11 +223,11 @@ type DrawState
 
 
 type Msg
-    = MouseMove MouseEvent
+    = MiddleClickDown MouseEvent
     | MouseDown MouseEvent
+    | MouseMove MouseEvent
     | MouseUp MouseEvent
     | DrawMode
-    | PanMode
     | DeleteMode
     | SelectMode
 
@@ -269,9 +252,6 @@ update msg model =
         DrawMode ->
             changeMode (Draw NotDrawing) |> pure
 
-        PanMode ->
-            changeMode (Pan NotPanning) |> pure
-
         SelectMode ->
             changeMode (Select { selected = NoRoomSelected, state = NotHoveringOverRoom })
                 |> pure
@@ -285,10 +265,6 @@ update msg model =
                 Delete ->
                     ignore
 
-                Pan _ ->
-                    changeMode (Pan (Panning { panOrigin = mouseDownRelCoords, panEnd = mouseDownRelCoords }))
-                        |> pure
-
                 Draw state ->
                     case state of
                         NotDrawing ->
@@ -297,7 +273,7 @@ update msg model =
                         HoldingClick ->
                             ignore
 
-                        Dragging _ ->
+                        DraggingDraw _ ->
                             ignore
 
                 Select { selected } ->
@@ -324,19 +300,18 @@ update msg model =
             let
                 mouseMoveRelCoords =
                     ( mouseEvent.layerX, mouseEvent.layerY )
+
+                pan m =
+                    case model.panning of
+                        Nothing ->
+                            m
+
+                        Just ( origin, _ ) ->
+                            { m | panning = Just ( origin, mouseMoveRelCoords ) }
             in
-            case model.mode of
+            (case model.mode of
                 Delete ->
                     ignore
-
-                Pan state ->
-                    case state of
-                        NotPanning ->
-                            ignore
-
-                        Panning { panOrigin } ->
-                            changeMode (Pan (Panning { panOrigin = panOrigin, panEnd = mouseMoveRelCoords }))
-                                |> pure
 
                 Draw state ->
                     case state of
@@ -356,10 +331,10 @@ update msg model =
                                         |> List.map .boundingBox
                                         |> List.any (Rect.isThereAnyOverlap sceneRectangle)
                             in
-                            changeMode (Draw (Dragging { start = mouseMoveRelCoords, end = mouseMoveRelCoords, isOverlappingAnotherRoom = isOverlappingAnotherRoom }))
+                            changeMode (Draw (DraggingDraw { start = mouseMoveRelCoords, end = mouseMoveRelCoords, isOverlappingAnotherRoom = isOverlappingAnotherRoom }))
                                 |> pure
 
-                        Dragging { start } ->
+                        DraggingDraw { start } ->
                             let
                                 sceneRectangle : Rectangle
                                 sceneRectangle =
@@ -372,7 +347,7 @@ update msg model =
                                         |> List.map .boundingBox
                                         |> List.any (Rect.isThereAnyOverlap sceneRectangle)
                             in
-                            changeMode (Draw (Dragging { start = start, end = mouseMoveRelCoords, isOverlappingAnotherRoom = isOverlappingAnotherRoom }))
+                            changeMode (Draw (DraggingDraw { start = start, end = mouseMoveRelCoords, isOverlappingAnotherRoom = isOverlappingAnotherRoom }))
                                 |> pure
 
                 Select { selected, state } ->
@@ -572,29 +547,27 @@ update msg model =
                                     }
                                 )
                                 |> pure
+            )
+                |> (\( a, b ) -> ( pan a, b ))
 
         MouseUp mouseEvent ->
             let
                 mouseUpRelCoords =
                     ( mouseEvent.layerX, mouseEvent.layerY )
-            in
-            case model.mode of
-                Pan state ->
-                    case state of
-                        NotPanning ->
-                            ignore
 
-                        Panning { panOrigin, panEnd } ->
+                pan m =
+                    case model.panning of
+                        Nothing ->
+                            m
+
+                        Just ( origin, end ) ->
                             let
                                 deltaPan =
-                                    panEnd |> Point.subtract panOrigin
+                                    end |> Point.subtract origin
                             in
-                            { model
-                                | viewport = model.viewport |> Point.add deltaPan
-                                , mode = Pan NotPanning
-                            }
-                                |> pure
-
+                            { model | viewport = model.viewport |> Point.add deltaPan, panning = Nothing }
+            in
+            (case model.mode of
                 Select { selected, state } ->
                     case state of
                         NotHoveringOverRoom ->
@@ -780,7 +753,7 @@ update msg model =
                         HoldingClick ->
                             changeMode (Draw NotDrawing) |> pure
 
-                        Dragging { start, end, isOverlappingAnotherRoom } ->
+                        DraggingDraw { start, end, isOverlappingAnotherRoom } ->
                             let
                                 ( x1, y1 ) =
                                     start
@@ -823,6 +796,16 @@ update msg model =
                                     , mode = Draw NotDrawing
                                 }
                                     |> pure
+            )
+                |> (\( a, b ) -> ( pan a, b ))
+
+        MiddleClickDown mouseEvent ->
+            let
+                middleClickDownRelCoords =
+                    ( mouseEvent.layerX, mouseEvent.layerY )
+            in
+            { model | panning = Just ( middleClickDownRelCoords, middleClickDownRelCoords ) }
+                |> pure
 
 
 main : Program () Model Msg
@@ -840,94 +823,58 @@ view model =
     -- TODO: only draw rooms that are visible, inside the viewport
     div []
         [ div
-            ([ style "background-color" background
-             , style "width" "100vw"
-             , style "height" "100vh"
-             , style "position" "relative"
+            [ style "background-color" background
+            , style "width" "100vw"
+            , style "height" "100vh"
+            , style "position" "relative"
+            , preventDefaultOn "mousedown"
+                (mouseEventDecoder
+                    |> JD.map
+                        (\l ->
+                            case l.button of
+                                Middle ->
+                                    ( MiddleClickDown l, True )
 
-             --  TODO: drag by holding middle click and moving mouse
-             --  , on "auxclick"
-             ]
-                ++ (case model.mode of
-                        -- TODO: add highlight on hover on delete mode
-                        Delete ->
-                            [ on "mouseup" (mouseEventDecoder |> JD.map MouseUp)
-                            ]
+                                _ ->
+                                    ( MouseDown l, False )
+                        )
+                )
 
-                        Pan panState ->
-                            let
-                                isPanning =
-                                    case panState of
-                                        NotPanning ->
-                                            False
+            -- TODO: i don't always need mousemove, refactor at the end
+            -- so it's only there when i need it
+            , on "mousemove" (mouseEventDecoder |> JD.map MouseMove)
+            , on "mouseup" (mouseEventDecoder |> JD.map MouseUp)
+            , let
+                isPanning =
+                    case model.panning of
+                        Nothing ->
+                            False
 
-                                        Panning _ ->
-                                            True
-                            in
-                            [ on "mouseup" (mouseEventDecoder |> JD.map MouseUp)
-                            , if isPanning then
-                                on "mousemove" (mouseEventDecoder |> JD.map MouseMove)
+                        Just _ ->
+                            True
+              in
+              if isPanning then
+                style "cursor" "grabbing"
 
-                              else
-                                style "" ""
-                            , if isPanning then
-                                style "cursor" "grabbing"
-
-                              else
-                                style "cursor" "grab"
-                            , on "mousedown" (mouseEventDecoder |> JD.map MouseDown)
-                            ]
-
-                        Draw state ->
-                            [ on "mousedown" (mouseEventDecoder |> JD.map MouseDown)
-                            , case state of
-                                NotDrawing ->
-                                    style "" ""
-
-                                HoldingClick ->
-                                    on "mousemove" (mouseEventDecoder |> JD.map MouseMove)
-
-                                Dragging _ ->
-                                    on "mousemove" (mouseEventDecoder |> JD.map MouseMove)
-                            , case state of
-                                NotDrawing ->
-                                    style "" ""
-
-                                HoldingClick ->
-                                    on "mouseup" (mouseEventDecoder |> JD.map MouseUp)
-
-                                Dragging _ ->
-                                    on "mouseup" (mouseEventDecoder |> JD.map MouseUp)
-                            ]
-
-                        Select _ ->
-                            [ on "mousemove" (mouseEventDecoder |> JD.map MouseMove)
-                            , on "mousedown" (mouseEventDecoder |> JD.map MouseDown)
-                            , on "mouseup" (mouseEventDecoder |> JD.map MouseUp)
-                            ]
-                   )
-            )
+              else
+                style "" ""
+            ]
             -- NOTE: Drawing order is bottom to top, draw last on top
             [ svg [ version "1.1", SA.width (screenWidth |> String.fromInt), SA.height (screenHeight |> String.fromInt), viewBox "0 0 1900 800" ]
                 -- DRAW
                 (let
                     viewport : Point
                     viewport =
-                        case model.mode of
-                            Pan state ->
-                                case state of
-                                    NotPanning ->
-                                        model.viewport
-
-                                    Panning { panOrigin, panEnd } ->
-                                        let
-                                            panDist =
-                                                Point.subtract panOrigin panEnd
-                                        in
-                                        model.viewport |> Point.add panDist
-
-                            _ ->
+                        case model.panning of
+                            Nothing ->
                                 model.viewport
+
+                            Just ( origin, end ) ->
+                                let
+                                    panDist =
+                                        Point.subtract origin end
+                                in
+                                model.viewport |> Point.add panDist
 
                     bgGrid : List (Svg Msg)
                     bgGrid =
@@ -1107,9 +1054,6 @@ view model =
                             ++ drawRooms model.rooms
                             ++ drawMeasuringLines
 
-                    Pan _ ->
-                        bgGrid ++ drawRooms model.rooms ++ drawMeasuringLines
-
                     Draw state ->
                         bgGrid
                             ++ (case state of
@@ -1119,7 +1063,7 @@ view model =
                                     HoldingClick ->
                                         drawRooms model.rooms
 
-                                    Dragging { start, end, isOverlappingAnotherRoom } ->
+                                    DraggingDraw { start, end, isOverlappingAnotherRoom } ->
                                         drawRooms model.rooms
                                             ++ [ drawRect (pointsToRectangle start end)
                                                     [ strokeWidth "2"
@@ -2207,12 +2151,26 @@ view model =
             , style "display" "flex"
             , style "gap" "15px"
             ]
-            [ button [ style "padding" "5px", onClick PanMode ] [ text "Pan" ]
-            , button [ style "padding" "5px", onClick DrawMode ] [ text "Draw" ]
+            [ button [ style "padding" "5px", onClick DrawMode ] [ text "Draw" ]
             , button [ style "padding" "5px", onClick SelectMode ] [ text "Select" ]
             , button [ style "padding" "5px", onClick DeleteMode ] [ text "Delete" ]
             ]
         ]
+
+
+mouseEventDecoder : Decoder MouseEvent
+mouseEventDecoder =
+    -- https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent
+    JD.map3
+        (\btn x y ->
+            { layerX = x
+            , layerY = y
+            , button = buttonToMouseEventButton btn
+            }
+        )
+        (JD.field "button" JD.int)
+        (JD.field "layerX" JD.int)
+        (JD.field "layerY" JD.int)
 
 
 drawSnappingLines : Point -> Line -> Line -> List (Svg Msg)
