@@ -257,44 +257,49 @@ update msg model =
                 |> pure
 
         MouseDown mouseEvent ->
-            let
-                mouseDownRelCoords =
-                    ( mouseEvent.layerX, mouseEvent.layerY )
-            in
-            case model.mode of
-                Delete ->
+            case model.panning of
+                Just _ ->
                     ignore
 
-                Draw state ->
-                    case state of
-                        NotDrawing ->
-                            changeMode (Draw HoldingClick) |> pure
-
-                        HoldingClick ->
-                            ignore
-
-                        DraggingDraw _ ->
-                            ignore
-
-                Select { selected } ->
+                Nothing ->
                     let
-                        sceneMouseDownCoords =
-                            mouseDownRelCoords |> Point.add model.viewport
-
-                        onARoom : Maybe RoomID
-                        onARoom =
-                            model.rooms
-                                |> getFirstRoom (sceneMouseDownCoords |> isOnRoom)
-                                |> Maybe.map .id
+                        mouseDownRelCoords =
+                            ( mouseEvent.layerX, mouseEvent.layerY )
                     in
-                    (case onARoom of
-                        Just room ->
-                            changeMode (Select { selected = selected, state = HoldingClickOnRoom room })
+                    case model.mode of
+                        Delete ->
+                            ignore
 
-                        Nothing ->
-                            changeMode (Select { selected = selected, state = HoldingClickOutsideAnyRooms })
-                    )
-                        |> pure
+                        Draw state ->
+                            case state of
+                                NotDrawing ->
+                                    changeMode (Draw HoldingClick) |> pure
+
+                                HoldingClick ->
+                                    ignore
+
+                                DraggingDraw _ ->
+                                    ignore
+
+                        Select { selected } ->
+                            let
+                                sceneMouseDownCoords =
+                                    mouseDownRelCoords |> Point.add model.viewport
+
+                                onARoom : Maybe RoomID
+                                onARoom =
+                                    model.rooms
+                                        |> getFirstRoom (sceneMouseDownCoords |> isOnRoom)
+                                        |> Maybe.map .id
+                            in
+                            (case onARoom of
+                                Just room ->
+                                    changeMode (Select { selected = selected, state = HoldingClickOnRoom room })
+
+                                Nothing ->
+                                    changeMode (Select { selected = selected, state = HoldingClickOutsideAnyRooms })
+                            )
+                                |> pure
 
         MouseMove mouseEvent ->
             let
@@ -551,261 +556,297 @@ update msg model =
                 |> (\( a, b ) -> ( pan a, b ))
 
         MouseUp mouseEvent ->
-            let
-                mouseUpRelCoords =
-                    ( mouseEvent.layerX, mouseEvent.layerY )
+            case model.panning of
+                Just _ ->
+                    case mouseEvent.button of
+                        Middle ->
+                            case model.panning of
+                                Nothing ->
+                                    ignore
 
-                pan m =
-                    case model.panning of
-                        Nothing ->
-                            m
+                                Just ( origin, end ) ->
+                                    let
+                                        deltaPan =
+                                            end |> Point.subtract origin
+                                    in
+                                    { model | viewport = model.viewport |> Point.add deltaPan, panning = Nothing }
+                                        |> pure
 
-                        Just ( origin, end ) ->
+                        _ ->
+                            ignore
+
+                Nothing ->
+                    case mouseEvent.button of
+                        Middle ->
+                            ignore
+
+                        _ ->
                             let
-                                deltaPan =
-                                    end |> Point.subtract origin
+                                mouseUpRelCoords =
+                                    ( mouseEvent.layerX, mouseEvent.layerY )
                             in
-                            { model | viewport = model.viewport |> Point.add deltaPan, panning = Nothing }
+                            case model.mode of
+                                Select { selected, state } ->
+                                    case state of
+                                        NotHoveringOverRoom ->
+                                            ignore
+
+                                        HoldingClickOutsideAnyRooms ->
+                                            changeMode (Select { selected = NoRoomSelected, state = NotHoveringOverRoom })
+                                                |> pure
+
+                                        DraggingToSelectMany { origin, end } ->
+                                            let
+                                                selectArea : Rectangle
+                                                selectArea =
+                                                    pointsToRectangle (origin |> Point.add model.viewport) (end |> Point.add model.viewport)
+
+                                                roomsSelected : List Room
+                                                roomsSelected =
+                                                    model.rooms
+                                                        |> List.filter (.boundingBox >> Rect.isInside selectArea)
+                                            in
+                                            changeMode
+                                                (Select
+                                                    { selected =
+                                                        if List.isEmpty roomsSelected then
+                                                            NoRoomSelected
+
+                                                        else
+                                                            case roomsSelected of
+                                                                [ room ] ->
+                                                                    RoomSelected room.id
+
+                                                                _ ->
+                                                                    GroupSelected (roomsSelected |> List.map .id)
+                                                    , state = NotHoveringOverRoom
+                                                    }
+                                                )
+                                                |> pure
+
+                                        HoveringOverRoom _ ->
+                                            ignore
+
+                                        HoldingClickOnRoom roomId ->
+                                            changeMode
+                                                (Select
+                                                    { selected =
+                                                        case selected of
+                                                            RoomSelected roomImEditing ->
+                                                                if roomImEditing == roomId then
+                                                                    NoRoomSelected
+
+                                                                else
+                                                                    RoomSelected roomId
+
+                                                            GroupSelected _ ->
+                                                                RoomSelected roomId
+
+                                                            NoRoomSelected ->
+                                                                RoomSelected roomId
+                                                    , state = HoveringOverRoom roomId
+                                                    }
+                                                )
+                                                |> pure
+
+                                        DraggingRoom { room, dragOrigin, dragEnd, isOverlappingAnotherRoom } ->
+                                            { model
+                                                | rooms =
+                                                    if isOverlappingAnotherRoom then
+                                                        model.rooms
+
+                                                    else
+                                                        model.rooms
+                                                            |> List.map
+                                                                (\r ->
+                                                                    if r.id == room then
+                                                                        let
+                                                                            deltaDrag : Point
+                                                                            deltaDrag =
+                                                                                dragOrigin |> Point.subtract dragEnd
+
+                                                                            newDraggedRoom =
+                                                                                r |> roomAddPosition deltaDrag
+
+                                                                            draggedRoomAfterSnapping : Room
+                                                                            draggedRoomAfterSnapping =
+                                                                                handleSnapping newDraggedRoom (model.rooms |> List.filter (\l -> l.id /= room))
+                                                                                    |> handleTranslateRoomToSnappedPosition newDraggedRoom
+                                                                        in
+                                                                        draggedRoomAfterSnapping
+
+                                                                    else
+                                                                        r
+                                                                )
+                                                , mode = Select { selected = selected, state = HoveringOverRoom room }
+                                            }
+                                                |> pure
+
+                                        DraggingRooms { rooms, dragOrigin, dragEnd } ->
+                                            let
+                                                deltaDrag =
+                                                    Point.subtract dragEnd dragOrigin
+
+                                                globalMouseUpCoords =
+                                                    mouseUpRelCoords |> toGlobal model.viewport
+
+                                                roomImHoveringOver : Maybe RoomID
+                                                roomImHoveringOver =
+                                                    model.rooms
+                                                        |> getFirstRoom (globalMouseUpCoords |> isOnRoom)
+                                                        |> Maybe.map .id
+
+                                                anySelectedRoomIsOverlappingARoom : Bool
+                                                anySelectedRoomIsOverlappingARoom =
+                                                    model.rooms
+                                                        |> List.any
+                                                            (\r ->
+                                                                if List.any (\e -> r.id == e) rooms then
+                                                                    let
+                                                                        newRectangle : Rectangle
+                                                                        newRectangle =
+                                                                            r
+                                                                                |> roomAddPosition deltaDrag
+                                                                                |> .boundingBox
+
+                                                                        isOverlappingAnotherRoom : Bool
+                                                                        isOverlappingAnotherRoom =
+                                                                            model.rooms
+                                                                                |> List.filter (\e -> not <| List.any (\l -> e.id == l) rooms)
+                                                                                |> List.filter (.boundingBox >> Rect.isThereAnyOverlap newRectangle)
+                                                                                |> (not << List.isEmpty)
+                                                                    in
+                                                                    if isOverlappingAnotherRoom then
+                                                                        True
+
+                                                                    else
+                                                                        False
+
+                                                                else
+                                                                    False
+                                                            )
+                                            in
+                                            { model
+                                                | rooms =
+                                                    if anySelectedRoomIsOverlappingARoom then
+                                                        model.rooms
+
+                                                    else
+                                                        model.rooms
+                                                            |> List.map
+                                                                (\r ->
+                                                                    if List.any (\e -> r.id == e) rooms then
+                                                                        r |> roomAddPosition deltaDrag
+
+                                                                    else
+                                                                        r
+                                                                )
+                                                , mode =
+                                                    Select
+                                                        { selected = selected
+                                                        , state =
+                                                            case roomImHoveringOver of
+                                                                Just r ->
+                                                                    HoveringOverRoom r
+
+                                                                Nothing ->
+                                                                    NotHoveringOverRoom
+                                                        }
+                                            }
+                                                |> pure
+
+                                Delete ->
+                                    let
+                                        sceneMouseUpCoords =
+                                            mouseUpRelCoords |> Point.add model.viewport
+                                    in
+                                    { model | rooms = model.rooms |> List.filter (sceneMouseUpCoords |> isNotOnRoom) }
+                                        |> pure
+
+                                Draw state ->
+                                    case state of
+                                        NotDrawing ->
+                                            ignore
+
+                                        HoldingClick ->
+                                            changeMode (Draw NotDrawing) |> pure
+
+                                        DraggingDraw { start, end, isOverlappingAnotherRoom } ->
+                                            let
+                                                ( x1, y1 ) =
+                                                    start
+
+                                                ( x2, y2 ) =
+                                                    end
+
+                                                hasNoWidth =
+                                                    x1 == x2
+
+                                                hasNoHeight =
+                                                    y1 == y2
+                                            in
+                                            if isOverlappingAnotherRoom || hasNoWidth || hasNoHeight then
+                                                changeMode (Draw NotDrawing) |> pure
+
+                                            else
+                                                let
+                                                    ( ox, oy ) =
+                                                        model.viewport
+
+                                                    rectId : UUID
+                                                    rectId =
+                                                        Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 12345))
+                                                            |> Tuple.first
+
+                                                    sceneRect : Rectangle
+                                                    sceneRect =
+                                                        pointsToRectangle start end
+                                                            |> rectToGlobal model.viewport
+                                                in
+                                                { model
+                                                    | rooms =
+                                                        { boundingBox = sceneRect
+
+                                                        --   TODO: change to use random, have it be a command
+                                                        , id = rectId
+                                                        }
+                                                            :: model.rooms
+                                                    , mode = Draw NotDrawing
+                                                }
+                                                    |> pure
+
+        MiddleClickDown mouseEvent ->
+            let
+                pan =
+                    let
+                        middleClickDownRelCoords =
+                            ( mouseEvent.layerX, mouseEvent.layerY )
+                    in
+                    { model | panning = Just ( middleClickDownRelCoords, middleClickDownRelCoords ) }
+                        |> pure
             in
-            (case model.mode of
-                Select { selected, state } ->
+            case model.mode of
+                Select { state } ->
                     case state of
                         NotHoveringOverRoom ->
-                            ignore
-
-                        HoldingClickOutsideAnyRooms ->
-                            changeMode (Select { selected = NoRoomSelected, state = NotHoveringOverRoom })
-                                |> pure
-
-                        DraggingToSelectMany { origin, end } ->
-                            let
-                                selectArea : Rectangle
-                                selectArea =
-                                    pointsToRectangle (origin |> Point.add model.viewport) (end |> Point.add model.viewport)
-
-                                roomsSelected : List Room
-                                roomsSelected =
-                                    model.rooms
-                                        |> List.filter (.boundingBox >> Rect.isInside selectArea)
-                            in
-                            changeMode
-                                (Select
-                                    { selected =
-                                        if List.isEmpty roomsSelected then
-                                            NoRoomSelected
-
-                                        else
-                                            case roomsSelected of
-                                                [ room ] ->
-                                                    RoomSelected room.id
-
-                                                _ ->
-                                                    GroupSelected (roomsSelected |> List.map .id)
-                                    , state = NotHoveringOverRoom
-                                    }
-                                )
-                                |> pure
+                            pan
 
                         HoveringOverRoom _ ->
+                            pan
+
+                        _ ->
                             ignore
-
-                        HoldingClickOnRoom roomId ->
-                            changeMode
-                                (Select
-                                    { selected =
-                                        case selected of
-                                            RoomSelected roomImEditing ->
-                                                if roomImEditing == roomId then
-                                                    NoRoomSelected
-
-                                                else
-                                                    RoomSelected roomId
-
-                                            GroupSelected _ ->
-                                                RoomSelected roomId
-
-                                            NoRoomSelected ->
-                                                RoomSelected roomId
-                                    , state = HoveringOverRoom roomId
-                                    }
-                                )
-                                |> pure
-
-                        DraggingRoom { room, dragOrigin, dragEnd, isOverlappingAnotherRoom } ->
-                            { model
-                                | rooms =
-                                    if isOverlappingAnotherRoom then
-                                        model.rooms
-
-                                    else
-                                        model.rooms
-                                            |> List.map
-                                                (\r ->
-                                                    if r.id == room then
-                                                        let
-                                                            deltaDrag : Point
-                                                            deltaDrag =
-                                                                dragOrigin |> Point.subtract dragEnd
-
-                                                            newDraggedRoom =
-                                                                r |> roomAddPosition deltaDrag
-
-                                                            draggedRoomAfterSnapping : Room
-                                                            draggedRoomAfterSnapping =
-                                                                handleSnapping newDraggedRoom (model.rooms |> List.filter (\l -> l.id /= room))
-                                                                    |> handleTranslateRoomToSnappedPosition newDraggedRoom
-                                                        in
-                                                        draggedRoomAfterSnapping
-
-                                                    else
-                                                        r
-                                                )
-                                , mode = Select { selected = selected, state = HoveringOverRoom room }
-                            }
-                                |> pure
-
-                        DraggingRooms { rooms, dragOrigin, dragEnd } ->
-                            let
-                                deltaDrag =
-                                    Point.subtract dragEnd dragOrigin
-
-                                globalMouseUpCoords =
-                                    mouseUpRelCoords |> toGlobal model.viewport
-
-                                roomImHoveringOver : Maybe RoomID
-                                roomImHoveringOver =
-                                    model.rooms
-                                        |> getFirstRoom (globalMouseUpCoords |> isOnRoom)
-                                        |> Maybe.map .id
-
-                                anySelectedRoomIsOverlappingARoom : Bool
-                                anySelectedRoomIsOverlappingARoom =
-                                    model.rooms
-                                        |> List.any
-                                            (\r ->
-                                                if List.any (\e -> r.id == e) rooms then
-                                                    let
-                                                        newRectangle : Rectangle
-                                                        newRectangle =
-                                                            r
-                                                                |> roomAddPosition deltaDrag
-                                                                |> .boundingBox
-
-                                                        isOverlappingAnotherRoom : Bool
-                                                        isOverlappingAnotherRoom =
-                                                            model.rooms
-                                                                |> List.filter (\e -> not <| List.any (\l -> e.id == l) rooms)
-                                                                |> List.filter (.boundingBox >> Rect.isThereAnyOverlap newRectangle)
-                                                                |> (not << List.isEmpty)
-                                                    in
-                                                    if isOverlappingAnotherRoom then
-                                                        True
-
-                                                    else
-                                                        False
-
-                                                else
-                                                    False
-                                            )
-                            in
-                            { model
-                                | rooms =
-                                    if anySelectedRoomIsOverlappingARoom then
-                                        model.rooms
-
-                                    else
-                                        model.rooms
-                                            |> List.map
-                                                (\r ->
-                                                    if List.any (\e -> r.id == e) rooms then
-                                                        r |> roomAddPosition deltaDrag
-
-                                                    else
-                                                        r
-                                                )
-                                , mode =
-                                    Select
-                                        { selected = selected
-                                        , state =
-                                            case roomImHoveringOver of
-                                                Just r ->
-                                                    HoveringOverRoom r
-
-                                                Nothing ->
-                                                    NotHoveringOverRoom
-                                        }
-                            }
-                                |> pure
-
-                Delete ->
-                    let
-                        sceneMouseUpCoords =
-                            mouseUpRelCoords |> Point.add model.viewport
-                    in
-                    { model | rooms = model.rooms |> List.filter (sceneMouseUpCoords |> isNotOnRoom) }
-                        |> pure
 
                 Draw state ->
                     case state of
                         NotDrawing ->
+                            pan
+
+                        _ ->
                             ignore
 
-                        HoldingClick ->
-                            changeMode (Draw NotDrawing) |> pure
-
-                        DraggingDraw { start, end, isOverlappingAnotherRoom } ->
-                            let
-                                ( x1, y1 ) =
-                                    start
-
-                                ( x2, y2 ) =
-                                    end
-
-                                hasNoWidth =
-                                    x1 == x2
-
-                                hasNoHeight =
-                                    y1 == y2
-                            in
-                            if isOverlappingAnotherRoom || hasNoWidth || hasNoHeight then
-                                changeMode (Draw NotDrawing) |> pure
-
-                            else
-                                let
-                                    ( ox, oy ) =
-                                        model.viewport
-
-                                    rectId : UUID
-                                    rectId =
-                                        Random.step UUID.generator (Random.initialSeed (x1 + y1 + x2 + y2 + ox + oy + 12345))
-                                            |> Tuple.first
-
-                                    sceneRect : Rectangle
-                                    sceneRect =
-                                        pointsToRectangle start end
-                                            |> rectToGlobal model.viewport
-                                in
-                                { model
-                                    | rooms =
-                                        { boundingBox = sceneRect
-
-                                        --   TODO: change to use random, have it be a command
-                                        , id = rectId
-                                        }
-                                            :: model.rooms
-                                    , mode = Draw NotDrawing
-                                }
-                                    |> pure
-            )
-                |> (\( a, b ) -> ( pan a, b ))
-
-        MiddleClickDown mouseEvent ->
-            let
-                middleClickDownRelCoords =
-                    ( mouseEvent.layerX, mouseEvent.layerY )
-            in
-            { model | panning = Just ( middleClickDownRelCoords, middleClickDownRelCoords ) }
-                |> pure
+                Delete ->
+                    pan
 
 
 main : Program () Model Msg
