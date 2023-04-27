@@ -357,8 +357,18 @@ update msg model =
 
                 Select { selected, state } ->
                     let
+                        deltaPan =
+                            case model.panning of
+                                Just ( origin, end ) ->
+                                    end |> Point.subtract origin
+
+                                Nothing ->
+                                    ( 0, 0 )
+
                         sceneMouseMoveCoords =
-                            mouseMoveRelCoords |> toGlobal model.viewport
+                            mouseMoveRelCoords
+                                |> Point.add model.viewport
+                                |> Point.add deltaPan
 
                         roomImHoveringOver : Maybe RoomID
                         roomImHoveringOver =
