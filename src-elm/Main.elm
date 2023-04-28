@@ -3770,13 +3770,7 @@ getAllRoomsTopXAsSegments e =
 
 areRoomsOverlapping : List Room -> List Room -> Bool
 areRoomsOverlapping a b =
-    List.any
-        (\room ->
-            List.any
-                (\otherRoom -> (room.id /= otherRoom.id) && Rect.isThereAnyOverlap room.boundingBox otherRoom.boundingBox)
-                b
-        )
-        a
+    listAnyIJSame (\room otherRoom -> (room.id /= otherRoom.id) && Rect.isThereAnyOverlap room.boundingBox otherRoom.boundingBox) a b
 
 
 listAnyIJSame : (a -> a -> Bool) -> List a -> List a -> Bool
