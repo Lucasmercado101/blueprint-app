@@ -419,35 +419,15 @@ update msg model =
                                 deltaDrag =
                                     dragEnd |> Point.subtract dragOrigin
 
+                                roomsMinusDragging =
+                                    model.rooms |> List.filter (\e -> not <| List.any (\l -> e.id == l) rooms)
+
                                 anySelectedRoomIsOverlappingARoom : Bool
                                 anySelectedRoomIsOverlappingARoom =
-                                    model.rooms
-                                        |> List.any
-                                            (\r ->
-                                                if List.any (\e -> r.id == e) rooms then
-                                                    let
-                                                        newRectangle : Rectangle
-                                                        newRectangle =
-                                                            r
-                                                                |> roomAddPosition deltaDrag
-                                                                |> .boundingBox
-
-                                                        isOverlappingAnotherRoom : Bool
-                                                        isOverlappingAnotherRoom =
-                                                            model.rooms
-                                                                |> List.filter (\e -> not <| List.any (\l -> e.id == l) rooms)
-                                                                |> List.filter (.boundingBox >> Rect.isThereAnyOverlap newRectangle)
-                                                                |> (not << List.isEmpty)
-                                                    in
-                                                    if isOverlappingAnotherRoom then
-                                                        True
-
-                                                    else
-                                                        False
-
-                                                else
-                                                    False
-                                            )
+                                    listAnyIJDiff
+                                        (\r id -> (r.id == id) && (isRoomOverlappingAnyRooms roomsMinusDragging (r |> roomAddPosition deltaDrag)))
+                                        model.rooms
+                                        rooms
                             in
                             changeMode
                                 (Select
@@ -3771,6 +3751,11 @@ getAllRoomsTopXAsSegments e =
 areRoomsOverlapping : List Room -> List Room -> Bool
 areRoomsOverlapping a b =
     listAnyIJSame (\room otherRoom -> (room.id /= otherRoom.id) && Rect.isThereAnyOverlap room.boundingBox otherRoom.boundingBox) a b
+
+
+isRoomOverlappingAnyRooms : List Room -> Room -> Bool
+isRoomOverlappingAnyRooms rooms room =
+    List.any (\otherRoom -> (room.id /= otherRoom.id) && Rect.isThereAnyOverlap room.boundingBox otherRoom.boundingBox) rooms
 
 
 listAnyIJSame : (a -> a -> Bool) -> List a -> List a -> Bool
