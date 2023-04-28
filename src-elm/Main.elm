@@ -2468,10 +2468,6 @@ tupleAdd ( x1, y1 ) ( x2, y2 ) =
     ( x1 + x2, y1 + y2 )
 
 
-
-{- b - range <= a <= b + range -}
-
-
 nbsp : String
 nbsp =
     "\u{00A0}"
