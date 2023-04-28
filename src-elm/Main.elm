@@ -1031,7 +1031,7 @@ view model =
                                                         else
                                                             acc
                                             )
-                                            -- TEMP sorta
+                                            -- TODO: temp
                                             50000
                                             (x :: xs)
 
@@ -1049,7 +1049,7 @@ view model =
                                                         else
                                                             acc
                                             )
-                                            -- TEMP sorta
+                                            -- TODO: temp
                                             -50000
                                             (x :: xs)
 
