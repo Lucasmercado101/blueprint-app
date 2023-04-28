@@ -501,6 +501,15 @@ update msg model =
                                 deltaDrag : Point
                                 deltaDrag =
                                     dragEnd |> Point.subtract dragOrigin
+
+                                roomsMinusDraggingRoom =
+                                    model.rooms |> List.filter (\e -> e.id /= room)
+
+                                selectedRoomIsOverlappingAnyRoom : Bool
+                                selectedRoomIsOverlappingAnyRoom =
+                                    List.any
+                                        (\r -> (r.id == room) && isRoomOverlappingAnyRooms roomsMinusDraggingRoom (r |> roomAddPosition deltaDrag))
+                                        model.rooms
                             in
                             changeMode
                                 (Select
@@ -510,30 +519,7 @@ update msg model =
                                             { room = room
                                             , dragOrigin = dragOrigin
                                             , dragEnd = sceneMouseMoveCoords
-                                            , isOverlappingAnotherRoom =
-                                                model.rooms
-                                                    |> List.any
-                                                        (\r ->
-                                                            if r.id == room then
-                                                                let
-                                                                    newRectangle : Rectangle
-                                                                    newRectangle =
-                                                                        r
-                                                                            |> roomAddPosition deltaDrag
-                                                                            |> .boundingBox
-
-                                                                    isOverlappingAnotherRoom : Bool
-                                                                    isOverlappingAnotherRoom =
-                                                                        model.rooms
-                                                                            |> List.filter (\e -> e.id /= room)
-                                                                            |> List.filter (.boundingBox >> Rect.isThereAnyOverlap newRectangle)
-                                                                            |> (not << List.isEmpty)
-                                                                in
-                                                                isOverlappingAnotherRoom
-
-                                                            else
-                                                                False
-                                                        )
+                                            , isOverlappingAnotherRoom = selectedRoomIsOverlappingAnyRoom
                                             }
                                     }
                                 )
