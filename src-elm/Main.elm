@@ -415,12 +415,39 @@ update msg model =
 
                         DraggingRooms { rooms, dragOrigin, dragEnd } ->
                             let
-                                excludingCurrentlySelectedRooms initialRooms =
-                                    List.filter (\r -> not <| List.any (\e -> e == r.id) rooms) initialRooms
-
                                 deltaDrag : Point
                                 deltaDrag =
                                     dragOrigin |> Point.subtract dragEnd
+
+                                anySelectedRoomIsOverlappingARoom : Bool
+                                anySelectedRoomIsOverlappingARoom =
+                                    model.rooms
+                                        |> List.any
+                                            (\r ->
+                                                if List.any (\e -> r.id == e) rooms then
+                                                    let
+                                                        newRectangle : Rectangle
+                                                        newRectangle =
+                                                            r
+                                                                |> roomAddPosition deltaDrag
+                                                                |> .boundingBox
+
+                                                        isOverlappingAnotherRoom : Bool
+                                                        isOverlappingAnotherRoom =
+                                                            model.rooms
+                                                                |> List.filter (\e -> not <| List.any (\l -> e.id == l) rooms)
+                                                                |> List.filter (.boundingBox >> Rect.isThereAnyOverlap newRectangle)
+                                                                |> (not << List.isEmpty)
+                                                    in
+                                                    if isOverlappingAnotherRoom then
+                                                        True
+
+                                                    else
+                                                        False
+
+                                                else
+                                                    False
+                                            )
                             in
                             changeMode
                                 (Select
@@ -430,36 +457,7 @@ update msg model =
                                             { rooms = rooms
                                             , dragOrigin = dragOrigin
                                             , dragEnd = mouseMoveRelCoords |> toGlobal model.viewport
-                                            , isOverlappingAnotherRoom =
-                                                -- TODO: refactor so it's not double loop
-                                                model.rooms
-                                                    |> List.any
-                                                        (\r ->
-                                                            List.any
-                                                                (\e ->
-                                                                    if r.id == e then
-                                                                        let
-                                                                            draggingRect =
-                                                                                r
-                                                                                    |> roomAddPosition deltaDrag
-                                                                                    |> roomSubPosition model.viewport
-
-                                                                            isOverlappingAnotherRoom : Bool
-                                                                            isOverlappingAnotherRoom =
-                                                                                model.rooms
-                                                                                    |> excludingCurrentlySelectedRooms
-                                                                                    |> List.filter (.boundingBox >> Rect.isThereAnyOverlap draggingRect.boundingBox)
-                                                                                    |> List.head
-                                                                                    |> Maybe.map (always True)
-                                                                                    |> Maybe.withDefault False
-                                                                        in
-                                                                        isOverlappingAnotherRoom
-
-                                                                    else
-                                                                        False
-                                                                )
-                                                                rooms
-                                                        )
+                                            , isOverlappingAnotherRoom = anySelectedRoomIsOverlappingARoom
                                             }
                                     }
                                 )
