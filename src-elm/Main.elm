@@ -360,7 +360,7 @@ update msg model =
                         deltaPan =
                             case model.panning of
                                 Just ( origin, end ) ->
-                                    end |> Point.subtract origin
+                                    origin |> Point.subtract end
 
                                 Nothing ->
                                     ( 0, 0 )
@@ -417,7 +417,7 @@ update msg model =
                             let
                                 deltaDrag : Point
                                 deltaDrag =
-                                    dragOrigin |> Point.subtract dragEnd
+                                    dragEnd |> Point.subtract dragOrigin
 
                                 anySelectedRoomIsOverlappingARoom : Bool
                                 anySelectedRoomIsOverlappingARoom =
@@ -522,7 +522,7 @@ update msg model =
                             let
                                 deltaDrag : Point
                                 deltaDrag =
-                                    Point.subtract dragEnd dragOrigin
+                                    dragEnd |> Point.subtract dragOrigin
                             in
                             changeMode
                                 (Select
@@ -575,7 +575,7 @@ update msg model =
                                 Just ( origin, end ) ->
                                     let
                                         deltaPan =
-                                            end |> Point.subtract origin
+                                            origin |> Point.subtract end
                                     in
                                     { model | viewport = model.viewport |> Point.add deltaPan, panning = Nothing }
                                         |> pure
@@ -671,7 +671,7 @@ update msg model =
                                                                         let
                                                                             deltaDrag : Point
                                                                             deltaDrag =
-                                                                                dragOrigin |> Point.subtract dragEnd
+                                                                                dragEnd |> Point.subtract dragOrigin
 
                                                                             newDraggedRoom =
                                                                                 r |> roomAddPosition deltaDrag
@@ -693,7 +693,7 @@ update msg model =
                                         DraggingRooms { rooms, dragOrigin, dragEnd } ->
                                             let
                                                 deltaDrag =
-                                                    Point.subtract dragEnd dragOrigin
+                                                    dragEnd |> Point.subtract dragOrigin
 
                                                 globalMouseUpCoords =
                                                     mouseUpRelCoords |> toGlobal model.viewport
@@ -921,7 +921,7 @@ view model =
                             Just ( origin, end ) ->
                                 let
                                     panDist =
-                                        Point.subtract origin end
+                                        origin |> Point.subtract end
                                 in
                                 model.viewport |> Point.add panDist
 
@@ -967,7 +967,7 @@ view model =
                                                             let
                                                                 deltaDrag : Point
                                                                 deltaDrag =
-                                                                    dragOrigin |> Point.subtract dragEnd
+                                                                    dragEnd |> Point.subtract dragOrigin
 
                                                                 newDraggedRoom =
                                                                     e
@@ -1232,7 +1232,7 @@ view model =
                                                     let
                                                         deltaDrag : Point
                                                         deltaDrag =
-                                                            dragOrigin |> Point.subtract dragEnd
+                                                            dragEnd |> Point.subtract dragOrigin
 
                                                         newDraggedRoom =
                                                             roomImDragging
@@ -1280,7 +1280,7 @@ view model =
                                                     let
                                                         deltaDrag : Point
                                                         deltaDrag =
-                                                            Point.subtract dragEnd dragOrigin
+                                                            dragEnd |> Point.subtract dragOrigin
                                                     in
                                                     drawRect
                                                         (boundingBox
@@ -1319,7 +1319,7 @@ view model =
                                                     let
                                                         deltaDrag : Point
                                                         deltaDrag =
-                                                            Point.subtract dragEnd dragOrigin
+                                                            dragEnd |> Point.subtract dragOrigin
 
                                                         relDraggedRoom : Room
                                                         relDraggedRoom =

@@ -18,7 +18,7 @@ add ( x1, y1 ) ( x2, y2 ) =
 
 subtract : ( number, number ) -> ( number, number ) -> ( number, number )
 subtract ( x1, y1 ) ( x2, y2 ) =
-    ( x1 - x2, y1 - y2 )
+    ( x2 - x1, y2 - y1 )
 
 
 delta : ( number, number ) -> ( number, number ) -> ( number, number )
