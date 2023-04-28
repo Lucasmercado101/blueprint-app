@@ -21,35 +21,6 @@ subtract ( x1, y1 ) ( x2, y2 ) =
     ( x2 - x1, y2 - y1 )
 
 
-delta : ( number, number ) -> ( number, number ) -> ( number, number )
-delta ( x1, y1 ) ( x2, y2 ) =
-    ( abs (x2 - x1), abs (y2 - y1) )
-
-
 scale : number -> ( number, number ) -> ( number, number )
 scale factor ( x1, y1 ) =
     ( x1 * factor, y1 * factor )
-
-
-distance : ( Float, Float ) -> ( Float, Float ) -> Float
-distance ( x1, y1 ) ( x2, y2 ) =
-    -- Pythagorean theorem
-    -- # Math: \sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2}
-    let
-        dx =
-            x2 - x1
-
-        dy =
-            y2 - y1
-    in
-    sqrt (dx * dx + dy * dy)
-
-
-distanceX : ( number, number ) -> ( number, number ) -> number
-distanceX ( x1, _ ) ( x2, _ ) =
-    x2 - x1
-
-
-distanceY : ( number, number ) -> ( number, number ) -> number
-distanceY ( _, y1 ) ( _, y2 ) =
-    y2 - y1
