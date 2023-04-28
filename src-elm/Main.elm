@@ -955,7 +955,42 @@ view model =
                                 )
 
                     topMostRects =
-                        getAllRoomsTopXAsSegments model.rooms
+                        case model.mode of
+                            Select { state } ->
+                                case state of
+                                    DraggingRoom { room, dragOrigin, dragEnd } ->
+                                        getAllRoomsTopXAsSegments
+                                            (model.rooms
+                                                |> List.map
+                                                    (\e ->
+                                                        if e.id == room then
+                                                            let
+                                                                deltaDrag : Point
+                                                                deltaDrag =
+                                                                    dragOrigin |> Point.subtract dragEnd
+
+                                                                newDraggedRoom =
+                                                                    e
+                                                                        |> roomAddPosition deltaDrag
+
+                                                                draggedRoomAfterSnapping : Room
+                                                                draggedRoomAfterSnapping =
+                                                                    (model.rooms |> List.filter (\r -> r.id /= room) |> List.map (roomSubPosition model.viewport))
+                                                                        |> handleSnapping newDraggedRoom
+                                                                        |> handleTranslateRoomToSnappedPosition newDraggedRoom
+                                                            in
+                                                            draggedRoomAfterSnapping
+
+                                                        else
+                                                            e
+                                                    )
+                                            )
+
+                                    _ ->
+                                        getAllRoomsTopXAsSegments model.rooms
+
+                            _ ->
+                                getAllRoomsTopXAsSegments model.rooms
 
                     drawMeasuringLines =
                         case topMostRects of
