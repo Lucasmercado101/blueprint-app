@@ -360,7 +360,7 @@ update msg model =
                         deltaPan =
                             case model.panning of
                                 Just ( origin, end ) ->
-                                    origin |> Point.subtract end
+                                    end |> Point.subtract origin
 
                                 Nothing ->
                                     ( 0, 0 )
@@ -368,7 +368,7 @@ update msg model =
                         sceneMouseMoveCoords =
                             mouseMoveRelCoords
                                 |> Point.add model.viewport
-                                |> Point.add deltaPan
+                                |> Point.subtract deltaPan
 
                         roomImHoveringOver : Maybe RoomID
                         roomImHoveringOver =
@@ -575,9 +575,9 @@ update msg model =
                                 Just ( origin, end ) ->
                                     let
                                         deltaPan =
-                                            origin |> Point.subtract end
+                                            end |> Point.subtract origin
                                     in
-                                    { model | viewport = model.viewport |> Point.add deltaPan, panning = Nothing }
+                                    { model | viewport = model.viewport |> Point.subtract deltaPan, panning = Nothing }
                                         |> pure
 
                         _ ->
@@ -920,10 +920,10 @@ view model =
 
                             Just ( origin, end ) ->
                                 let
-                                    panDist =
-                                        origin |> Point.subtract end
+                                    panDelta =
+                                        end |> Point.subtract origin
                                 in
-                                model.viewport |> Point.add panDist
+                                model.viewport |> Point.subtract panDelta
 
                     bgGrid : List (Svg Msg)
                     bgGrid =
