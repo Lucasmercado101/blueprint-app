@@ -3768,6 +3768,11 @@ getAllRoomsTopXAsSegments e =
             nextOneOnTheLeft ++ (Occupied highestRoom.boundingBox :: nextOneOnTheRight)
 
 
+listAnyIJ : (a -> a -> Bool) -> List a -> List a -> Bool
+listAnyIJ f l1 l2 =
+    List.any (\a -> List.any (\b -> f a b) l2) l1
+
+
 type MouseEventButton
     = Left
     | Middle
