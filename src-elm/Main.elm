@@ -2472,11 +2472,6 @@ tupleAdd ( x1, y1 ) ( x2, y2 ) =
 {- b - range <= a <= b + range -}
 
 
-numWithinRange : number -> number -> number -> Bool
-numWithinRange a b range =
-    b - range <= a && a <= b + range
-
-
 nbsp : String
 nbsp =
     "\u{00A0}"
