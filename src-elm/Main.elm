@@ -3768,8 +3768,24 @@ getAllRoomsTopXAsSegments e =
             nextOneOnTheLeft ++ (Occupied highestRoom.boundingBox :: nextOneOnTheRight)
 
 
-listAnyIJ : (a -> a -> Bool) -> List a -> List a -> Bool
-listAnyIJ f l1 l2 =
+areRoomsOverlapping : List Room -> List Room -> Bool
+areRoomsOverlapping a b =
+    List.any
+        (\room ->
+            List.any
+                (\otherRoom -> (room.id /= otherRoom.id) && Rect.isThereAnyOverlap room.boundingBox otherRoom.boundingBox)
+                b
+        )
+        a
+
+
+listAnyIJSame : (a -> a -> Bool) -> List a -> List a -> Bool
+listAnyIJSame f l1 l2 =
+    List.any (\a -> List.any (\b -> f a b) l2) l1
+
+
+listAnyIJDiff : (a -> b -> Bool) -> List a -> List b -> Bool
+listAnyIJDiff f l1 l2 =
     List.any (\a -> List.any (\b -> f a b) l2) l1
 
 
