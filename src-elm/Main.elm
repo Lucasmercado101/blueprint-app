@@ -333,8 +333,7 @@ update msg model =
                                 isOverlappingAnotherRoom : Bool
                                 isOverlappingAnotherRoom =
                                     model.rooms
-                                        |> List.map .boundingBox
-                                        |> List.any (Rect.isThereAnyOverlap sceneRectangle)
+                                        |> List.any (.boundingBox >> Rect.isThereAnyOverlap sceneRectangle)
                             in
                             changeMode (Draw (DraggingDraw { start = mouseMoveRelCoords, end = mouseMoveRelCoords, isOverlappingAnotherRoom = isOverlappingAnotherRoom }))
                                 |> pure
@@ -349,8 +348,7 @@ update msg model =
                                 isOverlappingAnotherRoom : Bool
                                 isOverlappingAnotherRoom =
                                     model.rooms
-                                        |> List.map .boundingBox
-                                        |> List.any (Rect.isThereAnyOverlap sceneRectangle)
+                                        |> List.any (.boundingBox >> Rect.isThereAnyOverlap sceneRectangle)
                             in
                             changeMode (Draw (DraggingDraw { start = start, end = mouseMoveRelCoords, isOverlappingAnotherRoom = isOverlappingAnotherRoom }))
                                 |> pure
