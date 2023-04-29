@@ -185,8 +185,14 @@ type PanState
 
 type SelectedRoom
     = NoRoomSelected
-    | RoomSelected RoomID (Maybe Resizable)
+    | RoomSelected { roomId : RoomID, resizableKind : ResizeRoom }
     | GroupSelected (List RoomID)
+
+
+type ResizeRoom
+    = CannotResize
+    | CanResize Resizable
+    | Resizing ( Resizable, { origin : Point, end : Point } )
 
 
 type HoveringOverOrDraggingRoom
@@ -244,6 +250,52 @@ update msg model =
 
         ignore =
             pure model
+
+        canResizeSelectedRoom : Maybe ( RoomID, Resizable )
+        canResizeSelectedRoom =
+            case model.mode of
+                Select { selected } ->
+                    case selected of
+                        RoomSelected { roomId, resizableKind } ->
+                            case resizableKind of
+                                CanResize resizable ->
+                                    Just ( roomId, resizable )
+
+                                _ ->
+                                    Nothing
+
+                        GroupSelected _ ->
+                            -- TODO:
+                            Nothing
+
+                        _ ->
+                            Nothing
+
+                _ ->
+                    Nothing
+
+        isResizingSelectedRoom : Maybe ( RoomID, Resizable, { origin : Point, end : Point } )
+        isResizingSelectedRoom =
+            case model.mode of
+                Select { selected } ->
+                    case selected of
+                        RoomSelected { roomId, resizableKind } ->
+                            case resizableKind of
+                                Resizing ( resizable, resPoints ) ->
+                                    Just ( roomId, resizable, resPoints )
+
+                                _ ->
+                                    Nothing
+
+                        GroupSelected _ ->
+                            -- TODO:
+                            Nothing
+
+                        _ ->
+                            Nothing
+
+                _ ->
+                    Nothing
     in
     case msg of
         DeleteMode ->
@@ -281,25 +333,40 @@ update msg model =
                                 DraggingDraw _ ->
                                     ignore
 
-                        Select { selected } ->
-                            let
-                                sceneMouseDownCoords =
-                                    mouseDownRelCoords |> Point.add model.viewport
-
-                                onARoom : Maybe RoomID
-                                onARoom =
-                                    model.rooms
-                                        |> getFirstRoom (sceneMouseDownCoords |> isOnRoom)
-                                        |> Maybe.map .id
-                            in
-                            (case onARoom of
-                                Just room ->
-                                    changeMode (Select { selected = selected, state = HoldingClickOnRoom room })
+                        Select { selected, state } ->
+                            case canResizeSelectedRoom of
+                                Just ( roomSelectedId, resKind ) ->
+                                    changeMode
+                                        (Select
+                                            { selected =
+                                                RoomSelected
+                                                    { roomId = roomSelectedId
+                                                    , resizableKind = Resizing ( resKind, { origin = mouseDownRelCoords, end = mouseDownRelCoords } )
+                                                    }
+                                            , state = state
+                                            }
+                                        )
+                                        |> pure
 
                                 Nothing ->
-                                    changeMode (Select { selected = selected, state = HoldingClickOutsideAnyRooms })
-                            )
-                                |> pure
+                                    let
+                                        sceneMouseDownCoords =
+                                            mouseDownRelCoords |> Point.add model.viewport
+
+                                        onARoom : Maybe RoomID
+                                        onARoom =
+                                            model.rooms
+                                                |> getFirstRoom (sceneMouseDownCoords |> isOnRoom)
+                                                |> Maybe.map .id
+                                    in
+                                    (case onARoom of
+                                        Just room ->
+                                            changeMode (Select { selected = selected, state = HoldingClickOnRoom room })
+
+                                        Nothing ->
+                                            changeMode (Select { selected = selected, state = HoldingClickOutsideAnyRooms })
+                                    )
+                                        |> pure
 
         MouseMove mouseEvent ->
             let
@@ -354,262 +421,279 @@ update msg model =
                                 |> pure
 
                 Select { selected, state } ->
-                    let
-                        deltaPan =
-                            case model.panning of
-                                Just ( origin, end ) ->
-                                    end |> Point.subtract origin
-
-                                Nothing ->
-                                    ( 0, 0 )
-
-                        sceneMouseMoveCoords =
-                            mouseMoveRelCoords
-                                |> Point.add model.viewport
-                                |> Point.subtract deltaPan
-
-                        roomImHoveringOver : Maybe RoomID
-                        roomImHoveringOver =
-                            model.rooms
-                                |> getFirstRoom (sceneMouseMoveCoords |> isOnRoom)
-                                |> Maybe.map .id
-
-                        checkIfCanResizeSelectedRoom : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-                        checkIfCanResizeSelectedRoom ( a, b ) =
-                            case a.mode of
-                                Select selectState ->
-                                    let
-                                        st =
-                                            selectState.state
-                                    in
-                                    ( { a
-                                        | mode =
-                                            Select
-                                                { selected =
-                                                    case selected of
-                                                        RoomSelected id _ ->
-                                                            let
-                                                                ( x1, y1 ) =
-                                                                    sceneMouseMoveCoords
-
-                                                                leeway =
-                                                                    15
-
-                                                                isMouseAroundTopSideOfRoom =
-                                                                    List.any
-                                                                        (\{ boundingBox } ->
-                                                                            (y1 |> inRangeInc (boundingBox.y1 - leeway) (boundingBox.y1 + leeway))
-                                                                                && (x1 |> inRangeInc (boundingBox.x1 + leeway) (boundingBox.x1 + boundingBox.width - leeway))
-                                                                        )
-                                                                        model.rooms
-
-                                                                isMouseAroundBottomSideOfRoom =
-                                                                    List.any
-                                                                        (\{ boundingBox } ->
-                                                                            (y1 |> inRangeInc (boundingBox.y1 + boundingBox.height - leeway) (boundingBox.y1 + boundingBox.height + leeway))
-                                                                                && (x1 |> inRangeInc (boundingBox.x1 + leeway) (boundingBox.x1 + boundingBox.width - leeway))
-                                                                        )
-                                                                        model.rooms
-
-                                                                isMouseAroundLeftSideOfRoom =
-                                                                    List.any
-                                                                        (\{ boundingBox } ->
-                                                                            (x1 |> inRangeInc (boundingBox.x1 - leeway) (boundingBox.x1 + leeway))
-                                                                                && (y1 |> inRangeInc (boundingBox.y1 + leeway) (boundingBox.y1 + boundingBox.height - leeway))
-                                                                        )
-                                                                        model.rooms
-
-                                                                isMouseAroundRIghtSideOfRoom =
-                                                                    List.any
-                                                                        (\{ boundingBox } ->
-                                                                            (x1 |> inRangeInc (boundingBox.x1 + boundingBox.width - leeway) (boundingBox.x1 + boundingBox.width + leeway))
-                                                                                && (y1 |> inRangeInc (boundingBox.y1 + leeway) (boundingBox.y1 + boundingBox.height - leeway))
-                                                                        )
-                                                                        model.rooms
-                                                            in
-                                                            RoomSelected id
-                                                                (if isMouseAroundTopSideOfRoom then
-                                                                    Just Top
-
-                                                                 else if isMouseAroundBottomSideOfRoom then
-                                                                    Just Bottom
-
-                                                                 else if isMouseAroundLeftSideOfRoom then
-                                                                    Just Left
-
-                                                                 else if isMouseAroundRIghtSideOfRoom then
-                                                                    Just Right
-
-                                                                 else
-                                                                    Nothing
-                                                                )
-
-                                                        GroupSelected ids ->
-                                                            GroupSelected ids
-
-                                                        NoRoomSelected ->
-                                                            NoRoomSelected
-                                                , state = st
-                                                }
-                                      }
-                                    , b
-                                    )
-
-                                _ ->
-                                    ( a, b )
-                    in
-                    (case state of
-                        NotHoveringOverRoom ->
-                            case roomImHoveringOver of
-                                Just room ->
-                                    changeMode (Select { selected = selected, state = HoveringOverRoom room })
-                                        |> pure
-
-                                Nothing ->
-                                    ignore
-
-                        ------------------------------------------
-                        HoldingClickOutsideAnyRooms ->
+                    case isResizingSelectedRoom of
+                        Just ( roomSelectedId, resKind, resPoints ) ->
                             changeMode
                                 (Select
-                                    { selected = selected
-                                    , state =
-                                        DraggingToSelectMany
-                                            { origin = mouseMoveRelCoords
-                                            , end = mouseMoveRelCoords
+                                    { selected =
+                                        RoomSelected
+                                            { roomId = roomSelectedId
+                                            , resizableKind = Resizing ( resKind, { origin = resPoints.origin, end = mouseMoveRelCoords } )
                                             }
+                                    , state = state
                                     }
                                 )
                                 |> pure
 
-                        DraggingToSelectMany { origin } ->
-                            changeMode
-                                (Select
-                                    { selected = NoRoomSelected
-                                    , state =
-                                        DraggingToSelectMany
-                                            { origin = origin
-                                            , end = mouseMoveRelCoords
-                                            }
-                                    }
-                                )
-                                |> pure
-
-                        DraggingRooms { rooms, dragOrigin, dragEnd } ->
+                        Nothing ->
                             let
-                                deltaDrag : Point
-                                deltaDrag =
-                                    dragEnd |> Point.subtract dragOrigin
+                                deltaPan =
+                                    case model.panning of
+                                        Just ( origin, end ) ->
+                                            end |> Point.subtract origin
 
-                                roomsMinusDragging =
-                                    model.rooms |> List.filter (\e -> not <| List.any (\l -> e.id == l) rooms)
+                                        Nothing ->
+                                            ( 0, 0 )
 
-                                anySelectedRoomIsOverlappingARoom : Bool
-                                anySelectedRoomIsOverlappingARoom =
-                                    listAnyIJDiff
-                                        (\r id -> (r.id == id) && isRoomOverlappingAnyRooms roomsMinusDragging (r |> roomAddPosition deltaDrag))
-                                        model.rooms
-                                        rooms
+                                sceneMouseMoveCoords =
+                                    mouseMoveRelCoords
+                                        |> Point.add model.viewport
+                                        |> Point.subtract deltaPan
+
+                                roomImHoveringOver : Maybe RoomID
+                                roomImHoveringOver =
+                                    model.rooms
+                                        |> getFirstRoom (sceneMouseMoveCoords |> isOnRoom)
+                                        |> Maybe.map .id
+
+                                checkIfCanResizeSelectedRoom : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+                                checkIfCanResizeSelectedRoom ( a, b ) =
+                                    case a.mode of
+                                        Select selectState ->
+                                            let
+                                                st =
+                                                    selectState.state
+                                            in
+                                            ( { a
+                                                | mode =
+                                                    Select
+                                                        { selected =
+                                                            case selected of
+                                                                RoomSelected { roomId } ->
+                                                                    let
+                                                                        ( x1, y1 ) =
+                                                                            sceneMouseMoveCoords
+
+                                                                        leeway =
+                                                                            15
+
+                                                                        isMouseAroundTopSideOfRoom =
+                                                                            List.any
+                                                                                (\{ boundingBox } ->
+                                                                                    (y1 |> inRangeInc (boundingBox.y1 - leeway) (boundingBox.y1 + leeway))
+                                                                                        && (x1 |> inRangeInc (boundingBox.x1 + leeway) (boundingBox.x1 + boundingBox.width - leeway))
+                                                                                )
+                                                                                model.rooms
+
+                                                                        isMouseAroundBottomSideOfRoom =
+                                                                            List.any
+                                                                                (\{ boundingBox } ->
+                                                                                    (y1 |> inRangeInc (boundingBox.y1 + boundingBox.height - leeway) (boundingBox.y1 + boundingBox.height + leeway))
+                                                                                        && (x1 |> inRangeInc (boundingBox.x1 + leeway) (boundingBox.x1 + boundingBox.width - leeway))
+                                                                                )
+                                                                                model.rooms
+
+                                                                        isMouseAroundLeftSideOfRoom =
+                                                                            List.any
+                                                                                (\{ boundingBox } ->
+                                                                                    (x1 |> inRangeInc (boundingBox.x1 - leeway) (boundingBox.x1 + leeway))
+                                                                                        && (y1 |> inRangeInc (boundingBox.y1 + leeway) (boundingBox.y1 + boundingBox.height - leeway))
+                                                                                )
+                                                                                model.rooms
+
+                                                                        isMouseAroundRightSideOfRoom =
+                                                                            List.any
+                                                                                (\{ boundingBox } ->
+                                                                                    (x1 |> inRangeInc (boundingBox.x1 + boundingBox.width - leeway) (boundingBox.x1 + boundingBox.width + leeway))
+                                                                                        && (y1 |> inRangeInc (boundingBox.y1 + leeway) (boundingBox.y1 + boundingBox.height - leeway))
+                                                                                )
+                                                                                model.rooms
+                                                                    in
+                                                                    RoomSelected
+                                                                        { roomId = roomId
+                                                                        , resizableKind =
+                                                                            if isMouseAroundTopSideOfRoom then
+                                                                                CanResize Top
+
+                                                                            else if isMouseAroundBottomSideOfRoom then
+                                                                                CanResize Bottom
+
+                                                                            else if isMouseAroundLeftSideOfRoom then
+                                                                                CanResize Left
+
+                                                                            else if isMouseAroundRightSideOfRoom then
+                                                                                CanResize Right
+
+                                                                            else
+                                                                                CannotResize
+                                                                        }
+
+                                                                GroupSelected ids ->
+                                                                    GroupSelected ids
+
+                                                                NoRoomSelected ->
+                                                                    NoRoomSelected
+                                                        , state = st
+                                                        }
+                                              }
+                                            , b
+                                            )
+
+                                        _ ->
+                                            ( a, b )
                             in
-                            changeMode
-                                (Select
-                                    { selected = selected
-                                    , state =
-                                        DraggingRooms
-                                            { rooms = rooms
-                                            , dragOrigin = dragOrigin
-                                            , dragEnd = mouseMoveRelCoords |> toGlobal model.viewport
-                                            , isOverlappingAnotherRoom = anySelectedRoomIsOverlappingARoom
+                            (case state of
+                                NotHoveringOverRoom ->
+                                    case roomImHoveringOver of
+                                        Just room ->
+                                            changeMode (Select { selected = selected, state = HoveringOverRoom room })
+                                                |> pure
+
+                                        Nothing ->
+                                            ignore
+
+                                ------------------------------------------
+                                HoldingClickOutsideAnyRooms ->
+                                    changeMode
+                                        (Select
+                                            { selected = selected
+                                            , state =
+                                                DraggingToSelectMany
+                                                    { origin = mouseMoveRelCoords
+                                                    , end = mouseMoveRelCoords
+                                                    }
                                             }
-                                    }
-                                )
-                                |> pure
-
-                        ------------------------------------------
-                        HoveringOverRoom _ ->
-                            case roomImHoveringOver of
-                                Just room ->
-                                    changeMode (Select { selected = selected, state = HoveringOverRoom room })
+                                        )
                                         |> pure
 
-                                Nothing ->
-                                    changeMode (Select { selected = selected, state = NotHoveringOverRoom })
+                                DraggingToSelectMany { origin } ->
+                                    changeMode
+                                        (Select
+                                            { selected = NoRoomSelected
+                                            , state =
+                                                DraggingToSelectMany
+                                                    { origin = origin
+                                                    , end = mouseMoveRelCoords
+                                                    }
+                                            }
+                                        )
                                         |> pure
 
-                        HoldingClickOnRoom room ->
-                            let
-                                draggingSingleRoom : ( Model, Cmd Msg )
-                                draggingSingleRoom =
+                                DraggingRooms { rooms, dragOrigin, dragEnd } ->
+                                    let
+                                        deltaDrag : Point
+                                        deltaDrag =
+                                            dragEnd |> Point.subtract dragOrigin
+
+                                        roomsMinusDragging =
+                                            model.rooms |> List.filter (\e -> not <| List.any (\l -> e.id == l) rooms)
+
+                                        anySelectedRoomIsOverlappingARoom : Bool
+                                        anySelectedRoomIsOverlappingARoom =
+                                            listAnyIJDiff
+                                                (\r id -> (r.id == id) && isRoomOverlappingAnyRooms roomsMinusDragging (r |> roomAddPosition deltaDrag))
+                                                model.rooms
+                                                rooms
+                                    in
+                                    changeMode
+                                        (Select
+                                            { selected = selected
+                                            , state =
+                                                DraggingRooms
+                                                    { rooms = rooms
+                                                    , dragOrigin = dragOrigin
+                                                    , dragEnd = mouseMoveRelCoords |> toGlobal model.viewport
+                                                    , isOverlappingAnotherRoom = anySelectedRoomIsOverlappingARoom
+                                                    }
+                                            }
+                                        )
+                                        |> pure
+
+                                ------------------------------------------
+                                HoveringOverRoom _ ->
+                                    case roomImHoveringOver of
+                                        Just room ->
+                                            changeMode (Select { selected = selected, state = HoveringOverRoom room })
+                                                |> pure
+
+                                        Nothing ->
+                                            changeMode (Select { selected = selected, state = NotHoveringOverRoom })
+                                                |> pure
+
+                                HoldingClickOnRoom room ->
+                                    let
+                                        draggingSingleRoom : ( Model, Cmd Msg )
+                                        draggingSingleRoom =
+                                            changeMode
+                                                (Select
+                                                    { selected = selected
+                                                    , state =
+                                                        DraggingRoom
+                                                            { room = room
+                                                            , dragOrigin = sceneMouseMoveCoords
+                                                            , dragEnd = sceneMouseMoveCoords
+                                                            , isOverlappingAnotherRoom = False
+                                                            }
+                                                    }
+                                                )
+                                                |> pure
+                                    in
+                                    case selected of
+                                        GroupSelected rooms ->
+                                            if List.member room rooms then
+                                                changeMode
+                                                    (Select
+                                                        { selected = selected
+                                                        , state =
+                                                            DraggingRooms
+                                                                { rooms = rooms
+                                                                , dragEnd = sceneMouseMoveCoords
+                                                                , dragOrigin = sceneMouseMoveCoords
+                                                                , isOverlappingAnotherRoom = False
+                                                                }
+                                                        }
+                                                    )
+                                                    |> pure
+
+                                            else
+                                                draggingSingleRoom
+
+                                        RoomSelected _ ->
+                                            draggingSingleRoom
+
+                                        NoRoomSelected ->
+                                            draggingSingleRoom
+
+                                DraggingRoom { room, dragOrigin, dragEnd } ->
+                                    let
+                                        deltaDrag : Point
+                                        deltaDrag =
+                                            dragEnd |> Point.subtract dragOrigin
+
+                                        roomsMinusDraggingRoom =
+                                            model.rooms |> List.filter (\e -> e.id /= room)
+
+                                        selectedRoomIsOverlappingAnyRoom : Bool
+                                        selectedRoomIsOverlappingAnyRoom =
+                                            List.any
+                                                (\r -> (r.id == room) && isRoomOverlappingAnyRooms roomsMinusDraggingRoom (r |> roomAddPosition deltaDrag))
+                                                model.rooms
+                                    in
                                     changeMode
                                         (Select
                                             { selected = selected
                                             , state =
                                                 DraggingRoom
                                                     { room = room
-                                                    , dragOrigin = sceneMouseMoveCoords
+                                                    , dragOrigin = dragOrigin
                                                     , dragEnd = sceneMouseMoveCoords
-                                                    , isOverlappingAnotherRoom = False
+                                                    , isOverlappingAnotherRoom = selectedRoomIsOverlappingAnyRoom
                                                     }
                                             }
                                         )
                                         |> pure
-                            in
-                            case selected of
-                                GroupSelected rooms ->
-                                    if List.member room rooms then
-                                        changeMode
-                                            (Select
-                                                { selected = selected
-                                                , state =
-                                                    DraggingRooms
-                                                        { rooms = rooms
-                                                        , dragEnd = sceneMouseMoveCoords
-                                                        , dragOrigin = sceneMouseMoveCoords
-                                                        , isOverlappingAnotherRoom = False
-                                                        }
-                                                }
-                                            )
-                                            |> pure
-
-                                    else
-                                        draggingSingleRoom
-
-                                RoomSelected _ _ ->
-                                    draggingSingleRoom
-
-                                NoRoomSelected ->
-                                    draggingSingleRoom
-
-                        DraggingRoom { room, dragOrigin, dragEnd } ->
-                            let
-                                deltaDrag : Point
-                                deltaDrag =
-                                    dragEnd |> Point.subtract dragOrigin
-
-                                roomsMinusDraggingRoom =
-                                    model.rooms |> List.filter (\e -> e.id /= room)
-
-                                selectedRoomIsOverlappingAnyRoom : Bool
-                                selectedRoomIsOverlappingAnyRoom =
-                                    List.any
-                                        (\r -> (r.id == room) && isRoomOverlappingAnyRooms roomsMinusDraggingRoom (r |> roomAddPosition deltaDrag))
-                                        model.rooms
-                            in
-                            changeMode
-                                (Select
-                                    { selected = selected
-                                    , state =
-                                        DraggingRoom
-                                            { room = room
-                                            , dragOrigin = dragOrigin
-                                            , dragEnd = sceneMouseMoveCoords
-                                            , isOverlappingAnotherRoom = selectedRoomIsOverlappingAnyRoom
-                                            }
-                                    }
-                                )
-                                |> pure
-                    )
-                        |> checkIfCanResizeSelectedRoom
+                            )
+                                |> checkIfCanResizeSelectedRoom
             )
                 |> (\( a, b ) -> ( pan a, b ))
 
@@ -673,7 +757,7 @@ update msg model =
                                                         else
                                                             case roomsSelected of
                                                                 [ room ] ->
-                                                                    RoomSelected room.id Nothing
+                                                                    RoomSelected { roomId = room.id, resizableKind = CannotResize }
 
                                                                 _ ->
                                                                     GroupSelected (roomsSelected |> List.map .id)
@@ -690,18 +774,22 @@ update msg model =
                                                 (Select
                                                     { selected =
                                                         case selected of
-                                                            RoomSelected roomImEditing canResize ->
+                                                            RoomSelected r ->
+                                                                let
+                                                                    roomImEditing =
+                                                                        r.roomId
+                                                                in
                                                                 if roomImEditing == roomId then
                                                                     NoRoomSelected
 
                                                                 else
-                                                                    RoomSelected roomId canResize
+                                                                    RoomSelected { roomId = roomId, resizableKind = r.resizableKind }
 
                                                             GroupSelected _ ->
-                                                                RoomSelected roomId Nothing
+                                                                RoomSelected { roomId = roomId, resizableKind = CannotResize }
 
                                                             NoRoomSelected ->
-                                                                RoomSelected roomId Nothing
+                                                                RoomSelected { roomId = roomId, resizableKind = CannotResize }
                                                     , state = HoveringOverRoom roomId
                                                     }
                                                 )
@@ -937,12 +1025,12 @@ view model =
                     case model.mode of
                         Select { selected } ->
                             case selected of
-                                RoomSelected _ resizable ->
-                                    case resizable of
-                                        Just _ ->
+                                RoomSelected { resizableKind } ->
+                                    case resizableKind of
+                                        CanResize _ ->
                                             True
 
-                                        Nothing ->
+                                        _ ->
                                             False
 
                                 _ ->
@@ -959,9 +1047,9 @@ view model =
                     (case model.mode of
                         Select { selected } ->
                             case selected of
-                                RoomSelected _ resizable ->
-                                    case resizable of
-                                        Just resKind ->
+                                RoomSelected { resizableKind } ->
+                                    case resizableKind of
+                                        CanResize resKind ->
                                             case resKind of
                                                 Top ->
                                                     "row-resize"
@@ -975,7 +1063,7 @@ view model =
                                                 Right ->
                                                     "col-resize"
 
-                                        Nothing ->
+                                        _ ->
                                             ""
 
                                 _ ->
@@ -1252,8 +1340,8 @@ view model =
                                     NoRoomSelected ->
                                         initialRooms
 
-                                    RoomSelected room _ ->
-                                        initialRooms |> List.filter (\r -> r.id /= room)
+                                    RoomSelected { roomId } ->
+                                        initialRooms |> List.filter (\r -> r.id /= roomId)
 
                                     GroupSelected rooms ->
                                         initialRooms
