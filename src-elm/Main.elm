@@ -775,8 +775,35 @@ update msg model =
                                                                                     , y1 = y1
                                                                                 }
 
+                                                                            Top ->
+                                                                                let
+                                                                                    y1 =
+                                                                                        bBox.y1 + Point.y deltaResizeDrag
+
+                                                                                    newY1 =
+                                                                                        if y1 >= bBox.y1 + bBox.height then
+                                                                                            bBox.y1 + bBox.height - 1
+
+                                                                                        else
+                                                                                            y1
+
+                                                                                    h =
+                                                                                        bBox.height - Point.y deltaResizeDrag
+
+                                                                                    newH =
+                                                                                        if h <= 1 then
+                                                                                            abs (bBox.height - Point.y deltaResizeDrag)
+
+                                                                                        else
+                                                                                            h
+                                                                                in
+                                                                                { bBox
+                                                                                    | height = newH
+                                                                                    , y1 = newY1
+                                                                                }
+
                                                                             _ ->
-                                                                                { bBox | height = 10 }
+                                                                                { bBox | height = 50 }
                                                                 in
                                                                 { r | boundingBox = newBBox }
 
@@ -1462,8 +1489,35 @@ view model =
                                                                                     , y1 = y1
                                                                                 }
 
+                                                                            Top ->
+                                                                                let
+                                                                                    y1 =
+                                                                                        bBox.y1 + Point.y deltaResizeDrag
+
+                                                                                    newY1 =
+                                                                                        if y1 >= bBox.y1 + bBox.height then
+                                                                                            bBox.y1 + bBox.height - 1
+
+                                                                                        else
+                                                                                            y1
+
+                                                                                    h =
+                                                                                        bBox.height - Point.y deltaResizeDrag
+
+                                                                                    newH =
+                                                                                        if h <= 1 then
+                                                                                            abs (bBox.height - Point.y deltaResizeDrag)
+
+                                                                                        else
+                                                                                            h
+                                                                                in
+                                                                                { bBox
+                                                                                    | height = newH
+                                                                                    , y1 = newY1
+                                                                                }
+
                                                                             _ ->
-                                                                                { bBox | height = 10 }
+                                                                                { bBox | height = 50 }
                                                                 in
                                                                 { r | boundingBox = newBBox }
 
