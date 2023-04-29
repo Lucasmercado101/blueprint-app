@@ -1280,7 +1280,7 @@ view model =
 
                     topMostRects =
                         case model.mode of
-                            Select { state } ->
+                            Select { state, selected } ->
                                 case state of
                                     DraggingRoom { room, dragOrigin, dragEnd } ->
                                         getAllRoomsTopXAsSegments
@@ -1311,7 +1311,145 @@ view model =
                                             )
 
                                     _ ->
-                                        getAllRoomsTopXAsSegments model.rooms
+                                        let
+                                            -- TODO: refactor this function into as standalone
+                                            beingResizedRooms =
+                                                case selected of
+                                                    RoomSelected { roomId, resizableKind } ->
+                                                        case resizableKind of
+                                                            Resizing ( kind, resizablePoints ) ->
+                                                                let
+                                                                    { origin, end } =
+                                                                        resizablePoints
+
+                                                                    deltaResizeDrag =
+                                                                        end |> Point.subtract origin
+                                                                in
+                                                                model.rooms
+                                                                    |> List.map
+                                                                        (\r ->
+                                                                            if r.id == roomId then
+                                                                                let
+                                                                                    bBox =
+                                                                                        r.boundingBox
+
+                                                                                    newBBox =
+                                                                                        case kind of
+                                                                                            Bottom ->
+                                                                                                let
+                                                                                                    h =
+                                                                                                        bBox.height + Point.y deltaResizeDrag
+
+                                                                                                    newH =
+                                                                                                        if h <= 1 then
+                                                                                                            abs (bBox.height + Point.y deltaResizeDrag)
+
+                                                                                                        else
+                                                                                                            h
+
+                                                                                                    y1 =
+                                                                                                        if h <= 0 then
+                                                                                                            bBox.y1 + h
+
+                                                                                                        else
+                                                                                                            bBox.y1
+                                                                                                in
+                                                                                                { bBox
+                                                                                                    | height = newH
+                                                                                                    , y1 = y1
+                                                                                                }
+
+                                                                                            Top ->
+                                                                                                let
+                                                                                                    y1 =
+                                                                                                        bBox.y1 + Point.y deltaResizeDrag
+
+                                                                                                    newY1 =
+                                                                                                        if y1 >= bBox.y1 + bBox.height then
+                                                                                                            bBox.y1 + bBox.height - 1
+
+                                                                                                        else
+                                                                                                            y1
+
+                                                                                                    h =
+                                                                                                        bBox.height - Point.y deltaResizeDrag
+
+                                                                                                    newH =
+                                                                                                        if h <= 1 then
+                                                                                                            abs (bBox.height - Point.y deltaResizeDrag)
+
+                                                                                                        else
+                                                                                                            h
+                                                                                                in
+                                                                                                { bBox
+                                                                                                    | height = newH
+                                                                                                    , y1 = newY1
+                                                                                                }
+
+                                                                                            Left ->
+                                                                                                let
+                                                                                                    x1 =
+                                                                                                        bBox.x1 + Point.x deltaResizeDrag
+
+                                                                                                    newX1 =
+                                                                                                        if x1 >= bBox.x1 + bBox.width then
+                                                                                                            bBox.x1 + bBox.width - 1
+
+                                                                                                        else
+                                                                                                            x1
+
+                                                                                                    w =
+                                                                                                        bBox.width - Point.x deltaResizeDrag
+
+                                                                                                    newW =
+                                                                                                        if w <= 1 then
+                                                                                                            abs (bBox.width - Point.x deltaResizeDrag)
+
+                                                                                                        else
+                                                                                                            w
+                                                                                                in
+                                                                                                { bBox
+                                                                                                    | width = newW
+                                                                                                    , x1 = newX1
+                                                                                                }
+
+                                                                                            Right ->
+                                                                                                let
+                                                                                                    w =
+                                                                                                        bBox.width + Point.x deltaResizeDrag
+
+                                                                                                    newW =
+                                                                                                        if w <= 1 then
+                                                                                                            abs (bBox.width + Point.x deltaResizeDrag)
+
+                                                                                                        else
+                                                                                                            w
+
+                                                                                                    x1 =
+                                                                                                        if w <= 0 then
+                                                                                                            bBox.x1 + w
+
+                                                                                                        else
+                                                                                                            bBox.x1
+                                                                                                in
+                                                                                                { bBox
+                                                                                                    | width = newW
+                                                                                                    , x1 = x1
+                                                                                                }
+                                                                                in
+                                                                                { r | boundingBox = newBBox }
+
+                                                                            else
+                                                                                r
+                                                                        )
+
+                                                            _ ->
+                                                                model.rooms
+
+                                                    _ ->
+                                                        model.rooms
+                                        in
+                                        getAllRoomsTopXAsSegments beingResizedRooms
 
                             _ ->
                                 getAllRoomsTopXAsSegments model.rooms
