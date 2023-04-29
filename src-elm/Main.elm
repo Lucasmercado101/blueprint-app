@@ -428,6 +428,8 @@ update msg model =
                                     { selected =
                                         RoomSelected
                                             { roomId = roomSelectedId
+
+                                            -- handle negative
                                             , resizableKind = Resizing ( resKind, { origin = resPoints.origin, end = mouseMoveRelCoords } )
                                             }
                                     , state = state
@@ -729,157 +731,197 @@ update msg model =
                             in
                             case model.mode of
                                 Select { selected, state } ->
-                                    case state of
-                                        NotHoveringOverRoom ->
-                                            ignore
-
-                                        HoldingClickOutsideAnyRooms ->
-                                            changeMode (Select { selected = NoRoomSelected, state = NotHoveringOverRoom })
-                                                |> pure
-
-                                        DraggingToSelectMany { origin, end } ->
-                                            let
-                                                selectArea : Rectangle
-                                                selectArea =
-                                                    pointsToRectangle (origin |> Point.add model.viewport) (end |> Point.add model.viewport)
-
-                                                roomsSelected : List Room
-                                                roomsSelected =
-                                                    model.rooms
-                                                        |> List.filter (.boundingBox >> Rect.isInside selectArea)
-                                            in
-                                            changeMode
-                                                (Select
-                                                    { selected =
-                                                        if List.isEmpty roomsSelected then
-                                                            NoRoomSelected
-
-                                                        else
-                                                            case roomsSelected of
-                                                                [ room ] ->
-                                                                    RoomSelected { roomId = room.id, resizableKind = CannotResize }
-
-                                                                _ ->
-                                                                    GroupSelected (roomsSelected |> List.map .id)
-                                                    , state = NotHoveringOverRoom
-                                                    }
-                                                )
-                                                |> pure
-
-                                        HoveringOverRoom _ ->
-                                            ignore
-
-                                        HoldingClickOnRoom roomId ->
-                                            changeMode
-                                                (Select
-                                                    { selected =
-                                                        case selected of
-                                                            RoomSelected r ->
+                                    case isResizingSelectedRoom of
+                                        Just ( roomImResizing, resKind, resPoints ) ->
+                                            { model
+                                                | rooms =
+                                                    List.map
+                                                        (\r ->
+                                                            if r.id == roomImResizing then
                                                                 let
-                                                                    roomImEditing =
-                                                                        r.roomId
+                                                                    bBox =
+                                                                        r.boundingBox
+
+                                                                    { origin, end } =
+                                                                        resPoints
+
+                                                                    deltaResizeDrag =
+                                                                        end |> Point.subtract origin
+
+                                                                    newBBox =
+                                                                        case resKind of
+                                                                            Bottom ->
+                                                                                { bBox | height = bBox.height + Point.y deltaResizeDrag }
+
+                                                                            _ ->
+                                                                                { bBox | height = 10 }
                                                                 in
-                                                                if roomImEditing == roomId then
-                                                                    NoRoomSelected
+                                                                { r | boundingBox = newBBox }
 
-                                                                else
-                                                                    RoomSelected { roomId = roomId, resizableKind = r.resizableKind }
-
-                                                            GroupSelected _ ->
-                                                                RoomSelected { roomId = roomId, resizableKind = CannotResize }
-
-                                                            NoRoomSelected ->
-                                                                RoomSelected { roomId = roomId, resizableKind = CannotResize }
-                                                    , state = HoveringOverRoom roomId
-                                                    }
-                                                )
-                                                |> pure
-
-                                        DraggingRoom { room, dragOrigin, dragEnd, isOverlappingAnotherRoom } ->
-                                            { model
-                                                | rooms =
-                                                    if isOverlappingAnotherRoom then
+                                                            else
+                                                                r
+                                                        )
                                                         model.rooms
-
-                                                    else
-                                                        model.rooms
-                                                            |> List.map
-                                                                (\r ->
-                                                                    if r.id == room then
-                                                                        let
-                                                                            deltaDrag : Point
-                                                                            deltaDrag =
-                                                                                dragEnd |> Point.subtract dragOrigin
-
-                                                                            newDraggedRoom =
-                                                                                r |> roomAddPosition deltaDrag
-
-                                                                            draggedRoomAfterSnapping : Room
-                                                                            draggedRoomAfterSnapping =
-                                                                                handleSnapping newDraggedRoom (model.rooms |> List.filter (\l -> l.id /= room))
-                                                                                    |> handleTranslateRoomToSnappedPosition newDraggedRoom
-                                                                        in
-                                                                        draggedRoomAfterSnapping
-
-                                                                    else
-                                                                        r
-                                                                )
-                                                , mode = Select { selected = selected, state = HoveringOverRoom room }
-                                            }
-                                                |> pure
-
-                                        DraggingRooms { rooms, dragOrigin, dragEnd } ->
-                                            let
-                                                deltaDrag =
-                                                    dragEnd |> Point.subtract dragOrigin
-
-                                                globalMouseUpCoords =
-                                                    mouseUpRelCoords |> toGlobal model.viewport
-
-                                                roomImHoveringOver : Maybe RoomID
-                                                roomImHoveringOver =
-                                                    model.rooms
-                                                        |> getFirstRoom (globalMouseUpCoords |> isOnRoom)
-                                                        |> Maybe.map .id
-
-                                                roomsMinusDragging =
-                                                    model.rooms |> List.filter (\e -> not <| List.any (\l -> e.id == l) rooms)
-
-                                                anySelectedRoomIsOverlappingARoom : Bool
-                                                anySelectedRoomIsOverlappingARoom =
-                                                    listAnyIJDiff
-                                                        (\r id -> (r.id == id) && isRoomOverlappingAnyRooms roomsMinusDragging (r |> roomAddPosition deltaDrag))
-                                                        model.rooms
-                                                        rooms
-                                            in
-                                            { model
-                                                | rooms =
-                                                    if anySelectedRoomIsOverlappingARoom then
-                                                        model.rooms
-
-                                                    else
-                                                        model.rooms
-                                                            |> List.map
-                                                                (\r ->
-                                                                    if List.any (\e -> r.id == e) rooms then
-                                                                        r |> roomAddPosition deltaDrag
-
-                                                                    else
-                                                                        r
-                                                                )
                                                 , mode =
                                                     Select
-                                                        { selected = selected
-                                                        , state =
-                                                            case roomImHoveringOver of
-                                                                Just r ->
-                                                                    HoveringOverRoom r
-
-                                                                Nothing ->
-                                                                    NotHoveringOverRoom
+                                                        { selected = RoomSelected { roomId = roomImResizing, resizableKind = CanResize resKind }
+                                                        , state = state
                                                         }
                                             }
                                                 |> pure
+
+                                        Nothing ->
+                                            case state of
+                                                NotHoveringOverRoom ->
+                                                    ignore
+
+                                                HoldingClickOutsideAnyRooms ->
+                                                    changeMode (Select { selected = NoRoomSelected, state = NotHoveringOverRoom })
+                                                        |> pure
+
+                                                DraggingToSelectMany { origin, end } ->
+                                                    let
+                                                        selectArea : Rectangle
+                                                        selectArea =
+                                                            pointsToRectangle (origin |> Point.add model.viewport) (end |> Point.add model.viewport)
+
+                                                        roomsSelected : List Room
+                                                        roomsSelected =
+                                                            model.rooms
+                                                                |> List.filter (.boundingBox >> Rect.isInside selectArea)
+                                                    in
+                                                    changeMode
+                                                        (Select
+                                                            { selected =
+                                                                if List.isEmpty roomsSelected then
+                                                                    NoRoomSelected
+
+                                                                else
+                                                                    case roomsSelected of
+                                                                        [ room ] ->
+                                                                            RoomSelected { roomId = room.id, resizableKind = CannotResize }
+
+                                                                        _ ->
+                                                                            GroupSelected (roomsSelected |> List.map .id)
+                                                            , state = NotHoveringOverRoom
+                                                            }
+                                                        )
+                                                        |> pure
+
+                                                HoveringOverRoom _ ->
+                                                    ignore
+
+                                                HoldingClickOnRoom roomId ->
+                                                    changeMode
+                                                        (Select
+                                                            { selected =
+                                                                case selected of
+                                                                    RoomSelected r ->
+                                                                        let
+                                                                            roomImEditing =
+                                                                                r.roomId
+                                                                        in
+                                                                        if roomImEditing == roomId then
+                                                                            NoRoomSelected
+
+                                                                        else
+                                                                            RoomSelected { roomId = roomId, resizableKind = r.resizableKind }
+
+                                                                    GroupSelected _ ->
+                                                                        RoomSelected { roomId = roomId, resizableKind = CannotResize }
+
+                                                                    NoRoomSelected ->
+                                                                        RoomSelected { roomId = roomId, resizableKind = CannotResize }
+                                                            , state = HoveringOverRoom roomId
+                                                            }
+                                                        )
+                                                        |> pure
+
+                                                DraggingRoom { room, dragOrigin, dragEnd, isOverlappingAnotherRoom } ->
+                                                    { model
+                                                        | rooms =
+                                                            if isOverlappingAnotherRoom then
+                                                                model.rooms
+
+                                                            else
+                                                                model.rooms
+                                                                    |> List.map
+                                                                        (\r ->
+                                                                            if r.id == room then
+                                                                                let
+                                                                                    deltaDrag : Point
+                                                                                    deltaDrag =
+                                                                                        dragEnd |> Point.subtract dragOrigin
+
+                                                                                    newDraggedRoom =
+                                                                                        r |> roomAddPosition deltaDrag
+
+                                                                                    draggedRoomAfterSnapping : Room
+                                                                                    draggedRoomAfterSnapping =
+                                                                                        handleSnapping newDraggedRoom (model.rooms |> List.filter (\l -> l.id /= room))
+                                                                                            |> handleTranslateRoomToSnappedPosition newDraggedRoom
+                                                                                in
+                                                                                draggedRoomAfterSnapping
+
+                                                                            else
+                                                                                r
+                                                                        )
+                                                        , mode = Select { selected = selected, state = HoveringOverRoom room }
+                                                    }
+                                                        |> pure
+
+                                                DraggingRooms { rooms, dragOrigin, dragEnd } ->
+                                                    let
+                                                        deltaDrag =
+                                                            dragEnd |> Point.subtract dragOrigin
+
+                                                        globalMouseUpCoords =
+                                                            mouseUpRelCoords |> toGlobal model.viewport
+
+                                                        roomImHoveringOver : Maybe RoomID
+                                                        roomImHoveringOver =
+                                                            model.rooms
+                                                                |> getFirstRoom (globalMouseUpCoords |> isOnRoom)
+                                                                |> Maybe.map .id
+
+                                                        roomsMinusDragging =
+                                                            model.rooms |> List.filter (\e -> not <| List.any (\l -> e.id == l) rooms)
+
+                                                        anySelectedRoomIsOverlappingARoom : Bool
+                                                        anySelectedRoomIsOverlappingARoom =
+                                                            listAnyIJDiff
+                                                                (\r id -> (r.id == id) && isRoomOverlappingAnyRooms roomsMinusDragging (r |> roomAddPosition deltaDrag))
+                                                                model.rooms
+                                                                rooms
+                                                    in
+                                                    { model
+                                                        | rooms =
+                                                            if anySelectedRoomIsOverlappingARoom then
+                                                                model.rooms
+
+                                                            else
+                                                                model.rooms
+                                                                    |> List.map
+                                                                        (\r ->
+                                                                            if List.any (\e -> r.id == e) rooms then
+                                                                                r |> roomAddPosition deltaDrag
+
+                                                                            else
+                                                                                r
+                                                                        )
+                                                        , mode =
+                                                            Select
+                                                                { selected = selected
+                                                                , state =
+                                                                    case roomImHoveringOver of
+                                                                        Just r ->
+                                                                            HoveringOverRoom r
+
+                                                                        Nothing ->
+                                                                            NotHoveringOverRoom
+                                                                }
+                                                    }
+                                                        |> pure
 
                                 Delete ->
                                     let
@@ -1020,18 +1062,21 @@ view model =
                         Just _ ->
                             True
 
-                canResize : Bool
-                canResize =
+                canOrIsResizing : Bool
+                canOrIsResizing =
                     case model.mode of
                         Select { selected } ->
                             case selected of
                                 RoomSelected { resizableKind } ->
                                     case resizableKind of
+                                        CannotResize ->
+                                            False
+
                                         CanResize _ ->
                                             True
 
-                                        _ ->
-                                            False
+                                        Resizing _ ->
+                                            True
 
                                 _ ->
                                     False
@@ -1042,7 +1087,7 @@ view model =
               if isPanning then
                 style "cursor" "grabbing"
 
-              else if canResize then
+              else if canOrIsResizing then
                 style "cursor"
                     (case model.mode of
                         Select { selected } ->
@@ -1050,6 +1095,20 @@ view model =
                                 RoomSelected { resizableKind } ->
                                     case resizableKind of
                                         CanResize resKind ->
+                                            case resKind of
+                                                Top ->
+                                                    "row-resize"
+
+                                                Bottom ->
+                                                    "row-resize"
+
+                                                Left ->
+                                                    "col-resize"
+
+                                                Right ->
+                                                    "col-resize"
+
+                                        Resizing ( resKind, _ ) ->
                                             case resKind of
                                                 Top ->
                                                     "row-resize"
@@ -1334,6 +1393,47 @@ view model =
 
                     Select { selected, state } ->
                         let
+                            transformRoomsBeingResized : List Room -> List Room
+                            transformRoomsBeingResized rooms =
+                                case selected of
+                                    RoomSelected { roomId, resizableKind } ->
+                                        case resizableKind of
+                                            Resizing ( kind, resizablePoints ) ->
+                                                let
+                                                    { origin, end } =
+                                                        resizablePoints
+
+                                                    deltaResizeDrag =
+                                                        end |> Point.subtract origin
+                                                in
+                                                rooms
+                                                    |> List.map
+                                                        (\r ->
+                                                            if r.id == roomId then
+                                                                let
+                                                                    bBox =
+                                                                        r.boundingBox
+
+                                                                    newBBox =
+                                                                        case kind of
+                                                                            Bottom ->
+                                                                                { bBox | height = bBox.height + Point.y deltaResizeDrag }
+
+                                                                            _ ->
+                                                                                { bBox | height = 10 }
+                                                                in
+                                                                { r | boundingBox = newBBox }
+
+                                                            else
+                                                                r
+                                                        )
+
+                                            _ ->
+                                                model.rooms
+
+                                    _ ->
+                                        rooms
+
                             noSelectedRooms : List Room -> List Room
                             noSelectedRooms initialRooms =
                                 case selected of
@@ -1350,6 +1450,7 @@ view model =
                             drawHighlightedRooms : List Room -> List (Svg Msg)
                             drawHighlightedRooms rooms =
                                 rooms
+                                    |> transformRoomsBeingResized
                                     |> List.map
                                         (\{ boundingBox } ->
                                             drawRect (boundingBox |> globalRectToRel)
