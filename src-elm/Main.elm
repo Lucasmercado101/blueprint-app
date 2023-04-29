@@ -185,7 +185,7 @@ type PanState
 
 type SelectedRoom
     = NoRoomSelected
-    | RoomSelected RoomID
+    | RoomSelected RoomID (Maybe Resizable)
     | GroupSelected (List RoomID)
 
 
@@ -373,8 +373,92 @@ update msg model =
                             model.rooms
                                 |> getFirstRoom (sceneMouseMoveCoords |> isOnRoom)
                                 |> Maybe.map .id
+
+                        checkIfCanResizeSelectedRoom : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+                        checkIfCanResizeSelectedRoom ( a, b ) =
+                            case a.mode of
+                                Select selectState ->
+                                    let
+                                        st =
+                                            selectState.state
+                                    in
+                                    ( { a
+                                        | mode =
+                                            Select
+                                                { selected =
+                                                    case selected of
+                                                        RoomSelected id _ ->
+                                                            let
+                                                                ( x1, y1 ) =
+                                                                    sceneMouseMoveCoords
+
+                                                                leeway =
+                                                                    15
+
+                                                                isMouseAroundTopSideOfRoom =
+                                                                    List.any
+                                                                        (\{ boundingBox } ->
+                                                                            (y1 |> inRangeInc (boundingBox.y1 - leeway) (boundingBox.y1 + leeway))
+                                                                                && (x1 |> inRangeInc (boundingBox.x1 + leeway) (boundingBox.x1 + boundingBox.width - leeway))
+                                                                        )
+                                                                        model.rooms
+
+                                                                isMouseAroundBottomSideOfRoom =
+                                                                    List.any
+                                                                        (\{ boundingBox } ->
+                                                                            (y1 |> inRangeInc (boundingBox.y1 + boundingBox.height - leeway) (boundingBox.y1 + boundingBox.height + leeway))
+                                                                                && (x1 |> inRangeInc (boundingBox.x1 + leeway) (boundingBox.x1 + boundingBox.width - leeway))
+                                                                        )
+                                                                        model.rooms
+
+                                                                isMouseAroundLeftSideOfRoom =
+                                                                    List.any
+                                                                        (\{ boundingBox } ->
+                                                                            (x1 |> inRangeInc (boundingBox.x1 - leeway) (boundingBox.x1 + leeway))
+                                                                                && (y1 |> inRangeInc (boundingBox.y1 + leeway) (boundingBox.y1 + boundingBox.height - leeway))
+                                                                        )
+                                                                        model.rooms
+
+                                                                isMouseAroundRIghtSideOfRoom =
+                                                                    List.any
+                                                                        (\{ boundingBox } ->
+                                                                            (x1 |> inRangeInc (boundingBox.x1 + boundingBox.width - leeway) (boundingBox.x1 + boundingBox.width + leeway))
+                                                                                && (y1 |> inRangeInc (boundingBox.y1 + leeway) (boundingBox.y1 + boundingBox.height - leeway))
+                                                                        )
+                                                                        model.rooms
+                                                            in
+                                                            RoomSelected id
+                                                                (if isMouseAroundTopSideOfRoom then
+                                                                    Just Top
+
+                                                                 else if isMouseAroundBottomSideOfRoom then
+                                                                    Just Bottom
+
+                                                                 else if isMouseAroundLeftSideOfRoom then
+                                                                    Just Left
+
+                                                                 else if isMouseAroundRIghtSideOfRoom then
+                                                                    Just Right
+
+                                                                 else
+                                                                    Nothing
+                                                                )
+
+                                                        GroupSelected ids ->
+                                                            GroupSelected ids
+
+                                                        NoRoomSelected ->
+                                                            NoRoomSelected
+                                                , state = st
+                                                }
+                                      }
+                                    , b
+                                    )
+
+                                _ ->
+                                    ( a, b )
                     in
-                    case state of
+                    (case state of
                         NotHoveringOverRoom ->
                             case roomImHoveringOver of
                                 Just room ->
@@ -490,7 +574,7 @@ update msg model =
                                     else
                                         draggingSingleRoom
 
-                                RoomSelected _ ->
+                                RoomSelected _ _ ->
                                     draggingSingleRoom
 
                                 NoRoomSelected ->
@@ -524,6 +608,8 @@ update msg model =
                                     }
                                 )
                                 |> pure
+                    )
+                        |> checkIfCanResizeSelectedRoom
             )
                 |> (\( a, b ) -> ( pan a, b ))
 
@@ -531,7 +617,7 @@ update msg model =
             case model.panning of
                 Just _ ->
                     case mouseEvent.button of
-                        Middle ->
+                        MiddleClick ->
                             case model.panning of
                                 Nothing ->
                                     ignore
@@ -549,7 +635,7 @@ update msg model =
 
                 Nothing ->
                     case mouseEvent.button of
-                        Middle ->
+                        MiddleClick ->
                             ignore
 
                         _ ->
@@ -587,7 +673,7 @@ update msg model =
                                                         else
                                                             case roomsSelected of
                                                                 [ room ] ->
-                                                                    RoomSelected room.id
+                                                                    RoomSelected room.id Nothing
 
                                                                 _ ->
                                                                     GroupSelected (roomsSelected |> List.map .id)
@@ -604,18 +690,18 @@ update msg model =
                                                 (Select
                                                     { selected =
                                                         case selected of
-                                                            RoomSelected roomImEditing ->
+                                                            RoomSelected roomImEditing canResize ->
                                                                 if roomImEditing == roomId then
                                                                     NoRoomSelected
 
                                                                 else
-                                                                    RoomSelected roomId
+                                                                    RoomSelected roomId canResize
 
                                                             GroupSelected _ ->
-                                                                RoomSelected roomId
+                                                                RoomSelected roomId Nothing
 
                                                             NoRoomSelected ->
-                                                                RoomSelected roomId
+                                                                RoomSelected roomId Nothing
                                                     , state = HoveringOverRoom roomId
                                                     }
                                                 )
@@ -825,7 +911,7 @@ view model =
                     |> JD.map
                         (\l ->
                             case l.button of
-                                Middle ->
+                                MiddleClick ->
                                     ( MiddleClickDown l, True )
 
                                 _ ->
@@ -845,9 +931,59 @@ view model =
 
                         Just _ ->
                             True
+
+                canResize : Bool
+                canResize =
+                    case model.mode of
+                        Select { selected } ->
+                            case selected of
+                                RoomSelected _ resizable ->
+                                    case resizable of
+                                        Just _ ->
+                                            True
+
+                                        Nothing ->
+                                            False
+
+                                _ ->
+                                    False
+
+                        _ ->
+                            False
               in
               if isPanning then
                 style "cursor" "grabbing"
+
+              else if canResize then
+                style "cursor"
+                    (case model.mode of
+                        Select { selected } ->
+                            case selected of
+                                RoomSelected _ resizable ->
+                                    case resizable of
+                                        Just resKind ->
+                                            case resKind of
+                                                Top ->
+                                                    "row-resize"
+
+                                                Bottom ->
+                                                    "row-resize"
+
+                                                Left ->
+                                                    "col-resize"
+
+                                                Right ->
+                                                    "col-resize"
+
+                                        Nothing ->
+                                            ""
+
+                                _ ->
+                                    ""
+
+                        _ ->
+                            ""
+                    )
 
               else
                 style "" ""
@@ -1116,7 +1252,7 @@ view model =
                                     NoRoomSelected ->
                                         initialRooms
 
-                                    RoomSelected room ->
+                                    RoomSelected room _ ->
                                         initialRooms |> List.filter (\r -> r.id /= room)
 
                                     GroupSelected rooms ->
@@ -3733,30 +3869,30 @@ listAnyIJDiff f l1 l2 =
 
 
 type MouseEventButton
-    = Left
-    | Middle
-    | Right
-    | Back
-    | Forward
+    = LeftClick
+    | MiddleClick
+    | RightClick
+    | BackClick
+    | ForwardClick
 
 
 buttonToMouseEventButton : Int -> MouseEventButton
 buttonToMouseEventButton button =
     case button of
         0 ->
-            Left
+            LeftClick
 
         1 ->
-            Middle
+            MiddleClick
 
         2 ->
-            Right
+            RightClick
 
         3 ->
-            Back
+            BackClick
 
         _ ->
-            Forward
+            ForwardClick
 
 
 type alias MouseEvent =
@@ -3764,3 +3900,10 @@ type alias MouseEvent =
     , layerY : Int
     , button : MouseEventButton
     }
+
+
+type Resizable
+    = Top
+    | Bottom
+    | Left
+    | Right
