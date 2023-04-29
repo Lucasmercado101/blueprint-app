@@ -472,63 +472,78 @@ update msg model =
                                                         { selected =
                                                             case selected of
                                                                 RoomSelected { roomId } ->
-                                                                    let
-                                                                        ( x1, y1 ) =
-                                                                            sceneMouseMoveCoords
+                                                                    case roomImHoveringOver of
+                                                                        Nothing ->
+                                                                            RoomSelected
+                                                                                { roomId = roomId
+                                                                                , resizableKind = CannotResize
+                                                                                }
 
-                                                                        leeway =
-                                                                            15
-
-                                                                        isMouseAroundTopSideOfRoom =
-                                                                            List.any
-                                                                                (\{ boundingBox } ->
-                                                                                    (y1 |> inRangeInc (boundingBox.y1 - leeway) (boundingBox.y1 + leeway))
-                                                                                        && (x1 |> inRangeInc (boundingBox.x1 + leeway) (boundingBox.x1 + boundingBox.width - leeway))
-                                                                                )
-                                                                                model.rooms
-
-                                                                        isMouseAroundBottomSideOfRoom =
-                                                                            List.any
-                                                                                (\{ boundingBox } ->
-                                                                                    (y1 |> inRangeInc (boundingBox.y1 + boundingBox.height - leeway) (boundingBox.y1 + boundingBox.height + leeway))
-                                                                                        && (x1 |> inRangeInc (boundingBox.x1 + leeway) (boundingBox.x1 + boundingBox.width - leeway))
-                                                                                )
-                                                                                model.rooms
-
-                                                                        isMouseAroundLeftSideOfRoom =
-                                                                            List.any
-                                                                                (\{ boundingBox } ->
-                                                                                    (x1 |> inRangeInc (boundingBox.x1 - leeway) (boundingBox.x1 + leeway))
-                                                                                        && (y1 |> inRangeInc (boundingBox.y1 + leeway) (boundingBox.y1 + boundingBox.height - leeway))
-                                                                                )
-                                                                                model.rooms
-
-                                                                        isMouseAroundRightSideOfRoom =
-                                                                            List.any
-                                                                                (\{ boundingBox } ->
-                                                                                    (x1 |> inRangeInc (boundingBox.x1 + boundingBox.width - leeway) (boundingBox.x1 + boundingBox.width + leeway))
-                                                                                        && (y1 |> inRangeInc (boundingBox.y1 + leeway) (boundingBox.y1 + boundingBox.height - leeway))
-                                                                                )
-                                                                                model.rooms
-                                                                    in
-                                                                    RoomSelected
-                                                                        { roomId = roomId
-                                                                        , resizableKind =
-                                                                            if isMouseAroundTopSideOfRoom then
-                                                                                CanResize Top
-
-                                                                            else if isMouseAroundBottomSideOfRoom then
-                                                                                CanResize Bottom
-
-                                                                            else if isMouseAroundLeftSideOfRoom then
-                                                                                CanResize Left
-
-                                                                            else if isMouseAroundRightSideOfRoom then
-                                                                                CanResize Right
+                                                                        Just val ->
+                                                                            if val /= roomId then
+                                                                                RoomSelected
+                                                                                    { roomId = roomId
+                                                                                    , resizableKind = CannotResize
+                                                                                    }
 
                                                                             else
-                                                                                CannotResize
-                                                                        }
+                                                                                let
+                                                                                    ( x1, y1 ) =
+                                                                                        sceneMouseMoveCoords
+
+                                                                                    leeway =
+                                                                                        15
+
+                                                                                    isMouseAroundTopSideOfRoom =
+                                                                                        List.any
+                                                                                            (\{ boundingBox } ->
+                                                                                                (y1 |> inRangeInc (boundingBox.y1 - leeway) (boundingBox.y1 + leeway))
+                                                                                                    && (x1 |> inRangeInc (boundingBox.x1 + leeway) (boundingBox.x1 + boundingBox.width - leeway))
+                                                                                            )
+                                                                                            model.rooms
+
+                                                                                    isMouseAroundBottomSideOfRoom =
+                                                                                        List.any
+                                                                                            (\{ boundingBox } ->
+                                                                                                (y1 |> inRangeInc (boundingBox.y1 + boundingBox.height - leeway) (boundingBox.y1 + boundingBox.height + leeway))
+                                                                                                    && (x1 |> inRangeInc (boundingBox.x1 + leeway) (boundingBox.x1 + boundingBox.width - leeway))
+                                                                                            )
+                                                                                            model.rooms
+
+                                                                                    isMouseAroundLeftSideOfRoom =
+                                                                                        List.any
+                                                                                            (\{ boundingBox } ->
+                                                                                                (x1 |> inRangeInc (boundingBox.x1 - leeway) (boundingBox.x1 + leeway))
+                                                                                                    && (y1 |> inRangeInc (boundingBox.y1 + leeway) (boundingBox.y1 + boundingBox.height - leeway))
+                                                                                            )
+                                                                                            model.rooms
+
+                                                                                    isMouseAroundRightSideOfRoom =
+                                                                                        List.any
+                                                                                            (\{ boundingBox } ->
+                                                                                                (x1 |> inRangeInc (boundingBox.x1 + boundingBox.width - leeway) (boundingBox.x1 + boundingBox.width + leeway))
+                                                                                                    && (y1 |> inRangeInc (boundingBox.y1 + leeway) (boundingBox.y1 + boundingBox.height - leeway))
+                                                                                            )
+                                                                                            model.rooms
+                                                                                in
+                                                                                RoomSelected
+                                                                                    { roomId = roomId
+                                                                                    , resizableKind =
+                                                                                        if isMouseAroundTopSideOfRoom then
+                                                                                            CanResize Top
+
+                                                                                        else if isMouseAroundBottomSideOfRoom then
+                                                                                            CanResize Bottom
+
+                                                                                        else if isMouseAroundLeftSideOfRoom then
+                                                                                            CanResize Left
+
+                                                                                        else if isMouseAroundRightSideOfRoom then
+                                                                                            CanResize Right
+
+                                                                                        else
+                                                                                            CannotResize
+                                                                                    }
 
                                                                 GroupSelected ids ->
                                                                     GroupSelected ids
