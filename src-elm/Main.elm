@@ -733,6 +733,13 @@ update msg model =
                                 Select { selected, state } ->
                                     case isResizingSelectedRoom of
                                         Just ( roomImResizing, resKind, resPoints ) ->
+                                            let
+                                                { origin, end } =
+                                                    resPoints
+
+                                                deltaResizeDrag =
+                                                    end |> Point.subtract origin
+                                            in
                                             { model
                                                 | rooms =
                                                     List.map
@@ -742,16 +749,31 @@ update msg model =
                                                                     bBox =
                                                                         r.boundingBox
 
-                                                                    { origin, end } =
-                                                                        resPoints
-
-                                                                    deltaResizeDrag =
-                                                                        end |> Point.subtract origin
-
                                                                     newBBox =
                                                                         case resKind of
                                                                             Bottom ->
-                                                                                { bBox | height = bBox.height + Point.y deltaResizeDrag }
+                                                                                let
+                                                                                    h =
+                                                                                        bBox.height + Point.y deltaResizeDrag
+
+                                                                                    newH =
+                                                                                        if h <= 1 then
+                                                                                            abs (bBox.height + Point.y deltaResizeDrag)
+
+                                                                                        else
+                                                                                            h
+
+                                                                                    y1 =
+                                                                                        if h <= 0 then
+                                                                                            bBox.y1 + h
+
+                                                                                        else
+                                                                                            bBox.y1
+                                                                                in
+                                                                                { bBox
+                                                                                    | height = newH
+                                                                                    , y1 = y1
+                                                                                }
 
                                                                             _ ->
                                                                                 { bBox | height = 10 }
@@ -1450,7 +1472,7 @@ view model =
                                                         )
 
                                             _ ->
-                                                model.rooms
+                                                rooms
 
                                     _ ->
                                         rooms
