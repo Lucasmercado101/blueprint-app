@@ -802,8 +802,56 @@ update msg model =
                                                                                     , y1 = newY1
                                                                                 }
 
-                                                                            _ ->
-                                                                                { bBox | height = 50 }
+                                                                            Left ->
+                                                                                let
+                                                                                    x1 =
+                                                                                        bBox.x1 + Point.x deltaResizeDrag
+
+                                                                                    newX1 =
+                                                                                        if x1 >= bBox.x1 + bBox.width then
+                                                                                            bBox.x1 + bBox.width - 1
+
+                                                                                        else
+                                                                                            x1
+
+                                                                                    w =
+                                                                                        bBox.width - Point.x deltaResizeDrag
+
+                                                                                    newW =
+                                                                                        if w <= 1 then
+                                                                                            abs (bBox.width - Point.x deltaResizeDrag)
+
+                                                                                        else
+                                                                                            w
+                                                                                in
+                                                                                { bBox
+                                                                                    | width = newW
+                                                                                    , x1 = newX1
+                                                                                }
+
+                                                                            Right ->
+                                                                                let
+                                                                                    w =
+                                                                                        bBox.width + Point.x deltaResizeDrag
+
+                                                                                    newW =
+                                                                                        if w <= 1 then
+                                                                                            abs (bBox.width + Point.x deltaResizeDrag)
+
+                                                                                        else
+                                                                                            w
+
+                                                                                    x1 =
+                                                                                        if w <= 0 then
+                                                                                            bBox.x1 + w
+
+                                                                                        else
+                                                                                            bBox.x1
+                                                                                in
+                                                                                { bBox
+                                                                                    | width = newW
+                                                                                    , x1 = x1
+                                                                                }
                                                                 in
                                                                 { r | boundingBox = newBBox }
 
@@ -1516,8 +1564,56 @@ view model =
                                                                                     , y1 = newY1
                                                                                 }
 
-                                                                            _ ->
-                                                                                { bBox | height = 50 }
+                                                                            Left ->
+                                                                                let
+                                                                                    x1 =
+                                                                                        bBox.x1 + Point.x deltaResizeDrag
+
+                                                                                    newX1 =
+                                                                                        if x1 >= bBox.x1 + bBox.width then
+                                                                                            bBox.x1 + bBox.width - 1
+
+                                                                                        else
+                                                                                            x1
+
+                                                                                    w =
+                                                                                        bBox.width - Point.x deltaResizeDrag
+
+                                                                                    newW =
+                                                                                        if w <= 1 then
+                                                                                            abs (bBox.width - Point.x deltaResizeDrag)
+
+                                                                                        else
+                                                                                            w
+                                                                                in
+                                                                                { bBox
+                                                                                    | width = newW
+                                                                                    , x1 = newX1
+                                                                                }
+
+                                                                            Right ->
+                                                                                let
+                                                                                    w =
+                                                                                        bBox.width + Point.x deltaResizeDrag
+
+                                                                                    newW =
+                                                                                        if w <= 1 then
+                                                                                            abs (bBox.width + Point.x deltaResizeDrag)
+
+                                                                                        else
+                                                                                            w
+
+                                                                                    x1 =
+                                                                                        if w <= 0 then
+                                                                                            bBox.x1 + w
+
+                                                                                        else
+                                                                                            bBox.x1
+                                                                                in
+                                                                                { bBox
+                                                                                    | width = newW
+                                                                                    , x1 = x1
+                                                                                }
                                                                 in
                                                                 { r | boundingBox = newBBox }
 
