@@ -1666,6 +1666,7 @@ view model =
 
                                                                     newBBox =
                                                                         case kind of
+                                                                            -- TODO: can be 0 height
                                                                             Bottom ->
                                                                                 let
                                                                                     h =
