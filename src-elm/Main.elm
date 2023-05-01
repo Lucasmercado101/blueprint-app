@@ -4158,7 +4158,7 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                     in
                     case linePartiallyInsideBottomRight of
                         Just partialLineBottomRight ->
-                            ListNE.cons (LineSegment ( prevRoom.x1, prevRoom.x1 + prevRoom.width ))
+                            ListNE.cons (LineSegment ( prevRoom.x1, prevRoom.width ))
                                 (getTopXSegmentsHelper
                                     { partialLineBottomRight
                                         | x1 = prevRoom.x1 + prevRoom.width
