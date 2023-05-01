@@ -1584,7 +1584,7 @@ view model =
                                                                 ]
                                                                 []
                                                             , line
-                                                                [ SA.x (x + width - vx |> String.fromInt)
+                                                                [ SA.x1 (x + width - vx |> String.fromInt)
                                                                 , SA.y1 (smallestY - vy - 75 |> String.fromInt)
                                                                 , SA.x2 (x + width - vx |> String.fromInt)
                                                                 , SA.y2 (smallestY - vy - 50 |> String.fromInt)
@@ -4186,28 +4186,33 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
 
 
 getTopXSegments : Nonempty Room -> Nonempty (SegmentPartition Int)
-getTopXSegments ((Nonempty x _) as e) =
-    let
-        leftThenTopMostFoldl =
-            ListNE.foldl
-                (\next curr ->
-                    if next.boundingBox.x1 < curr.boundingBox.x1 then
-                        next
+getTopXSegments ((Nonempty x xs) as e) =
+    case xs of
+        [] ->
+            ListNE.singleton (LineSegment ( x.boundingBox.x1, x.boundingBox.width ))
 
-                    else if next.boundingBox.x1 == curr.boundingBox.x1 then
-                        if next.boundingBox.y1 < curr.boundingBox.y1 then
-                            next
+        _ ->
+            let
+                leftThenTopMostFoldl =
+                    ListNE.foldl
+                        (\next curr ->
+                            if next.boundingBox.x1 < curr.boundingBox.x1 then
+                                next
 
-                        else
-                            curr
+                            else if next.boundingBox.x1 == curr.boundingBox.x1 then
+                                if next.boundingBox.y1 < curr.boundingBox.y1 then
+                                    next
 
-                    else
-                        curr
-                )
-                x
-                e
-    in
-    getTopXSegmentsHelper leftThenTopMostFoldl.boundingBox (ListNE.map .boundingBox e)
+                                else
+                                    curr
+
+                            else
+                                curr
+                        )
+                        x
+                        e
+            in
+            getTopXSegmentsHelper leftThenTopMostFoldl.boundingBox (ListNE.map .boundingBox e)
 
 
 getNextTopLeftSegment : Rectangle -> List Room -> List SpaceType
