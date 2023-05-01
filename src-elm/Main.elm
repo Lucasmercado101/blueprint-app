@@ -3666,6 +3666,11 @@ overlap1DLines ( a1, a2 ) ( b1, b2 ) =
     inRangeInc a1 a2 b1 || inRangeInc a1 a2 b2 || inRangeInc b1 b2 a1 || inRangeInc b1 b2 a2
 
 
+are1DLinesEq : ( number, number ) -> ( number, number ) -> Bool
+are1DLinesEq ( a1, a2 ) ( b1, b2 ) =
+    a1 == b1 && a2 == b2
+
+
 is1DLineInside1DLine : ( Int, Int ) -> ( Int, Int ) -> Bool
 is1DLineInside1DLine ( a1, a2 ) ( b1, b2 ) =
     (b1 |> inRangeInc a1 a2) && (b2 |> inRangeInc a1 a2)
@@ -4382,6 +4387,67 @@ getAllRoomsTopXAsSegments e =
                                     []
             in
             nextOneOnTheLeft ++ (Occupied highestRoom.boundingBox :: nextOneOnTheRight)
+
+
+type SegmentPartition num
+    = LineSegment ( num, num )
+    | EmptySegment ( num, num )
+
+
+
+{-
+   assumes that:
+   - lines have at least 1 of width
+   - a1 is smaller than b1, i.e line A is more to the left then line B
+
+   returns:
+   left-to-right partitioning of the line segments
+-}
+
+
+ltr1DLineSegmentPartitioning : ( number, number ) -> ( number, number ) -> List (SegmentPartition number)
+ltr1DLineSegmentPartitioning a b =
+    let
+        ( a1, b1 ) =
+            a
+
+        ( a2, b2 ) =
+            b
+
+        ( x1, x2 ) =
+            ( a1, a1 + b1 )
+
+        ( x3, x4 ) =
+            ( a2, a2 + b2 )
+
+        isInside =
+            x1 < x3 && x4 <= x2
+
+        isOutside =
+            x2 < x3
+    in
+    if isInside then
+        let
+            firstSegment =
+                ( x1, x3 - x1 )
+
+            secondSegment =
+                b
+
+            thirdSegment =
+                ( x4, x2 - x4 )
+        in
+        if x4 == x2 then
+            [ LineSegment firstSegment, LineSegment secondSegment ]
+
+        else
+            [ LineSegment firstSegment, LineSegment secondSegment, LineSegment thirdSegment ]
+
+    else if isOutside then
+        [ LineSegment a, EmptySegment ( x2, x3 - x2 ), LineSegment b ]
+
+    else
+        [ LineSegment ( x1, x3 - x1 ), LineSegment b ]
 
 
 areRoomsOverlapping : List Room -> List Room -> Bool
