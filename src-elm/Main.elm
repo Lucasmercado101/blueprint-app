@@ -4103,9 +4103,11 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
 
         Nothing ->
             let
-                linesPartiallyInsidePrevRoom : Nonempty Rectangle
+                linesPartiallyInsidePrevRoom : List Rectangle
                 linesPartiallyInsidePrevRoom =
-                    ListNE.filter (\l -> l.x1 <= (prevRoom.x1 + prevRoom.width)) nextRoom allRooms
+                    (nextRoom :: nextRooms)
+                        |> List.filter (\l -> l.x1 <= (prevRoom.x1 + prevRoom.width))
+                        |> List.filter (not << Rect.eq prevRoom)
 
                 leftThenTopMostFoldl : List Rectangle -> Maybe Rectangle
                 leftThenTopMostFoldl =
@@ -4130,8 +4132,8 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
 
                 linePartiallyInsideTopRight =
                     linesPartiallyInsidePrevRoom
-                        |> ListNE.filter (\l -> l.y1 < prevRoom.y1) nextRoom
-                        |> (\(Nonempty x xs) -> leftThenTopMostFoldl (x :: xs))
+                        |> List.filter (\l -> l.y1 < prevRoom.y1)
+                        |> leftThenTopMostFoldl
             in
             case linePartiallyInsideTopRight of
                 Just partialLineTopRight ->
@@ -4145,9 +4147,9 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                                 -- because i need it in case i encounter it again later.
                                 -- I just don't need it in this case because it may match
                                 -- that rectangle as the first one and cause an infinite recursive loop
-                                |> ListNE.filter (not << Rect.eq prevRoom) nextRoom
-                                |> ListNE.filter (\l -> prevRoom.y1 <= l.y1) nextRoom
-                                |> (\(Nonempty x xs) -> leftThenTopMostFoldl (x :: xs))
+                                |> List.filter (not << Rect.eq prevRoom)
+                                |> List.filter (\l -> prevRoom.y1 <= l.y1)
+                                |> leftThenTopMostFoldl
                     in
                     case linePartiallyInsideBottomRight of
                         Just partialLineBottomRight ->
