@@ -189,6 +189,11 @@ addPosition ( x, y ) rect =
     }
 
 
+eq : Rectangle -> Rectangle -> Bool
+eq rect1 rect2 =
+    rect1.x1 == rect2.x1 && rect1.y1 == rect2.y1 && rect1.width == rect2.width && rect1.height == rect2.height
+
+
 isThereAnyOverlap : Rectangle -> Rectangle -> Bool
 isThereAnyOverlap firstRectangle secondRectangle =
     let
