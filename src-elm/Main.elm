@@ -4107,7 +4107,7 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                 linesPartiallyInsidePrevRoom : List Rectangle
                 linesPartiallyInsidePrevRoom =
                     (nextRoom :: nextRooms)
-                        |> List.filter (\l -> (l.x1 > prevRoom.x1) && (l.x1 <= (prevRoom.x1 + prevRoom.width)))
+                        |> List.filter (\l -> (l.x1 >= prevRoom.x1) && (l.x1 <= (prevRoom.x1 + prevRoom.width)))
                         |> List.filter (not << Rect.eq prevRoom)
 
                 leftThenTopMostFoldl : List Rectangle -> Maybe Rectangle
