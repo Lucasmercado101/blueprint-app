@@ -4178,7 +4178,7 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                             case closestLineToTheRight of
                                 Just lineToTheRight ->
                                     if lineToTheRight.x1 == (prevRoom.x1 + prevRoom.width + 1) then
-                                        ListNE.cons (LineSegment ( prevRoom.x1, prevRoom.x1 + prevRoom.width )) (getTopXSegmentsHelper lineToTheRight allRooms)
+                                        ListNE.cons (LineSegment ( prevRoom.x1, prevRoom.width )) (getTopXSegmentsHelper lineToTheRight allRooms)
 
                                     else
                                         ListNE.append
