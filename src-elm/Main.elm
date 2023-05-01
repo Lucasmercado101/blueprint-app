@@ -4117,11 +4117,15 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                             case curr of
                                 Just val ->
                                     if next.x1 <= val.x1 then
-                                        if next.y1 < val.y1 then
-                                            Just next
+                                        if next.x1 == val.x1 then
+                                            if next.y1 < val.y1 then
+                                                Just next
+
+                                            else
+                                                Just val
 
                                         else
-                                            Just val
+                                            Just next
 
                                     else
                                         curr
