@@ -1294,320 +1294,325 @@ view model =
                                         ]
                                 )
 
+                    topMostRects : Maybe (Nonempty (SegmentPartition Int))
                     topMostRects =
-                        case model.mode of
-                            Select { state, selected } ->
-                                case state of
-                                    DraggingRoom { room, dragOrigin, dragEnd } ->
-                                        getAllRoomsTopXAsSegments
-                                            (model.rooms
-                                                |> List.map
-                                                    (\e ->
-                                                        if e.id == room then
-                                                            let
-                                                                deltaDrag : Point
-                                                                deltaDrag =
-                                                                    dragEnd |> Point.subtract dragOrigin
-
-                                                                newDraggedRoom =
-                                                                    e
-                                                                        |> roomAddPosition deltaDrag
-
-                                                                draggedRoomAfterSnapping : Room
-                                                                draggedRoomAfterSnapping =
-                                                                    (model.rooms |> List.filter (\r -> r.id /= room) |> List.map (roomSubPosition model.viewport))
-                                                                        |> handleSnapping newDraggedRoom
-                                                                        |> handleTranslateRoomToSnappedPosition newDraggedRoom
-                                                            in
-                                                            draggedRoomAfterSnapping
-
-                                                        else
-                                                            e
-                                                    )
-                                            )
-
-                                    _ ->
-                                        let
-                                            -- TODO: refactor this function into as standalone
-                                            beingResizedRooms =
-                                                case selected of
-                                                    RoomSelected { roomId, resizableKind } ->
-                                                        case resizableKind of
-                                                            Resizing ( kind, resizablePoints ) ->
-                                                                let
-                                                                    { origin, end } =
-                                                                        resizablePoints
-
-                                                                    deltaResizeDrag =
-                                                                        end |> Point.subtract origin
-                                                                in
-                                                                model.rooms
-                                                                    |> List.map
-                                                                        (\r ->
-                                                                            if r.id == roomId then
-                                                                                let
-                                                                                    bBox =
-                                                                                        r.boundingBox
-
-                                                                                    newBBox =
-                                                                                        case kind of
-                                                                                            Bottom ->
-                                                                                                let
-                                                                                                    h =
-                                                                                                        bBox.height + Point.y deltaResizeDrag
-
-                                                                                                    newH =
-                                                                                                        if h <= 1 then
-                                                                                                            abs (bBox.height + Point.y deltaResizeDrag)
-
-                                                                                                        else
-                                                                                                            h
-
-                                                                                                    y1 =
-                                                                                                        if h <= 0 then
-                                                                                                            bBox.y1 + h
-
-                                                                                                        else
-                                                                                                            bBox.y1
-                                                                                                in
-                                                                                                { bBox
-                                                                                                    | height = newH
-                                                                                                    , y1 = y1
-                                                                                                }
-
-                                                                                            Top ->
-                                                                                                let
-                                                                                                    y1 =
-                                                                                                        bBox.y1 + Point.y deltaResizeDrag
-
-                                                                                                    newY1 =
-                                                                                                        if y1 >= bBox.y1 + bBox.height then
-                                                                                                            bBox.y1 + bBox.height - 1
-
-                                                                                                        else
-                                                                                                            y1
-
-                                                                                                    h =
-                                                                                                        bBox.height - Point.y deltaResizeDrag
-
-                                                                                                    newH =
-                                                                                                        if h <= 1 then
-                                                                                                            abs (bBox.height - Point.y deltaResizeDrag)
-
-                                                                                                        else
-                                                                                                            h
-                                                                                                in
-                                                                                                { bBox
-                                                                                                    | height = newH
-                                                                                                    , y1 = newY1
-                                                                                                }
-
-                                                                                            Left ->
-                                                                                                let
-                                                                                                    x1 =
-                                                                                                        bBox.x1 + Point.x deltaResizeDrag
-
-                                                                                                    newX1 =
-                                                                                                        if x1 >= bBox.x1 + bBox.width then
-                                                                                                            bBox.x1 + bBox.width - 1
-
-                                                                                                        else
-                                                                                                            x1
-
-                                                                                                    w =
-                                                                                                        bBox.width - Point.x deltaResizeDrag
-
-                                                                                                    newW =
-                                                                                                        if w <= 1 then
-                                                                                                            abs (bBox.width - Point.x deltaResizeDrag)
-
-                                                                                                        else
-                                                                                                            w
-                                                                                                in
-                                                                                                { bBox
-                                                                                                    | width = newW
-                                                                                                    , x1 = newX1
-                                                                                                }
-
-                                                                                            Right ->
-                                                                                                let
-                                                                                                    w =
-                                                                                                        bBox.width + Point.x deltaResizeDrag
-
-                                                                                                    newW =
-                                                                                                        if w <= 1 then
-                                                                                                            abs (bBox.width + Point.x deltaResizeDrag)
-
-                                                                                                        else
-                                                                                                            w
-
-                                                                                                    x1 =
-                                                                                                        if w <= 0 then
-                                                                                                            bBox.x1 + w
-
-                                                                                                        else
-                                                                                                            bBox.x1
-                                                                                                in
-                                                                                                { bBox
-                                                                                                    | width = newW
-                                                                                                    , x1 = x1
-                                                                                                }
-                                                                                in
-                                                                                { r | boundingBox = newBBox }
-
-                                                                            else
-                                                                                r
-                                                                        )
-
-                                                            _ ->
-                                                                model.rooms
-
-                                                    _ ->
-                                                        model.rooms
-                                        in
-                                        getAllRoomsTopXAsSegments beingResizedRooms
-
-                            _ ->
-                                getAllRoomsTopXAsSegments model.rooms
-
-                    drawMeasuringLines =
-                        case topMostRects of
+                        case model.rooms of
                             [] ->
-                                []
+                                Nothing
 
                             x :: xs ->
                                 let
-                                    smallestY =
-                                        List.foldl
-                                            (\next acc ->
-                                                case next of
-                                                    EmptySpace _ ->
-                                                        acc
-
-                                                    Occupied data ->
-                                                        if data.y1 < acc then
-                                                            data.y1
-
-                                                        else
-                                                            acc
-                                            )
-                                            -- TEMP sorta
-                                            50000
-                                            (x :: xs)
-
-                                    smallestX =
-                                        List.foldl
-                                            (\next acc ->
-                                                case next of
-                                                    EmptySpace _ ->
-                                                        acc
-
-                                                    Occupied data ->
-                                                        if data.x1 < acc then
-                                                            data.x1
-
-                                                        else
-                                                            acc
-                                            )
-                                            -- TODO: temp
-                                            50000
-                                            (x :: xs)
-
-                                    biggestX =
-                                        List.foldl
-                                            (\next acc ->
-                                                case next of
-                                                    EmptySpace _ ->
-                                                        acc
-
-                                                    Occupied data ->
-                                                        if data.x1 + data.width > acc then
-                                                            data.x1 + data.width
-
-                                                        else
-                                                            acc
-                                            )
-                                            -- TODO: temp
-                                            -50000
-                                            (x :: xs)
-
-                                    ( vx, vy ) =
-                                        viewport
+                                    neRooms =
+                                        Nonempty x xs
                                 in
-                                List.map
-                                    (\l ->
-                                        case l of
-                                            EmptySpace data ->
-                                                S.g []
-                                                    [ line
-                                                        [ SA.x1 (data.x - vx |> String.fromInt)
-                                                        , SA.y1 (smallestY - vy - 50 |> String.fromInt)
-                                                        , SA.x2 (data.x - vx |> String.fromInt)
-                                                        , SA.y2 (smallestY - vy - 25 |> String.fromInt)
-                                                        , SA.stroke "orange"
-                                                        , SA.strokeWidth "2"
-                                                        ]
-                                                        []
-                                                    , line
-                                                        [ SA.x1 (data.x + data.width - vx |> String.fromInt)
-                                                        , SA.y1 (smallestY - vy - 75 |> String.fromInt)
-                                                        , SA.x2 (data.x + data.width - vx |> String.fromInt)
-                                                        , SA.y2 (smallestY - vy - 50 |> String.fromInt)
-                                                        , SA.stroke "DarkTurquoise"
-                                                        , SA.strokeWidth "2"
-                                                        ]
-                                                        []
-                                                    , S.text_
-                                                        [ SA.x (data.x - vx |> String.fromInt)
-                                                        , SA.y (smallestY - vy - 55 |> String.fromInt)
-                                                        , SA.fill "white"
-                                                        , SA.class "svgText"
-                                                        ]
-                                                        [ S.text (data.width |> String.fromInt)
-                                                        ]
-                                                    ]
+                                case model.mode of
+                                    Select { state, selected } ->
+                                        case state of
+                                            DraggingRoom { room, dragOrigin, dragEnd } ->
+                                                Just <|
+                                                    getTopXSegments
+                                                        (neRooms
+                                                            |> ListNE.map
+                                                                (\e ->
+                                                                    if e.id == room then
+                                                                        let
+                                                                            deltaDrag : Point
+                                                                            deltaDrag =
+                                                                                dragEnd |> Point.subtract dragOrigin
 
-                                            Occupied { x1, width } ->
-                                                S.g []
-                                                    [ line
-                                                        [ SA.x1 (x1 - vx |> String.fromInt)
-                                                        , SA.y1 (smallestY - vy - 50 |> String.fromInt)
-                                                        , SA.x2 (x1 - vx |> String.fromInt)
-                                                        , SA.y2 (smallestY - vy - 25 |> String.fromInt)
-                                                        , SA.stroke "Chartreuse"
-                                                        , SA.strokeWidth "2"
-                                                        ]
-                                                        []
-                                                    , line
-                                                        [ SA.x1 (x1 + width - vx |> String.fromInt)
-                                                        , SA.y1 (smallestY - vy - 75 |> String.fromInt)
-                                                        , SA.x2 (x1 + width - vx |> String.fromInt)
-                                                        , SA.y2 (smallestY - vy - 50 |> String.fromInt)
-                                                        , SA.stroke "red"
-                                                        , SA.strokeWidth "2"
-                                                        ]
-                                                        []
-                                                    , S.text_
-                                                        [ SA.x (x1 - vx |> String.fromInt)
-                                                        , SA.y (smallestY - vy - 55 |> String.fromInt)
-                                                        , SA.fill "white"
-                                                        , SA.class "svgText"
-                                                        ]
-                                                        [ S.text (width |> String.fromInt)
-                                                        ]
+                                                                            newDraggedRoom =
+                                                                                e
+                                                                                    |> roomAddPosition deltaDrag
+
+                                                                            draggedRoomAfterSnapping : Room
+                                                                            draggedRoomAfterSnapping =
+                                                                                (model.rooms |> List.filter (\r -> r.id /= room) |> List.map (roomSubPosition model.viewport))
+                                                                                    |> handleSnapping newDraggedRoom
+                                                                                    |> handleTranslateRoomToSnappedPosition newDraggedRoom
+                                                                        in
+                                                                        draggedRoomAfterSnapping
+
+                                                                    else
+                                                                        e
+                                                                )
+                                                        )
+
+                                            _ ->
+                                                let
+                                                    -- TODO: refactor this function into as standalone
+                                                    beingResizedRooms : Nonempty Room
+                                                    beingResizedRooms =
+                                                        case selected of
+                                                            RoomSelected { roomId, resizableKind } ->
+                                                                case resizableKind of
+                                                                    Resizing ( kind, resizablePoints ) ->
+                                                                        let
+                                                                            { origin, end } =
+                                                                                resizablePoints
+
+                                                                            deltaResizeDrag =
+                                                                                end |> Point.subtract origin
+                                                                        in
+                                                                        neRooms
+                                                                            |> ListNE.map
+                                                                                (\r ->
+                                                                                    if r.id == roomId then
+                                                                                        let
+                                                                                            bBox =
+                                                                                                r.boundingBox
+
+                                                                                            newBBox =
+                                                                                                case kind of
+                                                                                                    Bottom ->
+                                                                                                        let
+                                                                                                            h =
+                                                                                                                bBox.height + Point.y deltaResizeDrag
+
+                                                                                                            newH =
+                                                                                                                if h <= 1 then
+                                                                                                                    abs (bBox.height + Point.y deltaResizeDrag)
+
+                                                                                                                else
+                                                                                                                    h
+
+                                                                                                            y1 =
+                                                                                                                if h <= 0 then
+                                                                                                                    bBox.y1 + h
+
+                                                                                                                else
+                                                                                                                    bBox.y1
+                                                                                                        in
+                                                                                                        { bBox
+                                                                                                            | height = newH
+                                                                                                            , y1 = y1
+                                                                                                        }
+
+                                                                                                    Top ->
+                                                                                                        let
+                                                                                                            y1 =
+                                                                                                                bBox.y1 + Point.y deltaResizeDrag
+
+                                                                                                            newY1 =
+                                                                                                                if y1 >= bBox.y1 + bBox.height then
+                                                                                                                    bBox.y1 + bBox.height - 1
+
+                                                                                                                else
+                                                                                                                    y1
+
+                                                                                                            h =
+                                                                                                                bBox.height - Point.y deltaResizeDrag
+
+                                                                                                            newH =
+                                                                                                                if h <= 1 then
+                                                                                                                    abs (bBox.height - Point.y deltaResizeDrag)
+
+                                                                                                                else
+                                                                                                                    h
+                                                                                                        in
+                                                                                                        { bBox
+                                                                                                            | height = newH
+                                                                                                            , y1 = newY1
+                                                                                                        }
+
+                                                                                                    Left ->
+                                                                                                        let
+                                                                                                            x1 =
+                                                                                                                bBox.x1 + Point.x deltaResizeDrag
+
+                                                                                                            newX1 =
+                                                                                                                if x1 >= bBox.x1 + bBox.width then
+                                                                                                                    bBox.x1 + bBox.width - 1
+
+                                                                                                                else
+                                                                                                                    x1
+
+                                                                                                            w =
+                                                                                                                bBox.width - Point.x deltaResizeDrag
+
+                                                                                                            newW =
+                                                                                                                if w <= 1 then
+                                                                                                                    abs (bBox.width - Point.x deltaResizeDrag)
+
+                                                                                                                else
+                                                                                                                    w
+                                                                                                        in
+                                                                                                        { bBox
+                                                                                                            | width = newW
+                                                                                                            , x1 = newX1
+                                                                                                        }
+
+                                                                                                    Right ->
+                                                                                                        let
+                                                                                                            w =
+                                                                                                                bBox.width + Point.x deltaResizeDrag
+
+                                                                                                            newW =
+                                                                                                                if w <= 1 then
+                                                                                                                    abs (bBox.width + Point.x deltaResizeDrag)
+
+                                                                                                                else
+                                                                                                                    w
+
+                                                                                                            x1 =
+                                                                                                                if w <= 0 then
+                                                                                                                    bBox.x1 + w
+
+                                                                                                                else
+                                                                                                                    bBox.x1
+                                                                                                        in
+                                                                                                        { bBox
+                                                                                                            | width = newW
+                                                                                                            , x1 = x1
+                                                                                                        }
+                                                                                        in
+                                                                                        { r | boundingBox = newBBox }
+
+                                                                                    else
+                                                                                        r
+                                                                                )
+
+                                                                    _ ->
+                                                                        neRooms
+
+                                                            _ ->
+                                                                neRooms
+                                                in
+                                                Just (getTopXSegments beingResizedRooms)
+
+                                    _ ->
+                                        Just (getTopXSegments neRooms)
+
+                    drawMeasuringLines =
+                        case model.rooms of
+                            [] ->
+                                []
+
+                            y :: ys ->
+                                case topMostRects of
+                                    Nothing ->
+                                        []
+
+                                    Just (Nonempty e es) ->
+                                        let
+                                            smallestY : Int
+                                            smallestY =
+                                                ListNE.foldl
+                                                    (\next acc ->
+                                                        if next.boundingBox.y1 < acc.boundingBox.y1 then
+                                                            next
+
+                                                        else
+                                                            acc
+                                                    )
+                                                    y
+                                                    (Nonempty y ys)
+                                                    |> (\r -> r.boundingBox.y1)
+
+                                            smallestX : Int
+                                            smallestX =
+                                                ListNE.foldl
+                                                    (\next acc ->
+                                                        if next.boundingBox.x1 < acc.boundingBox.x1 then
+                                                            next
+
+                                                        else
+                                                            acc
+                                                    )
+                                                    y
+                                                    (Nonempty y ys)
+                                                    |> (\r -> r.boundingBox.x1)
+
+                                            biggestX : Int
+                                            biggestX =
+                                                ListNE.foldl
+                                                    (\next acc ->
+                                                        if (next.boundingBox.x1 + next.boundingBox.width) < (acc.boundingBox.x1 + acc.boundingBox.width) then
+                                                            next
+
+                                                        else
+                                                            acc
+                                                    )
+                                                    y
+                                                    (Nonempty y ys)
+                                                    |> (\r -> r.boundingBox.x1 + r.boundingBox.width)
+
+                                            ( vx, vy ) =
+                                                viewport
+                                        in
+                                        List.map
+                                            (\l ->
+                                                case l of
+                                                    EmptySegment ( x, width ) ->
+                                                        S.g []
+                                                            [ line
+                                                                [ SA.x1 (x - vx |> String.fromInt)
+                                                                , SA.y1 (smallestY - vy - 50 |> String.fromInt)
+                                                                , SA.x2 (x - vx |> String.fromInt)
+                                                                , SA.y2 (smallestY - vy - 25 |> String.fromInt)
+                                                                , SA.stroke "orange"
+                                                                , SA.strokeWidth "2"
+                                                                ]
+                                                                []
+                                                            , line
+                                                                [ SA.x1 (x + width - vx |> String.fromInt)
+                                                                , SA.y1 (smallestY - vy - 75 |> String.fromInt)
+                                                                , SA.x2 (x + width - vx |> String.fromInt)
+                                                                , SA.y2 (smallestY - vy - 50 |> String.fromInt)
+                                                                , SA.stroke "DarkTurquoise"
+                                                                , SA.strokeWidth "2"
+                                                                ]
+                                                                []
+                                                            , S.text_
+                                                                [ SA.x (x - vx |> String.fromInt)
+                                                                , SA.y (smallestY - vy - 55 |> String.fromInt)
+                                                                , SA.fill "white"
+                                                                , SA.class "svgText"
+                                                                ]
+                                                                [ S.text (width |> String.fromInt)
+                                                                ]
+                                                            ]
+
+                                                    LineSegment ( x, width ) ->
+                                                        S.g []
+                                                            [ line
+                                                                [ SA.x1 (x - vx |> String.fromInt)
+                                                                , SA.y1 (smallestY - vy - 50 |> String.fromInt)
+                                                                , SA.x2 (x - vx |> String.fromInt)
+                                                                , SA.y2 (smallestY - vy - 25 |> String.fromInt)
+                                                                , SA.stroke "Chartreuse"
+                                                                , SA.strokeWidth "2"
+                                                                ]
+                                                                []
+                                                            , line
+                                                                [ SA.x (x + width - vx |> String.fromInt)
+                                                                , SA.y1 (smallestY - vy - 75 |> String.fromInt)
+                                                                , SA.x2 (x + width - vx |> String.fromInt)
+                                                                , SA.y2 (smallestY - vy - 50 |> String.fromInt)
+                                                                , SA.stroke "red"
+                                                                , SA.strokeWidth "2"
+                                                                ]
+                                                                []
+                                                            , S.text_
+                                                                [ SA.x (x - vx |> String.fromInt)
+                                                                , SA.y (smallestY - vy - 55 |> String.fromInt)
+                                                                , SA.fill "white"
+                                                                , SA.class "svgText"
+                                                                ]
+                                                                [ S.text (width |> String.fromInt)
+                                                                ]
+                                                            ]
+                                            )
+                                            (e :: es)
+                                            ++ [ line
+                                                    [ x1 (smallestX - vx |> String.fromInt)
+                                                    , y1 (smallestY - vy - 50 |> String.fromInt)
+                                                    , x2 (biggestX - vx |> String.fromInt)
+                                                    , y2 (smallestY - vy - 50 |> String.fromInt)
+                                                    , stroke "orange"
+                                                    , strokeWidth "2"
                                                     ]
-                                    )
-                                    topMostRects
-                                    ++ [ line
-                                            [ x1 (smallestX - vx |> String.fromInt)
-                                            , y1 (smallestY - vy - 50 |> String.fromInt)
-                                            , x2 (biggestX - vx |> String.fromInt)
-                                            , y2 (smallestY - vy - 50 |> String.fromInt)
-                                            , stroke "orange"
-                                            , strokeWidth "2"
-                                            ]
-                                            []
-                                       ]
+                                                    []
+                                               ]
                  in
                  -- NOTE: Drawing order is top to bottom, draw on top last
                  case model.mode of
