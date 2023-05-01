@@ -1526,7 +1526,7 @@ view model =
                                             biggestX =
                                                 ListNE.foldl
                                                     (\next acc ->
-                                                        if (next.boundingBox.x1 + next.boundingBox.width) < (acc.boundingBox.x1 + acc.boundingBox.width) then
+                                                        if (next.boundingBox.x1 + next.boundingBox.width) > (acc.boundingBox.x1 + acc.boundingBox.width) then
                                                             next
 
                                                         else
@@ -4176,13 +4176,13 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                                     else
                                         ListNE.append
                                             (Nonempty
-                                                (LineSegment ( prevRoom.x1, prevRoom.x1 + prevRoom.width ))
+                                                (LineSegment ( prevRoom.x1, prevRoom.width ))
                                                 [ EmptySegment ( prevRoom.x1 + prevRoom.width, lineToTheRight.x1 - (prevRoom.x1 + prevRoom.width) ) ]
                                             )
                                             (getTopXSegmentsHelper lineToTheRight allRooms)
 
                                 Nothing ->
-                                    ListNE.singleton (LineSegment ( prevRoom.x1, prevRoom.x1 + prevRoom.width ))
+                                    ListNE.singleton (LineSegment ( prevRoom.x1, prevRoom.width ))
 
 
 getTopXSegments : Nonempty Room -> Nonempty (SegmentPartition Int)
