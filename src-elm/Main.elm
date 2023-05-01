@@ -6,6 +6,7 @@ import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick, preventDefaultOn)
 import Json.Decode as JD exposing (Decoder)
+import List.Nonempty as ListNE exposing (Nonempty(..))
 import Point
 import Random
 import Rect exposing (Point, Rectangle)
@@ -4029,6 +4030,153 @@ getNextRightSegment segment rooms =
 
                         [] ->
                             getRoomsToTheRight
+
+
+getTopXSegments : Rectangle -> Nonempty Rectangle -> Nonempty (SegmentPartition Int)
+getTopXSegments prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
+    let
+        isInside a b =
+            let
+                ( x1, x2 ) =
+                    ( a.x1, a.x1 + a.width )
+
+                ( x3, x4 ) =
+                    ( b.x1, b.x1 + b.width )
+            in
+            x1 <= x3 && x4 <= x2
+    in
+    let
+        thereIsALineInsidePrevRoom : Maybe Rectangle
+        thereIsALineInsidePrevRoom =
+            ListNE.foldl
+                (\next curr ->
+                    case curr of
+                        Just val ->
+                            if next.x1 <= val.x1 then
+                                if next |> isInside prevRoom then
+                                    if next.y1 < prevRoom.y1 then
+                                        Just next
+
+                                    else
+                                        Just val
+
+                                else
+                                    Just val
+
+                            else
+                                curr
+
+                        Nothing ->
+                            if next |> isInside prevRoom then
+                                Just next
+
+                            else
+                                Nothing
+                )
+                Nothing
+                allRooms
+    in
+    case thereIsALineInsidePrevRoom of
+        Just lineInsidePrevRoom ->
+            -- if x2 are the same for both
+            if (lineInsidePrevRoom.x1 + lineInsidePrevRoom.width) == (prevRoom.x1 + prevRoom.width) then
+                ListNE.cons (LineSegment ( prevRoom.x1, lineInsidePrevRoom.x1 - prevRoom.x1 )) (getTopXSegments lineInsidePrevRoom allRooms)
+
+            else
+                ListNE.append
+                    (Nonempty
+                        (LineSegment ( prevRoom.x1, lineInsidePrevRoom.x1 - prevRoom.x1 ))
+                        [ LineSegment ( lineInsidePrevRoom.x1, lineInsidePrevRoom.x1 + lineInsidePrevRoom.width ) ]
+                    )
+                    (getTopXSegments
+                        { prevRoom
+                            | x1 = lineInsidePrevRoom.x1 + lineInsidePrevRoom.width
+                            , width = (prevRoom.x1 + prevRoom.width) - (lineInsidePrevRoom.x1 + lineInsidePrevRoom.width)
+                        }
+                        allRooms
+                    )
+
+        Nothing ->
+            let
+                linesPartiallyInsidePrevRoom : Nonempty Rectangle
+                linesPartiallyInsidePrevRoom =
+                    ListNE.filter (\l -> l.x1 <= (prevRoom.x1 + prevRoom.width)) nextRoom allRooms
+
+                leftThenTopMostFoldl =
+                    List.foldl
+                        (\next curr ->
+                            case curr of
+                                Just val ->
+                                    if next.x1 <= val.x1 then
+                                        if next.y1 < val.y1 then
+                                            Just next
+
+                                        else
+                                            Just val
+
+                                    else
+                                        curr
+
+                                Nothing ->
+                                    Just next
+                        )
+                        Nothing
+
+                linePartiallyInsideTopRight =
+                    linesPartiallyInsidePrevRoom
+                        |> ListNE.filter (\l -> l.y1 < prevRoom.y1) nextRoom
+                        |> (\(Nonempty x xs) -> leftThenTopMostFoldl (x :: xs))
+            in
+            case linePartiallyInsideTopRight of
+                Just partialLineTopRight ->
+                    ListNE.cons (LineSegment ( prevRoom.x1, partialLineTopRight.x1 - prevRoom.x1 )) (getTopXSegments partialLineTopRight allRooms)
+
+                Nothing ->
+                    let
+                        linePartiallyInsideBottomRight =
+                            linesPartiallyInsidePrevRoom
+                                -- not filtering out the current rectangle from all rectangle
+                                -- because i need it in case i encounter it again later.
+                                -- I just don't need it in this case because it may match
+                                -- that rectangle as the first one and cause an infinite recursive loop
+                                |> ListNE.filter (not << Rect.eq prevRoom) nextRoom
+                                |> ListNE.filter (\l -> prevRoom.y1 <= l.y1) nextRoom
+                                |> (\(Nonempty x xs) -> leftThenTopMostFoldl (x :: xs))
+                    in
+                    case linePartiallyInsideBottomRight of
+                        Just partialLineBottomRight ->
+                            ListNE.cons (LineSegment ( prevRoom.x1, prevRoom.x1 + prevRoom.width ))
+                                (getTopXSegments
+                                    { partialLineBottomRight
+                                        | x1 = prevRoom.x1 + prevRoom.width
+                                        , width = (partialLineBottomRight.x1 + partialLineBottomRight.width) - (prevRoom.x1 + prevRoom.width)
+                                    }
+                                    allRooms
+                                )
+
+                        Nothing ->
+                            let
+                                closestLineToTheRight : Maybe Rectangle
+                                closestLineToTheRight =
+                                    (nextRoom :: nextRooms)
+                                        |> List.filter (\l -> l.x1 > (prevRoom.x1 + prevRoom.width))
+                                        |> leftThenTopMostFoldl
+                            in
+                            case closestLineToTheRight of
+                                Just lineToTheRight ->
+                                    if lineToTheRight.x1 == (prevRoom.x1 + prevRoom.width + 1) then
+                                        ListNE.cons (LineSegment ( prevRoom.x1, prevRoom.x1 + prevRoom.width )) (getTopXSegments lineToTheRight allRooms)
+
+                                    else
+                                        ListNE.append
+                                            (Nonempty
+                                                (LineSegment ( prevRoom.x1, prevRoom.x1 + prevRoom.width ))
+                                                [ EmptySegment ( prevRoom.x1 + prevRoom.width, lineToTheRight.x1 - (prevRoom.x1 + prevRoom.width) ) ]
+                                            )
+                                            (getTopXSegments lineToTheRight allRooms)
+
+                                Nothing ->
+                                    ListNE.singleton (LineSegment ( prevRoom.x1, prevRoom.x1 + prevRoom.width ))
 
 
 getNextTopLeftSegment : Rectangle -> List Room -> List SpaceType
