@@ -4092,7 +4092,7 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                 ListNE.append
                     (Nonempty
                         (LineSegment ( prevRoom.x1, lineInsidePrevRoom.x1 - prevRoom.x1 ))
-                        [ LineSegment ( lineInsidePrevRoom.x1, lineInsidePrevRoom.x1 + lineInsidePrevRoom.width ) ]
+                        [ LineSegment ( lineInsidePrevRoom.x1, lineInsidePrevRoom.width ) ]
                     )
                     (getTopXSegmentsHelper
                         { prevRoom
