@@ -4053,33 +4053,34 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
     let
         thereIsALineInsidePrevRoom : Maybe Rectangle
         thereIsALineInsidePrevRoom =
-            ListNE.foldl
-                (\next curr ->
-                    case curr of
-                        Just val ->
-                            if next.x1 <= val.x1 then
-                                if next |> isInside prevRoom then
-                                    if next.y1 < prevRoom.y1 then
-                                        Just next
+            allRooms
+                |> ListNE.filter (not << Rect.eq prevRoom) nextRoom
+                |> ListNE.foldl
+                    (\next curr ->
+                        case curr of
+                            Just val ->
+                                if next.x1 <= val.x1 then
+                                    if next |> isInside prevRoom then
+                                        if next.y1 < prevRoom.y1 then
+                                            Just next
+
+                                        else
+                                            Just val
 
                                     else
                                         Just val
 
                                 else
-                                    Just val
+                                    curr
 
-                            else
-                                curr
+                            Nothing ->
+                                if next |> isInside prevRoom then
+                                    Just next
 
-                        Nothing ->
-                            if next |> isInside prevRoom then
-                                Just next
-
-                            else
-                                Nothing
-                )
-                Nothing
-                allRooms
+                                else
+                                    Nothing
+                    )
+                    Nothing
     in
     case thereIsALineInsidePrevRoom of
         Just lineInsidePrevRoom ->
