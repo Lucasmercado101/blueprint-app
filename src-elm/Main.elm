@@ -4032,8 +4032,8 @@ getNextRightSegment segment rooms =
                             getRoomsToTheRight
 
 
-getTopXSegments : Rectangle -> Nonempty Rectangle -> Nonempty (SegmentPartition Int)
-getTopXSegments prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
+getTopXSegmentsHelper : Rectangle -> Nonempty Rectangle -> Nonempty (SegmentPartition Int)
+getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
     let
         isInside a b =
             let
@@ -4080,7 +4080,7 @@ getTopXSegments prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
         Just lineInsidePrevRoom ->
             -- if x2 are the same for both
             if (lineInsidePrevRoom.x1 + lineInsidePrevRoom.width) == (prevRoom.x1 + prevRoom.width) then
-                ListNE.cons (LineSegment ( prevRoom.x1, lineInsidePrevRoom.x1 - prevRoom.x1 )) (getTopXSegments lineInsidePrevRoom allRooms)
+                ListNE.cons (LineSegment ( prevRoom.x1, lineInsidePrevRoom.x1 - prevRoom.x1 )) (getTopXSegmentsHelper lineInsidePrevRoom allRooms)
 
             else
                 ListNE.append
@@ -4088,7 +4088,7 @@ getTopXSegments prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                         (LineSegment ( prevRoom.x1, lineInsidePrevRoom.x1 - prevRoom.x1 ))
                         [ LineSegment ( lineInsidePrevRoom.x1, lineInsidePrevRoom.x1 + lineInsidePrevRoom.width ) ]
                     )
-                    (getTopXSegments
+                    (getTopXSegmentsHelper
                         { prevRoom
                             | x1 = lineInsidePrevRoom.x1 + lineInsidePrevRoom.width
                             , width = (prevRoom.x1 + prevRoom.width) - (lineInsidePrevRoom.x1 + lineInsidePrevRoom.width)
@@ -4102,6 +4102,7 @@ getTopXSegments prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                 linesPartiallyInsidePrevRoom =
                     ListNE.filter (\l -> l.x1 <= (prevRoom.x1 + prevRoom.width)) nextRoom allRooms
 
+                leftThenTopMostFoldl : List Rectangle -> Maybe Rectangle
                 leftThenTopMostFoldl =
                     List.foldl
                         (\next curr ->
@@ -4129,7 +4130,7 @@ getTopXSegments prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
             in
             case linePartiallyInsideTopRight of
                 Just partialLineTopRight ->
-                    ListNE.cons (LineSegment ( prevRoom.x1, partialLineTopRight.x1 - prevRoom.x1 )) (getTopXSegments partialLineTopRight allRooms)
+                    ListNE.cons (LineSegment ( prevRoom.x1, partialLineTopRight.x1 - prevRoom.x1 )) (getTopXSegmentsHelper partialLineTopRight allRooms)
 
                 Nothing ->
                     let
@@ -4146,7 +4147,7 @@ getTopXSegments prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                     case linePartiallyInsideBottomRight of
                         Just partialLineBottomRight ->
                             ListNE.cons (LineSegment ( prevRoom.x1, prevRoom.x1 + prevRoom.width ))
-                                (getTopXSegments
+                                (getTopXSegmentsHelper
                                     { partialLineBottomRight
                                         | x1 = prevRoom.x1 + prevRoom.width
                                         , width = (partialLineBottomRight.x1 + partialLineBottomRight.width) - (prevRoom.x1 + prevRoom.width)
@@ -4165,7 +4166,7 @@ getTopXSegments prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                             case closestLineToTheRight of
                                 Just lineToTheRight ->
                                     if lineToTheRight.x1 == (prevRoom.x1 + prevRoom.width + 1) then
-                                        ListNE.cons (LineSegment ( prevRoom.x1, prevRoom.x1 + prevRoom.width )) (getTopXSegments lineToTheRight allRooms)
+                                        ListNE.cons (LineSegment ( prevRoom.x1, prevRoom.x1 + prevRoom.width )) (getTopXSegmentsHelper lineToTheRight allRooms)
 
                                     else
                                         ListNE.append
@@ -4173,10 +4174,35 @@ getTopXSegments prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                                                 (LineSegment ( prevRoom.x1, prevRoom.x1 + prevRoom.width ))
                                                 [ EmptySegment ( prevRoom.x1 + prevRoom.width, lineToTheRight.x1 - (prevRoom.x1 + prevRoom.width) ) ]
                                             )
-                                            (getTopXSegments lineToTheRight allRooms)
+                                            (getTopXSegmentsHelper lineToTheRight allRooms)
 
                                 Nothing ->
                                     ListNE.singleton (LineSegment ( prevRoom.x1, prevRoom.x1 + prevRoom.width ))
+
+
+getTopXSegments : Nonempty Room -> Nonempty (SegmentPartition Int)
+getTopXSegments ((Nonempty x _) as e) =
+    let
+        leftThenTopMostFoldl =
+            ListNE.foldl
+                (\next curr ->
+                    if next.boundingBox.x1 < curr.boundingBox.x1 then
+                        next
+
+                    else if next.boundingBox.x1 == curr.boundingBox.x1 then
+                        if next.boundingBox.y1 < curr.boundingBox.y1 then
+                            next
+
+                        else
+                            curr
+
+                    else
+                        curr
+                )
+                x
+                e
+    in
+    getTopXSegmentsHelper leftThenTopMostFoldl.boundingBox (ListNE.map .boundingBox e)
 
 
 getNextTopLeftSegment : Rectangle -> List Room -> List SpaceType
