@@ -4076,7 +4076,7 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                                 -- I just don't need it in this case because it may match
                                 -- that rectangle as the first one and cause an infinite recursive loop
                                 |> List.filter (not << Rect.eq prevRoom)
-                                |> List.filter (\l -> prevRoom.y1 <= l.y1)
+                                |> List.filter (\l -> prevRoom.y1 >= l.y1)
                                 |> leftThenTopMostFoldl
                     in
                     case linePartiallyInsideBottomRight of
