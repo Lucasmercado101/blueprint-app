@@ -3977,7 +3977,7 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
         thereIsALineInsidePrevRoom =
             (nextRoom :: nextRooms)
                 |> List.filter (not << Rect.eq prevRoom)
-                |> List.filter (\l -> l.y1 < prevRoom.y1)
+                |> List.filter (\l -> (l.y1 + l.height) < prevRoom.y1)
                 |> List.foldl
                     (\next curr ->
                         case curr of
@@ -4030,9 +4030,8 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                 linesPartiallyInsidePrevRoom : List Rectangle
                 linesPartiallyInsidePrevRoom =
                     (nextRoom :: nextRooms)
-                        |> List.filter (\l -> l.y1 < prevRoom.y1)
-                        |> List.filter (\l -> (l.x1 >= prevRoom.x1) && (l.x1 <= (prevRoom.x1 + prevRoom.width)))
                         |> List.filter (not << Rect.eq prevRoom)
+                        |> List.filter (\l -> (l.x1 >= prevRoom.x1) && (l.x1 <= (prevRoom.x1 + prevRoom.width)))
 
                 leftThenTopMostFoldl : List Rectangle -> Maybe Rectangle
                 leftThenTopMostFoldl =
@@ -4162,12 +4161,12 @@ getBottomXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
         roomsExcludingPrev =
             (nextRoom :: nextRooms)
                 |> List.filter (not << Rect.eq prevRoom)
-                -- only those below previous
-                |> List.filter (\l -> (prevRoom.y1 + prevRoom.height) < (l.y1 + l.height))
 
         thereIsALineInsidePrevRoom : Maybe Rectangle
         thereIsALineInsidePrevRoom =
             roomsExcludingPrev
+                -- only those below previous
+                |> List.filter (\l -> (prevRoom.y1 + prevRoom.height) < (l.y1 + l.height))
                 |> List.foldl
                     (\next curr ->
                         case curr of
