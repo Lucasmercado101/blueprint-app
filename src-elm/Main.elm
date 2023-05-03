@@ -4031,7 +4031,7 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                 linesPartiallyInsidePrevRoom =
                     (nextRoom :: nextRooms)
                         |> List.filter (not << Rect.eq prevRoom)
-                        |> List.filter (\l -> (l.x1 >= prevRoom.x1) && (l.x1 <= (prevRoom.x1 + prevRoom.width) && (l.x1 + l.width /= (prevRoom.x1 + prevRoom.width))))
+                        |> List.filter (\l -> (l.x1 >= prevRoom.x1) && (l.x1 <= (prevRoom.x1 + prevRoom.width) && (l.x1 + l.width /= (prevRoom.x1 + prevRoom.width))) && (l.x1 + l.width > prevRoom.x1 + prevRoom.width))
 
                 leftThenTopMostFoldl : List Rectangle -> Maybe Rectangle
                 leftThenTopMostFoldl =
@@ -4075,8 +4075,7 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                                 -- because i need it in case i encounter it again later.
                                 -- I just don't need it in this case because it may match
                                 -- that rectangle as the first one and cause an infinite recursive loop
-                                |> List.filter (not << Rect.eq prevRoom)
-                                |> List.filter (\l -> prevRoom.y1 >= l.y1)
+                                |> List.filter (\l -> prevRoom.y1 <= l.y1)
                                 |> leftThenTopMostFoldl
                     in
                     case linePartiallyInsideBottomRight of
@@ -4259,7 +4258,7 @@ getBottomXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                     let
                         linePartiallyInsideTopRight =
                             linesPartiallyInsidePrevRoom
-                                |> List.filter (not << Rect.eq prevRoom)
+                                |> List.filter (\l -> (prevRoom.x1 + prevRoom.width) <= l.x1)
                                 |> List.filter (\l -> (prevRoom.y1 + prevRoom.height) >= l.y1 + l.height)
                                 |> leftThenBottomMostFoldl
                     in
