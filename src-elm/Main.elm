@@ -1491,7 +1491,7 @@ view model =
                                 Just (getBottomXSegments (Nonempty x xs))
 
                     drawMeasuringLines =
-                        case model.rooms of
+                        case roomsPostTransformations of
                             [] ->
                                 []
 
