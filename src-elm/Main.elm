@@ -1490,6 +1490,15 @@ view model =
                             x :: xs ->
                                 Just (getBottomXSegments (Nonempty x xs))
 
+                    leftMostRects : Maybe (Nonempty (SegmentPartition Int))
+                    leftMostRects =
+                        case roomsPostTransformations of
+                            [] ->
+                                Nothing
+
+                            x :: xs ->
+                                Just (getLeftYSegments (Nonempty x xs))
+
                     drawMeasuringLines =
                         case roomsPostTransformations of
                             [] ->
@@ -1720,6 +1729,94 @@ view model =
                                                                     []
                                                                 ]
                                                        )
+                                               )
+                                            ++ (case leftMostRects of
+                                                    Nothing ->
+                                                        []
+
+                                                    Just (Nonempty r rs) ->
+                                                        List.map
+                                                            (\l ->
+                                                                case l of
+                                                                    EmptySegment ( x, width ) ->
+                                                                        S.g []
+                                                                            [ line
+                                                                                [ SA.x1 (x - vx |> String.fromInt)
+                                                                                , SA.y1 (biggestY - vy + 50 |> String.fromInt)
+                                                                                , SA.x2 (x - vx |> String.fromInt)
+                                                                                , SA.y2 (biggestY - vy + 25 |> String.fromInt)
+                                                                                , SA.stroke "orange"
+                                                                                , SA.strokeWidth "2"
+                                                                                ]
+                                                                                []
+                                                                            , line
+                                                                                [ SA.x1 (x + width - vx |> String.fromInt)
+                                                                                , SA.y1 (biggestY - vy + 75 |> String.fromInt)
+                                                                                , SA.x2 (x + width - vx |> String.fromInt)
+                                                                                , SA.y2 (biggestY - vy + 50 |> String.fromInt)
+                                                                                , SA.stroke "DarkTurquoise"
+                                                                                , SA.strokeWidth "2"
+                                                                                ]
+                                                                                []
+                                                                            , S.text_
+                                                                                [ SA.x (x - vx |> String.fromInt)
+                                                                                , SA.y (biggestY - vy + 75 |> String.fromInt)
+                                                                                , SA.fill "white"
+                                                                                , SA.class "svgText"
+                                                                                ]
+                                                                                [ S.text (width |> String.fromInt)
+                                                                                ]
+                                                                            ]
+
+                                                                    LineSegment ( y1, height ) ->
+                                                                        S.g []
+                                                                            [ line
+                                                                                [ SA.x1 (smallestX - vx - 75 |> String.fromInt)
+                                                                                , SA.y1 (y1 - vy |> String.fromInt)
+                                                                                , SA.x2 (smallestX - vx - 50 |> String.fromInt)
+                                                                                , SA.y2 (y1 - vy |> String.fromInt)
+                                                                                , SA.stroke "Chartreuse"
+                                                                                , SA.strokeWidth "2"
+                                                                                ]
+                                                                                []
+                                                                            , line
+                                                                                [ SA.x1 (smallestX - vx - 50 |> String.fromInt)
+                                                                                , SA.y1 (y1 + height - vy |> String.fromInt)
+                                                                                , SA.x2 (smallestX - vx - 25 |> String.fromInt)
+                                                                                , SA.y2 (y1 + height - vy |> String.fromInt)
+                                                                                , SA.stroke "Chartreuse"
+                                                                                , SA.strokeWidth "2"
+                                                                                , SA.stroke "red"
+                                                                                , SA.strokeWidth "2"
+                                                                                ]
+                                                                                []
+                                                                            , S.text_
+                                                                                [ SA.x (smallestX - vx - 85 |> String.fromInt)
+                                                                                , SA.y (y1 + 25 - vy |> String.fromInt)
+                                                                                , SA.fill "white"
+                                                                                , SA.class "svgText"
+                                                                                ]
+                                                                                [ S.text (height |> String.fromInt)
+                                                                                ]
+                                                                            ]
+                                                            )
+                                                            (r :: rs)
+                                               )
+                                            ++ (case leftMostRects of
+                                                    Nothing ->
+                                                        []
+
+                                                    Just _ ->
+                                                        [ line
+                                                            [ x1 (smallestX - vx - 50 |> String.fromInt)
+                                                            , y1 (smallestY - vy |> String.fromInt)
+                                                            , x2 (smallestX - vx - 50 |> String.fromInt)
+                                                            , y2 (biggestY - vy |> String.fromInt)
+                                                            , stroke "orange"
+                                                            , strokeWidth "2"
+                                                            ]
+                                                            []
+                                                        ]
                                                )
                  in
                  -- NOTE: Drawing order is top to bottom, draw on top last
