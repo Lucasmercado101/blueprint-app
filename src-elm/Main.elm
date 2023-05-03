@@ -4159,11 +4159,15 @@ getBottomXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
             in
             x1 <= x3 && x4 <= x2
 
+        roomsExcludingPrev =
+            (nextRoom :: nextRooms)
+                |> List.filter (not << Rect.eq prevRoom)
+                -- only those below previous
+                |> List.filter (\l -> (prevRoom.y1 + prevRoom.height) < (l.y1 + l.height))
+
         thereIsALineInsidePrevRoom : Maybe Rectangle
         thereIsALineInsidePrevRoom =
-            (nextRoom :: nextRooms)
-                |> List.filter (\l -> (prevRoom.y1 + prevRoom.height) < (l.y1 + l.height))
-                |> List.filter (not << Rect.eq prevRoom)
+            roomsExcludingPrev
                 |> List.foldl
                     (\next curr ->
                         case curr of
@@ -4195,7 +4199,7 @@ getBottomXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
         Just lineInsidePrevRoom ->
             -- if x2 are the same for both
             if (lineInsidePrevRoom.x1 + lineInsidePrevRoom.width) == (prevRoom.x1 + prevRoom.width) then
-                ListNE.cons (LineSegment ( prevRoom.x1, lineInsidePrevRoom.x1 - prevRoom.x1 )) (getTopXSegmentsHelper lineInsidePrevRoom allRooms)
+                ListNE.cons (LineSegment ( prevRoom.x1, lineInsidePrevRoom.x1 - prevRoom.x1 )) (getBottomXSegmentsHelper lineInsidePrevRoom allRooms)
 
             else
                 ListNE.append
@@ -4203,7 +4207,7 @@ getBottomXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                         (LineSegment ( prevRoom.x1, lineInsidePrevRoom.x1 - prevRoom.x1 ))
                         [ LineSegment ( lineInsidePrevRoom.x1, lineInsidePrevRoom.width ) ]
                     )
-                    (getTopXSegmentsHelper
+                    (getBottomXSegmentsHelper
                         { prevRoom
                             | x1 = lineInsidePrevRoom.x1 + lineInsidePrevRoom.width
                             , width = (prevRoom.x1 + prevRoom.width) - (lineInsidePrevRoom.x1 + lineInsidePrevRoom.width)
@@ -4215,10 +4219,8 @@ getBottomXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
             let
                 linesPartiallyInsidePrevRoom : List Rectangle
                 linesPartiallyInsidePrevRoom =
-                    (nextRoom :: nextRooms)
-                        |> List.filter (\l -> (prevRoom.y1 + prevRoom.height) < (l.y1 + l.height))
-                        |> List.filter (\l -> (l.x1 >= prevRoom.x1) && (l.x1 <= (prevRoom.x1 + prevRoom.width)))
-                        |> List.filter (not << Rect.eq prevRoom)
+                    roomsExcludingPrev
+                        |> List.filter (\l -> (prevRoom.x1 <= l.x1) && (l.x1 <= (prevRoom.x1 + prevRoom.width)))
 
                 leftThenBottomMostFoldl : List Rectangle -> Maybe Rectangle
                 leftThenBottomMostFoldl =
@@ -4252,16 +4254,12 @@ getBottomXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
             in
             case linePartiallyInsideBottomRight of
                 Just partialLineBottomRight ->
-                    ListNE.cons (LineSegment ( prevRoom.x1, partialLineBottomRight.x1 - prevRoom.x1 )) (getTopXSegmentsHelper partialLineBottomRight allRooms)
+                    ListNE.cons (LineSegment ( prevRoom.x1, partialLineBottomRight.x1 - prevRoom.x1 )) (getBottomXSegmentsHelper partialLineBottomRight allRooms)
 
                 Nothing ->
                     let
                         linePartiallyInsideTopRight =
                             linesPartiallyInsidePrevRoom
-                                -- not filtering out the current rectangle from all rectangle
-                                -- because i need it in case i encounter it again later.
-                                -- I just don't need it in this case because it may match
-                                -- that rectangle as the first one and cause an infinite recursive loop
                                 |> List.filter (not << Rect.eq prevRoom)
                                 |> List.filter (\l -> (prevRoom.y1 + prevRoom.height) >= l.y1 + l.height)
                                 |> leftThenBottomMostFoldl
@@ -4269,7 +4267,7 @@ getBottomXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                     case linePartiallyInsideTopRight of
                         Just partialLineBottomRight ->
                             ListNE.cons (LineSegment ( prevRoom.x1, prevRoom.width ))
-                                (getTopXSegmentsHelper
+                                (getBottomXSegmentsHelper
                                     { partialLineBottomRight
                                         | x1 = prevRoom.x1 + prevRoom.width
                                         , width = (partialLineBottomRight.x1 + partialLineBottomRight.width) - (prevRoom.x1 + prevRoom.width)
@@ -4292,7 +4290,7 @@ getBottomXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                             case closestLineToTheRight of
                                 Just lineToTheRight ->
                                     if lineToTheRight.x1 == (prevRoom.x1 + prevRoom.width + 1) then
-                                        ListNE.cons (LineSegment ( prevRoom.x1, prevRoom.width )) (getTopXSegmentsHelper lineToTheRight allRooms)
+                                        ListNE.cons (LineSegment ( prevRoom.x1, prevRoom.width )) (getBottomXSegmentsHelper lineToTheRight allRooms)
 
                                     else
                                         ListNE.append
@@ -4300,7 +4298,7 @@ getBottomXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                                                 (LineSegment ( prevRoom.x1, prevRoom.width ))
                                                 [ EmptySegment ( prevRoom.x1 + prevRoom.width, lineToTheRight.x1 - (prevRoom.x1 + prevRoom.width) ) ]
                                             )
-                                            (getTopXSegmentsHelper lineToTheRight allRooms)
+                                            (getBottomXSegmentsHelper lineToTheRight allRooms)
 
                                 Nothing ->
                                     ListNE.singleton (LineSegment ( prevRoom.x1, prevRoom.width ))
