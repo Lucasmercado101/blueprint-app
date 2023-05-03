@@ -1,0 +1,5 @@
+on Error: listen EACCES: permission denied 0.0.0.0:50235
+
+do:
+net stop winnat
+net start winnat
