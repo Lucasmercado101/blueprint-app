@@ -4332,6 +4332,41 @@ getBottomXSegments ((Nonempty x xs) as e) =
             getBottomXSegmentsHelper leftThenBottomMost.boundingBox (ListNE.map .boundingBox e)
 
 
+getLeftYSegmentsHelper : Rectangle -> Nonempty Rectangle -> Nonempty (SegmentPartition Int)
+getLeftYSegmentsHelper prevRoom ((Nonempty x xs) as e) =
+    Nonempty (LineSegment ( 1, 1 )) []
+
+
+getLeftYSegments : Nonempty Room -> Nonempty (SegmentPartition Int)
+getLeftYSegments ((Nonempty x xs) as e) =
+    case xs of
+        [] ->
+            ListNE.singleton (LineSegment ( x.boundingBox.y1, x.boundingBox.height ))
+
+        _ ->
+            let
+                leftThenBottomMost =
+                    ListNE.foldl
+                        (\next curr ->
+                            if next.boundingBox.y1 > curr.boundingBox.y1 then
+                                next
+
+                            else if next.boundingBox.y1 == curr.boundingBox.y1 then
+                                if next.boundingBox.x1 < curr.boundingBox.x1 then
+                                    next
+
+                                else
+                                    curr
+
+                            else
+                                curr
+                        )
+                        x
+                        e
+            in
+            getLeftYSegmentsHelper leftThenBottomMost.boundingBox (ListNE.map .boundingBox e)
+
+
 type SegmentPartition num
     = LineSegment ( num, num )
     | EmptySegment ( num, num )
