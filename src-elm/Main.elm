@@ -4498,7 +4498,7 @@ getLeftYSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                     (\next curr ->
                         case curr of
                             Just val ->
-                                if next.y1 >= prevRoom.y1 then
+                                if next.y1 >= val.y1 then
                                     if next |> isInside prevRoom then
                                         if next.x1 < val.x1 then
                                             Just next
