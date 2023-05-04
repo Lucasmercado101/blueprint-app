@@ -4471,43 +4471,52 @@ getLeftYSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
     let
         isInside a b =
             let
-                ( x1, x2 ) =
+                ( a1, a2 ) =
                     ( a.y1, a.y1 + a.height )
 
-                ( x3, x4 ) =
+                ( b1, b2 ) =
                     ( b.y1, b.y1 + b.height )
             in
-            x1 <= x3 && x4 <= x2
+            a1 <= b1 && b2 <= a2
 
         y2 a =
             a.y1 + a.height
 
-        -- thereIsALineInsidePrevRoom : Maybe Rectangle
-        -- thereIsALineInsidePrevRoom =
-        --     (nextRoom :: nextRooms)
-        --         |> List.filter (not << Rect.eq prevRoom)
-        --         |> List.filter (\l -> l.x1 < prevRoom.x1)
-        --         |> List.foldl
-        --             (\next curr ->
-        --                 case curr of
-        --                     Just val ->
-        --                         if next.y1 >= prevRoom.y1 then
-        --                             if next |> isInside prevRoom then
-        --                                 if next.x1 < val.x1 then
-        --                                     Just next
-        --                                 else
-        --                                     Just val
-        --                             else
-        --                                 Just val
-        --                         else
-        --                             curr
-        --                     Nothing ->
-        --                         if next |> isInside prevRoom then
-        --                             Just next
-        --                         else
-        --                             Nothing
-        --             )
-        --             Nothing
+        x2 a =
+            a.x1 + a.width
+
+        thereIsALineInsidePrevRoom : Maybe Rectangle
+        thereIsALineInsidePrevRoom =
+            (nextRoom :: nextRooms)
+                |> List.filter (not << Rect.eq prevRoom)
+                |> List.filter (\l -> x2 l < prevRoom.x1)
+                |> List.foldl
+                    (\next curr ->
+                        case curr of
+                            Just val ->
+                                if next.y1 >= prevRoom.y1 then
+                                    if next |> isInside prevRoom then
+                                        if next.x1 < val.x1 then
+                                            Just next
+
+                                        else
+                                            Just val
+
+                                    else
+                                        Just val
+
+                                else
+                                    curr
+
+                            Nothing ->
+                                if next |> isInside prevRoom then
+                                    Just next
+
+                                else
+                                    Nothing
+                    )
+                    Nothing
+
         bottomAndLeftMostFoldl : List Rectangle -> Maybe Rectangle
         bottomAndLeftMostFoldl =
             List.foldl
@@ -4539,39 +4548,41 @@ getLeftYSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
                 |> List.filter (\l -> y2 l < prevRoom.y1)
                 |> bottomAndLeftMostFoldl
     in
-    case closestLineAbove of
-        Just lineAbove ->
-            if y2 lineAbove == (prevRoom.y1 - 1) then
-                ListNE.cons (LineSegment ( prevRoom.y1, prevRoom.height )) (getLeftYSegmentsHelper lineAbove allRooms)
+    case thereIsALineInsidePrevRoom of
+        Just lineInsidePrevRoom ->
+            if lineInsidePrevRoom.y1 == prevRoom.y1 then
+                ListNE.cons (LineSegment ( y2 lineInsidePrevRoom, y2 prevRoom - y2 lineInsidePrevRoom )) (getLeftYSegmentsHelper lineInsidePrevRoom allRooms)
 
             else
                 ListNE.append
                     (Nonempty
-                        (LineSegment ( prevRoom.y1, prevRoom.height ))
-                        [ EmptySegment ( y2 lineAbove, prevRoom.y1 - y2 lineAbove ) ]
+                        (LineSegment ( y2 lineInsidePrevRoom, y2 prevRoom - y2 lineInsidePrevRoom ))
+                        [ LineSegment ( lineInsidePrevRoom.y1, lineInsidePrevRoom.height ) ]
                     )
-                    (getLeftYSegmentsHelper lineAbove allRooms)
+                    (getLeftYSegmentsHelper
+                        { prevRoom
+                            | x1 = lineInsidePrevRoom.y1
+                            , width = lineInsidePrevRoom.y1 - prevRoom.y1
+                        }
+                        allRooms
+                    )
 
         Nothing ->
-            -- case thereIsALineInsidePrevRoom of
-            --     Just lineInsidePrevRoom ->
-            --         if y2 lineInsidePrevRoom == y2 prevRoom then
-            --             ListNE.cons (LineSegment ( prevRoom.y1, lineInsidePrevRoom.y1 - prevRoom.y1 )) (getLeftYSegmentsHelper lineInsidePrevRoom allRooms)
-            --         else
-            --             ListNE.append
-            --                 (Nonempty
-            --                     (LineSegment ( prevRoom.x1, lineInsidePrevRoom.x1 - prevRoom.x1 ))
-            --                     [ LineSegment ( lineInsidePrevRoom.x1, lineInsidePrevRoom.width ) ]
-            --                 )
-            --                 (getLeftYSegmentsHelper
-            --                     { prevRoom
-            --                         | x1 = lineInsidePrevRoom.x1 + lineInsidePrevRoom.width
-            --                         , width = (prevRoom.x1 + prevRoom.width) - (lineInsidePrevRoom.x1 + lineInsidePrevRoom.width)
-            --                     }
-            --                     allRooms
-            --                 )
-            --     Nothing ->
-            Nonempty (LineSegment ( prevRoom.y1, prevRoom.height )) []
+            case closestLineAbove of
+                Just lineAbove ->
+                    if y2 lineAbove == (prevRoom.y1 - 1) then
+                        ListNE.cons (LineSegment ( prevRoom.y1, prevRoom.height )) (getLeftYSegmentsHelper lineAbove allRooms)
+
+                    else
+                        ListNE.append
+                            (Nonempty
+                                (LineSegment ( prevRoom.y1, prevRoom.height ))
+                                [ EmptySegment ( y2 lineAbove, prevRoom.y1 - y2 lineAbove ) ]
+                            )
+                            (getLeftYSegmentsHelper lineAbove allRooms)
+
+                Nothing ->
+                    Nonempty (LineSegment ( prevRoom.y1, prevRoom.height )) []
 
 
 getLeftYSegments : Nonempty Room -> Nonempty (SegmentPartition Int)
