@@ -1738,33 +1738,33 @@ view model =
                                                         List.map
                                                             (\l ->
                                                                 case l of
-                                                                    EmptySegment ( x, width ) ->
+                                                                    EmptySegment ( y1, height ) ->
                                                                         S.g []
                                                                             [ line
-                                                                                [ SA.x1 (x - vx |> String.fromInt)
-                                                                                , SA.y1 (biggestY - vy + 50 |> String.fromInt)
-                                                                                , SA.x2 (x - vx |> String.fromInt)
-                                                                                , SA.y2 (biggestY - vy + 25 |> String.fromInt)
-                                                                                , SA.stroke "orange"
-                                                                                , SA.strokeWidth "2"
-                                                                                ]
-                                                                                []
-                                                                            , line
-                                                                                [ SA.x1 (x + width - vx |> String.fromInt)
-                                                                                , SA.y1 (biggestY - vy + 75 |> String.fromInt)
-                                                                                , SA.x2 (x + width - vx |> String.fromInt)
-                                                                                , SA.y2 (biggestY - vy + 50 |> String.fromInt)
+                                                                                [ SA.x1 (smallestX - vx - 75 |> String.fromInt)
+                                                                                , SA.y1 (y1 - vy |> String.fromInt)
+                                                                                , SA.x2 (smallestX - vx - 50 |> String.fromInt)
+                                                                                , SA.y2 (y1 - vy |> String.fromInt)
                                                                                 , SA.stroke "DarkTurquoise"
                                                                                 , SA.strokeWidth "2"
                                                                                 ]
                                                                                 []
+                                                                            , line
+                                                                                [ SA.x1 (smallestX - vx - 50 |> String.fromInt)
+                                                                                , SA.y1 (y1 + height - vy |> String.fromInt)
+                                                                                , SA.x2 (smallestX - vx - 25 |> String.fromInt)
+                                                                                , SA.y2 (y1 + height - vy |> String.fromInt)
+                                                                                , SA.stroke "orange"
+                                                                                , SA.strokeWidth "2"
+                                                                                ]
+                                                                                []
                                                                             , S.text_
-                                                                                [ SA.x (x - vx |> String.fromInt)
-                                                                                , SA.y (biggestY - vy + 75 |> String.fromInt)
+                                                                                [ SA.x (smallestX - vx - 85 |> String.fromInt)
+                                                                                , SA.y (y1 + 25 - vy |> String.fromInt)
                                                                                 , SA.fill "white"
                                                                                 , SA.class "svgText"
                                                                                 ]
-                                                                                [ S.text (width |> String.fromInt)
+                                                                                [ S.text (height |> String.fromInt)
                                                                                 ]
                                                                             ]
 
@@ -4482,58 +4482,95 @@ getLeftYSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
         y2 a =
             a.y1 + a.height
 
-        thereIsALineInsidePrevRoom : Maybe Rectangle
-        thereIsALineInsidePrevRoom =
-            (nextRoom :: nextRooms)
-                |> List.filter (not << Rect.eq prevRoom)
-                |> List.filter (\l -> l.x1 < prevRoom.x1)
-                |> List.foldl
-                    (\next curr ->
-                        case curr of
-                            Just val ->
-                                if next.y1 >= prevRoom.y1 then
-                                    if next |> isInside prevRoom then
-                                        if next.x1 < val.x1 then
-                                            Just next
-
-                                        else
-                                            Just val
+        -- thereIsALineInsidePrevRoom : Maybe Rectangle
+        -- thereIsALineInsidePrevRoom =
+        --     (nextRoom :: nextRooms)
+        --         |> List.filter (not << Rect.eq prevRoom)
+        --         |> List.filter (\l -> l.x1 < prevRoom.x1)
+        --         |> List.foldl
+        --             (\next curr ->
+        --                 case curr of
+        --                     Just val ->
+        --                         if next.y1 >= prevRoom.y1 then
+        --                             if next |> isInside prevRoom then
+        --                                 if next.x1 < val.x1 then
+        --                                     Just next
+        --                                 else
+        --                                     Just val
+        --                             else
+        --                                 Just val
+        --                         else
+        --                             curr
+        --                     Nothing ->
+        --                         if next |> isInside prevRoom then
+        --                             Just next
+        --                         else
+        --                             Nothing
+        --             )
+        --             Nothing
+        bottomAndLeftMostFoldl : List Rectangle -> Maybe Rectangle
+        bottomAndLeftMostFoldl =
+            List.foldl
+                (\next curr ->
+                    case curr of
+                        Just val ->
+                            if y2 next >= y2 val then
+                                if y2 next == y2 val then
+                                    if next.x1 < val.x1 then
+                                        Just next
 
                                     else
                                         Just val
 
                                 else
-                                    curr
-
-                            Nothing ->
-                                if next |> isInside prevRoom then
                                     Just next
 
-                                else
-                                    Nothing
-                    )
-                    Nothing
+                            else
+                                curr
+
+                        Nothing ->
+                            Just next
+                )
+                Nothing
+
+        closestLineAbove : Maybe Rectangle
+        closestLineAbove =
+            (nextRoom :: nextRooms)
+                |> List.filter (\l -> y2 l < prevRoom.y1)
+                |> bottomAndLeftMostFoldl
     in
-    case thereIsALineInsidePrevRoom of
-        Just lineInsidePrevRoom ->
-            if y2 lineInsidePrevRoom == y2 prevRoom then
-                ListNE.cons (LineSegment ( prevRoom.y1, lineInsidePrevRoom.y1 - prevRoom.y1 )) (getBottomXSegmentsHelper lineInsidePrevRoom allRooms)
+    case closestLineAbove of
+        Just lineAbove ->
+            if y2 lineAbove == (prevRoom.y1 - 1) then
+                ListNE.cons (LineSegment ( prevRoom.y1, prevRoom.height )) (getLeftYSegmentsHelper lineAbove allRooms)
 
             else
                 ListNE.append
                     (Nonempty
-                        (LineSegment ( prevRoom.x1, lineInsidePrevRoom.x1 - prevRoom.x1 ))
-                        [ LineSegment ( lineInsidePrevRoom.x1, lineInsidePrevRoom.width ) ]
+                        (LineSegment ( prevRoom.y1, prevRoom.height ))
+                        [ EmptySegment ( y2 lineAbove, prevRoom.y1 - y2 lineAbove ) ]
                     )
-                    (getBottomXSegmentsHelper
-                        { prevRoom
-                            | x1 = lineInsidePrevRoom.x1 + lineInsidePrevRoom.width
-                            , width = (prevRoom.x1 + prevRoom.width) - (lineInsidePrevRoom.x1 + lineInsidePrevRoom.width)
-                        }
-                        allRooms
-                    )
+                    (getLeftYSegmentsHelper lineAbove allRooms)
 
         Nothing ->
+            -- case thereIsALineInsidePrevRoom of
+            --     Just lineInsidePrevRoom ->
+            --         if y2 lineInsidePrevRoom == y2 prevRoom then
+            --             ListNE.cons (LineSegment ( prevRoom.y1, lineInsidePrevRoom.y1 - prevRoom.y1 )) (getLeftYSegmentsHelper lineInsidePrevRoom allRooms)
+            --         else
+            --             ListNE.append
+            --                 (Nonempty
+            --                     (LineSegment ( prevRoom.x1, lineInsidePrevRoom.x1 - prevRoom.x1 ))
+            --                     [ LineSegment ( lineInsidePrevRoom.x1, lineInsidePrevRoom.width ) ]
+            --                 )
+            --                 (getLeftYSegmentsHelper
+            --                     { prevRoom
+            --                         | x1 = lineInsidePrevRoom.x1 + lineInsidePrevRoom.width
+            --                         , width = (prevRoom.x1 + prevRoom.width) - (lineInsidePrevRoom.x1 + lineInsidePrevRoom.width)
+            --                     }
+            --                     allRooms
+            --                 )
+            --     Nothing ->
             Nonempty (LineSegment ( prevRoom.y1, prevRoom.height )) []
 
 
