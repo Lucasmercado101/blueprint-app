@@ -4110,6 +4110,7 @@ getTopXSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
             (nextRoom :: nextRooms)
                 |> List.filter (not << Rect.eq prevRoom)
                 |> List.filter (\l -> prevRoom.y1 < l.y1)
+                |> List.filter (\l -> prevRoom.x1 + prevRoom.width < l.x1 + l.width)
                 |> List.filter (\l -> prevRoom |> isInside l)
                 |> foldlDefaultFirst
                     (\next curr ->
@@ -4556,6 +4557,7 @@ getLeftYSegmentsHelper prevRoom ((Nonempty nextRoom nextRooms) as allRooms) =
             (nextRoom :: nextRooms)
                 |> List.filter (not << Rect.eq prevRoom)
                 |> List.filter (\l -> x2 prevRoom < l.x1)
+                |> List.filter (\l -> prevRoom.y1 /= l.y1)
                 |> List.filter (\l -> prevRoom |> isInside l)
                 |> foldlDefaultFirst
                     (\next curr ->
